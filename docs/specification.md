@@ -23,7 +23,6 @@ It lets a developer define a single source pack of skills and prompts, validate 
 - remote publishing
 - registry hosting
 - GUI marketplace
-- automatic installation into user home directories
 - cloud backend
 
 ## MVP commands
@@ -77,19 +76,31 @@ Each target bundle should include:
 - a target README
 - minimal target metadata
 
-### `install <built-pack-dir> --target <name> --dest <dir>`
+### `install <pack-or-built-dir> --target <name> --dest <dir>`
 
 Outputs:
 
+- accepts either a source pack directory or a prebuilt bundle directory
 - copies one built target bundle into a destination directory
 - preserves target docs and metadata
 - includes top-level `manifest.json` and `catalog.json` in the installed bundle
+
+### `install <pack-or-built-dir> --target claude-code --scope <project|user>`
+
+Outputs:
+
+- installs directly into known Claude Code user or project skill directories
+- mirrors Packsmith metadata under `.claude/packsmith/<pack-name>/`
+- allows `list`, `doctor`, and `uninstall` to operate from saved metadata
 
 ## Supported targets in MVP
 
 ### Claude Code
 
-Output should preserve skill directories and generate installation guidance for `.claude/skills`.
+Output should preserve skill directories, support installation guidance for `.claude/skills`, and support direct scoped install flows for:
+
+- `~/.claude/skills/`
+- `.claude/skills/`
 
 ### Codex
 
@@ -97,11 +108,17 @@ Output should preserve skill directories and generate an `AGENTS.md` bridge file
 
 ## Example content
 
-The repo must include one realistic example pack:
+The repo must include realistic example packs:
 
 - `research-launchpad`
 - one GitHub-demand research skill
 - one launch prompt
+- `incident-triage`
+- one operational incident-triage skill
+- one stakeholder-brief prompt
+- `maintainer-handoff`
+- one maintainer-handoff skill
+- one onboarding-brief prompt
 
 ## Acceptance criteria
 
@@ -111,6 +128,7 @@ The repo must include one realistic example pack:
 - at least one example pack validates successfully
 - building the example pack creates target bundles
 - installing a built example pack copies a usable bundle to a destination
+- installing the example pack directly from source works for supported scoped targets
 - tests cover validation and build behavior
 - tests cover init and install behavior
 - research and rationale are documented in-repo

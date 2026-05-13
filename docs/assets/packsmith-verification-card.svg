@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="360" viewBox="0 0 920 360" role="img" aria-labelledby="title desc">
+  <title id="title">Packsmith verification card</title>
+  <desc id="desc">Machine-generated evidence card summarizing npm run eval and current tarball provenance.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+  </defs>
+  <style>
+    .title { fill: #f8fafc; font: 700 28px 'Segoe UI', 'Arial', sans-serif; }
+    .meta { fill: #bfdbfe; font: 600 14px 'Segoe UI', 'Arial', sans-serif; letter-spacing: 0.12em; text-transform: uppercase; }
+    .body { fill: #e2e8f0; font: 500 18px 'Consolas', 'Courier New', monospace; }
+    .chip { fill: rgba(15, 23, 42, 0.35); stroke: rgba(191, 219, 254, 0.35); }
+  </style>
+  <rect width="920" height="360" rx="28" fill="url(#bg)" />
+  <rect x="24" y="24" width="872" height="312" rx="20" class="chip" />
+  <text x="32" y="56" class="meta">machine-generated verification evidence</text>
+    <text x="32" y="76" class="body">Packsmith verification card</text>
+  <text x="32" y="104" class="body">eval: npm run eval</text>
+  <text x="32" y="132" class="body">examples: 3</text>
+  <text x="32" y="160" class="body">npm published: false</text>
+  <text x="32" y="188" class="body">pack files: 6</text>
+  <text x="32" y="216" class="body">tarball: chenfei462-packsmith-0.1.0.tgz</text>
+  <text x="32" y="244" class="body">shasum: a12ea06a61ed856eeaabd986f0e4748af0fb2aa4</text>
+  <text x="32" y="272" class="body">toolchain: node v25.8.2 / npm 11.11.1</text>
+</svg>

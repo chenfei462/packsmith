@@ -1,5 +1,6 @@
 import path from "node:path";
-import { readFile } from "node:fs/promises";
+import os from "node:os";
+import { mkdtemp, readdir, readFile } from "node:fs/promises";
 
 import {
   copyDirectory,
@@ -9,11 +10,15 @@ import {
   ensureDir,
   pathExists,
   readJson,
+  removePath,
   writeJson,
   writeText
 } from "./fs-utils.mjs";
 
 const SUPPORTED_TARGETS = new Set(["claude-code", "codex"]);
+const SUPPORTED_INSTALL_SCOPES = new Set(["project", "user"]);
+const OVERSIZED_PACK_CONTEXT_THRESHOLD = 8000;
+const SKILL_NAME_PATTERN = /^[a-z0-9-]+$/;
 
 function assertString(value, label) {
   if (typeof value !== "string" || value.trim().length === 0) {
@@ -39,6 +44,51 @@ function ensureUniqueIds(items, label) {
 
     seen.add(item.id);
   }
+}
+
+function parseSkillFrontmatter(skillMarkdown, skillId) {
+  const frontmatterMatch = skillMarkdown.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+
+  if (!frontmatterMatch) {
+    throw new Error(`Skill "${skillId}" must start with YAML frontmatter in SKILL.md.`);
+  }
+
+  const frontmatter = {};
+  const lines = frontmatterMatch[1].split(/\r?\n/);
+
+  for (const line of lines) {
+    if (!line.trim()) {
+      continue;
+    }
+
+    const separatorIndex = line.indexOf(":");
+
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = line.slice(0, separatorIndex).trim();
+    const value = line.slice(separatorIndex + 1).trim();
+    frontmatter[key] = value;
+  }
+
+  if (typeof frontmatter.name !== "string" || frontmatter.name.length === 0) {
+    throw new Error(`Skill "${skillId}" frontmatter must include a non-empty name.`);
+  }
+
+  if (typeof frontmatter.description !== "string" || frontmatter.description.length === 0) {
+    throw new Error(`Skill "${skillId}" frontmatter must include a non-empty description.`);
+  }
+
+  if (!SKILL_NAME_PATTERN.test(frontmatter.name)) {
+    throw new Error(`Skill "${skillId}" frontmatter name must use lowercase letters, numbers, and hyphens.`);
+  }
+
+  return frontmatter;
+}
+
+function extractSkillBody(skillMarkdown) {
+  return skillMarkdown.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/, "");
 }
 
 async function loadManifest(packDir) {
@@ -86,6 +136,7 @@ async function loadManifest(packDir) {
 async function validateAssets(packDir, manifest) {
   const skillSummaries = [];
   const promptSummaries = [];
+  const promptBasenames = new Map();
 
   for (const skill of manifest.skills) {
     const absoluteSkillDir = path.join(packDir, skill.path);
@@ -102,22 +153,34 @@ async function validateAssets(packDir, manifest) {
     const bytes = await directorySize(absoluteSkillDir);
     const fileCount = await countDirectoryFiles(absoluteSkillDir);
     const skillMarkdown = await readFile(skillEntryPath, "utf8");
+    const frontmatter = parseSkillFrontmatter(skillMarkdown, skill.id);
 
     skillSummaries.push({
       id: skill.id,
       path: skill.path,
       bytes,
       fileCount,
-      contextChars: skillMarkdown.length
+      contextChars: skillMarkdown.length,
+      content: extractSkillBody(skillMarkdown),
+      frontmatter
     });
   }
 
   for (const prompt of manifest.prompts) {
     const absolutePromptPath = path.join(packDir, prompt.path);
+    const promptBasename = path.basename(prompt.path);
 
     if (!(await pathExists(absolutePromptPath))) {
       throw new Error(`Missing prompt file for "${prompt.id}": ${absolutePromptPath}`);
     }
+
+    const existingPrompt = promptBasenames.get(promptBasename);
+
+    if (existingPrompt && existingPrompt !== prompt.id) {
+      throw new Error(`Duplicate prompt output basename "${promptBasename}" for prompts "${existingPrompt}" and "${prompt.id}".`);
+    }
+
+    promptBasenames.set(promptBasename, prompt.id);
 
     const content = await readFile(absolutePromptPath, "utf8");
 
@@ -125,11 +188,45 @@ async function validateAssets(packDir, manifest) {
       id: prompt.id,
       path: prompt.path,
       bytes: Buffer.byteLength(content, "utf8"),
-      contextChars: content.length
+      contextChars: content.length,
+      content
     });
   }
 
   return { skillSummaries, promptSummaries };
+}
+
+async function loadScopedInstalledPacks(scopedInstall) {
+  const metadataParent = path.dirname(scopedInstall.metadataRoot);
+
+  if (!(await pathExists(metadataParent))) {
+    return [];
+  }
+
+  const entries = await readdir(metadataParent, { withFileTypes: true });
+  const installed = [];
+
+  for (const entry of entries) {
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    const metadataDir = path.join(metadataParent, entry.name);
+    const bundlePath = path.join(metadataDir, "bundle.json");
+    const manifestPath = path.join(metadataDir, "manifest.json");
+
+    if (!(await pathExists(bundlePath)) || !(await pathExists(manifestPath))) {
+      continue;
+    }
+
+    installed.push({
+      metadataDir,
+      bundle: await readJson(bundlePath),
+      manifest: await readJson(manifestPath)
+    });
+  }
+
+  return installed;
 }
 
 function buildCatalog(manifest, skillSummaries, promptSummaries) {
@@ -138,16 +235,184 @@ function buildCatalog(manifest, skillSummaries, promptSummaries) {
     version: manifest.version,
     description: manifest.description,
     targets: manifest.targets,
-    skills: skillSummaries,
-    prompts: promptSummaries,
+    skills: skillSummaries.map(summarizeSkill),
+    prompts: promptSummaries.map(summarizePrompt),
     estimatedContextChars:
       skillSummaries.reduce((sum, skill) => sum + skill.contextChars, 0) +
       promptSummaries.reduce((sum, prompt) => sum + prompt.contextChars, 0)
   };
 }
 
+function normalizeContent(value) {
+  return value.replace(/\r\n/g, "\n").trim();
+}
+
+function summarizeSkill(skill) {
+  return {
+    id: skill.id,
+    path: skill.path,
+    bytes: skill.bytes,
+    fileCount: skill.fileCount,
+    contextChars: skill.contextChars
+  };
+}
+
+function summarizePrompt(prompt) {
+  return {
+    id: prompt.id,
+    path: prompt.path,
+    bytes: prompt.bytes,
+    contextChars: prompt.contextChars
+  };
+}
+
+function buildDiagnostics(catalog, skillSummaries, promptSummaries) {
+  const duplicateMap = new Map();
+  const duplicateGroups = [];
+  const diagnostics = [];
+
+  for (const skill of skillSummaries) {
+    const key = normalizeContent(skill.content);
+
+    if (!key) {
+      continue;
+    }
+
+    const current = duplicateMap.get(key) ?? [];
+    current.push(`skill:${skill.id}`);
+    duplicateMap.set(key, current);
+  }
+
+  for (const prompt of promptSummaries) {
+    const key = normalizeContent(prompt.content);
+
+    if (!key) {
+      continue;
+    }
+
+    const current = duplicateMap.get(key) ?? [];
+    current.push(`prompt:${prompt.id}`);
+    duplicateMap.set(key, current);
+  }
+
+  for (const [content, assets] of duplicateMap.entries()) {
+    if (assets.length < 2) {
+      continue;
+    }
+
+    duplicateGroups.push({
+      assets,
+      repeatedChars: content.length
+    });
+  }
+
+  duplicateGroups.sort((left, right) => right.repeatedChars - left.repeatedChars);
+
+  if (duplicateGroups.length > 0) {
+    diagnostics.push({
+      code: "duplicate-content",
+      severity: "warning",
+      message: `Found ${duplicateGroups.length} repeated content group(s) across skills and prompts.`,
+      groups: duplicateGroups.map((group) => ({
+        assets: group.assets,
+        repeatedChars: group.repeatedChars
+      }))
+    });
+  }
+
+  if (catalog.estimatedContextChars >= OVERSIZED_PACK_CONTEXT_THRESHOLD) {
+    diagnostics.push({
+      code: "oversized-pack",
+      severity: "warning",
+      message: `Estimated context ${catalog.estimatedContextChars} chars exceeds the ${OVERSIZED_PACK_CONTEXT_THRESHOLD}-char warning threshold.`
+    });
+  }
+
+  return { diagnostics, duplicateGroups };
+}
+
 function toPosixPath(value) {
   return value.split(path.sep).join("/");
+}
+
+function resolveHomeDir(options = {}) {
+  return path.resolve(options.homeDir ?? process.env.HOME ?? process.env.USERPROFILE ?? os.homedir());
+}
+
+function resolveWorkingDir(options = {}) {
+  return path.resolve(options.cwd ?? process.cwd());
+}
+
+function resolveScopedInstallPaths(target, manifest, options = {}) {
+  const scope = options.scope;
+
+  if (!scope) {
+    return null;
+  }
+
+  if (!SUPPORTED_INSTALL_SCOPES.has(scope)) {
+    throw new Error(`Install scope must be one of: ${Array.from(SUPPORTED_INSTALL_SCOPES).join(", ")}.`);
+  }
+
+  if (target !== "claude-code") {
+    throw new Error(`Scoped install is only supported for claude-code. Received target "${target}".`);
+  }
+
+  const baseDir =
+    scope === "user" ? path.join(resolveHomeDir(options), ".claude") : path.join(resolveWorkingDir(options), ".claude");
+
+  return {
+    scope,
+    skillsRoot: path.join(baseDir, "skills"),
+    metadataRoot: path.join(baseDir, "packsmith", manifest.name)
+  };
+}
+
+function listBundleSkillDirNames(bundle) {
+  return (bundle.skills ?? []).map((skill) => path.basename(path.dirname(skill.path)));
+}
+
+async function inspectInstalledBundleIntegrity(scopedInstall, bundle) {
+  const missingSkills = [];
+  const missingPrompts = [];
+
+  for (const skill of bundle.skills ?? []) {
+    const skillDirName = path.basename(path.dirname(skill.path));
+
+    if (!(await pathExists(path.join(scopedInstall.skillsRoot, skillDirName)))) {
+      missingSkills.push(skill.id);
+    }
+  }
+
+  for (const prompt of bundle.prompts ?? []) {
+    const promptPath = path.join(scopedInstall.metadataRoot, prompt.path);
+
+    if (!(await pathExists(promptPath))) {
+      missingPrompts.push(prompt.id);
+    }
+  }
+
+  return {
+    ok: missingSkills.length === 0 && missingPrompts.length === 0,
+    missingSkills,
+    missingPrompts
+  };
+}
+
+async function listUnmanagedSkillDirectories(scopedInstall, installedBundles) {
+  if (!(await pathExists(scopedInstall.skillsRoot))) {
+    return [];
+  }
+
+  const entries = await readdir(scopedInstall.skillsRoot, { withFileTypes: true });
+  const managedSkillDirNames = new Set(
+    installedBundles.flatMap((bundle) => (bundle.skillIds ?? []).map((skillId) => skillId))
+  );
+
+  return entries
+    .filter((entry) => entry.isDirectory() && !managedSkillDirNames.has(entry.name))
+    .map((entry) => entry.name)
+    .sort((left, right) => left.localeCompare(right));
 }
 
 function buildCodexAgentsFile(manifest) {
@@ -247,16 +512,24 @@ async function emitTargetBundle(packDir, targetRoot, target, manifest) {
   });
 }
 
-export async function validatePack(packDir) {
+export async function validatePack(packDir, options = {}) {
   const absolutePackDir = path.resolve(packDir);
   const { manifest } = await loadManifest(absolutePackDir);
   const { skillSummaries, promptSummaries } = await validateAssets(absolutePackDir, manifest);
+  const catalog = buildCatalog(manifest, skillSummaries, promptSummaries);
+  const { diagnostics } = buildDiagnostics(catalog, skillSummaries, promptSummaries);
+
+  if (options.strict && diagnostics.length > 0) {
+    const codes = diagnostics.map((diagnostic) => diagnostic.code).join(", ");
+    throw new Error(`Strict validation failed: ${codes}.`);
+  }
 
   return {
     manifest,
     packDir: absolutePackDir,
     skillCount: skillSummaries.length,
-    promptCount: promptSummaries.length
+    promptCount: promptSummaries.length,
+    diagnostics
   };
 }
 
@@ -265,6 +538,7 @@ export async function inspectPack(packDir) {
   const { manifest } = await loadManifest(absolutePackDir);
   const { skillSummaries, promptSummaries } = await validateAssets(absolutePackDir, manifest);
   const catalog = buildCatalog(manifest, skillSummaries, promptSummaries);
+  const { diagnostics, duplicateGroups } = buildDiagnostics(catalog, skillSummaries, promptSummaries);
 
   return {
     packDir: absolutePackDir,
@@ -274,7 +548,10 @@ export async function inspectPack(packDir) {
     skillCount: catalog.skills.length,
     promptCount: catalog.prompts.length,
     estimatedContextChars: catalog.estimatedContextChars,
-    skills: catalog.skills
+    skills: skillSummaries.map(summarizeSkill),
+    prompts: promptSummaries.map(summarizePrompt),
+    diagnostics,
+    duplicateGroups
   };
 }
 
@@ -282,7 +559,8 @@ export async function buildPack(packDir, outDir = "dist") {
   const absolutePackDir = path.resolve(packDir);
   const { manifest } = await loadManifest(absolutePackDir);
   const { skillSummaries, promptSummaries } = await validateAssets(absolutePackDir, manifest);
-  const outputRoot = path.join(absolutePackDir, outDir, manifest.name);
+  const outputBaseDir = path.isAbsolute(outDir) ? outDir : path.join(absolutePackDir, outDir);
+  const outputRoot = path.join(outputBaseDir, manifest.name);
   const catalog = buildCatalog(manifest, skillSummaries, promptSummaries);
 
   await ensureDir(outputRoot);
@@ -350,37 +628,244 @@ Return:
   };
 }
 
-export async function installBundle(bundleDir, options = {}) {
-  const absoluteBundleDir = path.resolve(bundleDir);
-  const manifestPath = path.join(absoluteBundleDir, "manifest.json");
+async function resolveInstallBundleSource(bundleDir) {
+  const absoluteInputDir = path.resolve(bundleDir);
+  const builtManifestPath = path.join(absoluteInputDir, "manifest.json");
 
-  if (!(await pathExists(manifestPath))) {
-    throw new Error(`Missing built manifest: ${manifestPath}`);
+  if (await pathExists(builtManifestPath)) {
+    return {
+      bundleRoot: absoluteInputDir,
+      cleanupRoot: null
+    };
   }
 
-  const manifest = await readJson(manifestPath);
-  const target = options.target ?? manifest.targets?.[0];
+  const sourceManifestPath = path.join(absoluteInputDir, "packsmith.json");
 
-  if (!target || !SUPPORTED_TARGETS.has(target)) {
-    throw new Error(`Install target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`);
+  if (!(await pathExists(sourceManifestPath))) {
+    throw new Error(`Expected either a built bundle (manifest.json) or a source pack (packsmith.json): ${absoluteInputDir}`);
   }
 
-  const targetSourceDir = path.join(absoluteBundleDir, target);
-
-  if (!(await pathExists(targetSourceDir))) {
-    throw new Error(`Missing built target directory: ${targetSourceDir}`);
-  }
-
-  const destinationRoot = path.resolve(options.dest ?? path.join(absoluteBundleDir, "installed"));
-  const installDir = path.join(destinationRoot, manifest.name);
-
-  await copyDirectory(targetSourceDir, installDir);
-  await copyFileOrDirectory(path.join(absoluteBundleDir, "manifest.json"), path.join(installDir, "manifest.json"));
-  await copyFileOrDirectory(path.join(absoluteBundleDir, "catalog.json"), path.join(installDir, "catalog.json"));
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-install-build-"));
+  const built = await buildPack(absoluteInputDir, tempRoot);
 
   return {
-    manifest,
+    bundleRoot: built.outputRoot,
+    cleanupRoot: tempRoot
+  };
+}
+
+export async function installBundle(bundleDir, options = {}) {
+  const { bundleRoot, cleanupRoot } = await resolveInstallBundleSource(bundleDir);
+
+  try {
+    const manifestPath = path.join(bundleRoot, "manifest.json");
+    const manifest = await readJson(manifestPath);
+    const target = options.target ?? manifest.targets?.[0];
+
+    if (!target || !SUPPORTED_TARGETS.has(target)) {
+      throw new Error(`Install target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`);
+    }
+
+    const targetSourceDir = path.join(bundleRoot, target);
+
+    if (!(await pathExists(targetSourceDir))) {
+      throw new Error(`Missing built target directory: ${targetSourceDir}`);
+    }
+
+    if (options.dest && options.scope) {
+      throw new Error("Use either --dest or --scope for install, not both.");
+    }
+
+    const scopedInstall = resolveScopedInstallPaths(target, manifest, options);
+
+    if (scopedInstall) {
+      const targetBundle = await readJson(path.join(targetSourceDir, "bundle.json"));
+      const installedPacks = await loadScopedInstalledPacks(scopedInstall);
+      const installedPack = installedPacks.find(({ manifest: installedManifest }) => installedManifest.name === manifest.name);
+
+      for (const skill of targetBundle.skills ?? []) {
+        const skillDirName = path.basename(path.dirname(skill.path));
+        const conflictingPack = installedPacks.find(({ manifest: installedManifest, bundle: installedBundle }) => {
+          if (installedManifest.name === manifest.name) {
+            return false;
+          }
+
+          return (installedBundle.skills ?? []).some((installedSkill) => path.basename(path.dirname(installedSkill.path)) === skillDirName);
+        });
+
+        if (conflictingPack) {
+          throw new Error(`Claude Code skill "${skillDirName}" is already owned by pack "${conflictingPack.manifest.name}" in ${scopedInstall.scope} scope.`);
+        }
+      }
+
+      if (installedPack) {
+        const currentSkillDirNames = new Set(listBundleSkillDirNames(installedPack.bundle));
+        const nextSkillDirNames = new Set(listBundleSkillDirNames(targetBundle));
+
+        for (const skillDirName of currentSkillDirNames) {
+          if (!nextSkillDirNames.has(skillDirName)) {
+            await removePath(path.join(scopedInstall.skillsRoot, skillDirName));
+          }
+        }
+
+        await removePath(scopedInstall.metadataRoot);
+      }
+
+      for (const skill of targetBundle.skills ?? []) {
+        const sourceSkillDir = path.join(targetSourceDir, path.dirname(skill.path));
+        const targetSkillDir = path.join(scopedInstall.skillsRoot, path.basename(path.dirname(skill.path)));
+        await removePath(targetSkillDir);
+        await copyDirectory(sourceSkillDir, targetSkillDir);
+      }
+
+      await ensureDir(scopedInstall.metadataRoot);
+      await copyFileOrDirectory(path.join(targetSourceDir, "README.md"), path.join(scopedInstall.metadataRoot, "README.md"));
+      await copyFileOrDirectory(path.join(targetSourceDir, "bundle.json"), path.join(scopedInstall.metadataRoot, "bundle.json"));
+      await copyFileOrDirectory(path.join(bundleRoot, "manifest.json"), path.join(scopedInstall.metadataRoot, "manifest.json"));
+      await copyFileOrDirectory(path.join(bundleRoot, "catalog.json"), path.join(scopedInstall.metadataRoot, "catalog.json"));
+      const promptsDir = path.join(targetSourceDir, "prompts");
+
+      if (await pathExists(promptsDir)) {
+        await copyDirectory(promptsDir, path.join(scopedInstall.metadataRoot, "prompts"));
+      }
+
+      return {
+        manifest,
+        target,
+        scope: scopedInstall.scope,
+        installDir: scopedInstall.skillsRoot,
+        metadataDir: scopedInstall.metadataRoot
+      };
+    }
+
+    const defaultDestinationRoot = cleanupRoot ? path.join(path.resolve(bundleDir), "installed") : path.join(bundleRoot, "installed");
+    const destinationRoot = path.resolve(options.dest ?? defaultDestinationRoot);
+    const installDir = path.join(destinationRoot, manifest.name);
+
+    await copyDirectory(targetSourceDir, installDir);
+    await copyFileOrDirectory(path.join(bundleRoot, "manifest.json"), path.join(installDir, "manifest.json"));
+    await copyFileOrDirectory(path.join(bundleRoot, "catalog.json"), path.join(installDir, "catalog.json"));
+
+    return {
+      manifest,
+      target,
+      scope: "custom",
+      installDir
+    };
+  } finally {
+    if (cleanupRoot) {
+      await removePath(cleanupRoot);
+    }
+  }
+}
+
+export async function uninstallBundle(packName, options = {}) {
+  assertString(packName, "packName");
+
+  const target = options.target;
+
+  if (!target || !SUPPORTED_TARGETS.has(target)) {
+    throw new Error(`Uninstall target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`);
+  }
+
+  const scopedInstall = resolveScopedInstallPaths(target, { name: packName }, options);
+
+  if (!scopedInstall) {
+    throw new Error("Uninstall currently requires --scope.");
+  }
+
+  const bundlePath = path.join(scopedInstall.metadataRoot, "bundle.json");
+
+  if (!(await pathExists(bundlePath))) {
+    throw new Error(`Missing installed bundle metadata: ${bundlePath}`);
+  }
+
+  const bundle = await readJson(bundlePath);
+
+  for (const skill of bundle.skills ?? []) {
+    const skillDirName = path.basename(path.dirname(skill.path));
+    await removePath(path.join(scopedInstall.skillsRoot, skillDirName));
+  }
+
+  await removePath(scopedInstall.metadataRoot);
+
+  return {
+    packName,
     target,
-    installDir
+    scope: scopedInstall.scope,
+    uninstallDir: scopedInstall.skillsRoot,
+    metadataDir: scopedInstall.metadataRoot
+  };
+}
+
+export async function inspectInstalledBundles(options = {}) {
+  const target = options.target;
+
+  if (!target || !SUPPORTED_TARGETS.has(target)) {
+    throw new Error(`List target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`);
+  }
+
+  const scopedInstall = resolveScopedInstallPaths(target, { name: "__placeholder__" }, options);
+
+  if (!scopedInstall) {
+    throw new Error("List currently requires --scope.");
+  }
+
+  const installedPacks = await loadScopedInstalledPacks(scopedInstall);
+  const installed = [];
+
+  for (const { metadataDir, manifest, bundle } of installedPacks) {
+    installed.push({
+      name: manifest.name,
+      version: manifest.version,
+      target: bundle.target,
+      scope: scopedInstall.scope,
+      skillCount: Array.isArray(bundle.skills) ? bundle.skills.length : 0,
+      promptCount: Array.isArray(bundle.prompts) ? bundle.prompts.length : 0,
+      skillIds: Array.isArray(bundle.skills) ? bundle.skills.map((skill) => skill.id) : [],
+      promptIds: Array.isArray(bundle.prompts) ? bundle.prompts.map((prompt) => prompt.id) : [],
+      metadataDir,
+      integrity: await inspectInstalledBundleIntegrity(
+        {
+          ...scopedInstall,
+          metadataRoot: metadataDir
+        },
+        bundle
+      )
+    });
+  }
+
+  installed.sort((left, right) => left.name.localeCompare(right.name));
+
+  return {
+    target,
+    scope: scopedInstall.scope,
+    installed
+  };
+}
+
+export async function inspectInstallTargets(options = {}) {
+  const target = options.target;
+
+  if (!target || !SUPPORTED_TARGETS.has(target)) {
+    throw new Error(`Doctor target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`);
+  }
+
+  const scopedInstall = resolveScopedInstallPaths(target, { name: "__placeholder__" }, options);
+
+  if (!scopedInstall) {
+    throw new Error("Doctor currently requires --scope.");
+  }
+
+  const installed = await inspectInstalledBundles(options);
+  const unmanagedSkills = await listUnmanagedSkillDirectories(scopedInstall, installed.installed);
+
+  return {
+    target,
+    scope: scopedInstall.scope,
+    skillsRoot: scopedInstall.skillsRoot,
+    metadataRoot: path.dirname(scopedInstall.metadataRoot),
+    installed: installed.installed,
+    unmanagedSkills
   };
 }

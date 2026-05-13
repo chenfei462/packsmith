@@ -1,0 +1,9 @@
+.github/
+docs/
+examples/
+tests/
+temp-*/
+dist/
+dist-*/
+ROADMAP.md
+CONTRIBUTING.md
