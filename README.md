@@ -101,6 +101,8 @@ Each pack is just a directory with a `packsmith.json` manifest:
   workflows/ci.yml
 docs/
   github-demand-2026-05.md
+  launch-plan.md
+  positioning.md
   specification.md
 examples/
   research-launchpad/
@@ -131,6 +133,12 @@ tests/
 - add lockfiles and remote pack sources
 - add target-specific lint rules
 - add pack registry metadata and signed releases
+
+## Maintainer docs
+
+- [Positioning](./docs/positioning.md)
+- [Launch plan](./docs/launch-plan.md)
+- [GitHub demand research](./docs/github-demand-2026-05.md)
 
 ## License
 
