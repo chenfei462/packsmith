@@ -1,0 +1,20 @@
+{
+  "name": "research-launchpad",
+  "description": "GitHub demand research pack for coding agents.",
+  "version": "0.1.0",
+  "targets": ["claude-code", "codex"],
+  "skills": [
+    {
+      "id": "github-demand",
+      "path": "skills/github-demand",
+      "description": "Research GitHub demand signals and convert them into a launch thesis."
+    }
+  ],
+  "prompts": [
+    {
+      "id": "launch",
+      "path": "prompts/launch.md",
+      "description": "Turn raw GitHub signals into a concrete MVP."
+    }
+  ]
+}

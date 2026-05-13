@@ -1,0 +1,29 @@
+{
+  "name": "packsmith",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Author once, validate once, build skill packs for multiple coding agents.",
+  "license": "MIT",
+  "type": "module",
+  "keywords": [
+    "ai-agents",
+    "agent-skills",
+    "claude-code",
+    "codex",
+    "cli",
+    "prompt-engineering"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "packsmith": "./src/cli.mjs"
+  },
+  "scripts": {
+    "test": "node --test",
+    "validate:example": "node src/cli.mjs validate examples/research-launchpad",
+    "build:example": "node src/cli.mjs build examples/research-launchpad",
+    "inspect:example": "node src/cli.mjs inspect examples/research-launchpad",
+    "smoke:example": "node src/cli.mjs init temp-smoke-pack && node src/cli.mjs validate temp-smoke-pack && node src/cli.mjs build temp-smoke-pack && node src/cli.mjs install temp-smoke-pack/dist/temp-smoke-pack --target claude-code --dest temp-installed"
+  }
+}
