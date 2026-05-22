@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="760" viewBox="0 0 1180 760" role="img" aria-labelledby="title desc">
+  <title id="title">Packsmith machine-generated CLI evidence</title>
+  <desc id="desc">Machine-generated CLI evidence card showing current inspect, strict validate, and build output for the research-launchpad example pack.</desc>
+  <defs>
+    <linearGradient id="demo-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f4efe5" />
+      <stop offset="100%" stop-color="#dcefe9" />
+    </linearGradient>
+    <linearGradient id="demo-terminal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+  </defs>
+  <style>
+    .eyebrow { fill: #0f172a; font: 800 18px 'Segoe UI', 'Arial', sans-serif; letter-spacing: 0.16em; text-transform: uppercase; }
+    .headline { fill: #0f172a; font: 900 42px 'Segoe UI', 'Arial', sans-serif; }
+    .subhead { fill: #475569; font: 500 20px 'Segoe UI', 'Arial', sans-serif; }
+    .caption { fill: #94a3b8; font: 600 15px 'Segoe UI', 'Arial', sans-serif; letter-spacing: 0.1em; text-transform: uppercase; }
+    .terminal { font: 16px 'Cascadia Code', 'Consolas', monospace; white-space: pre; }
+  </style>
+  <rect width="1180" height="760" rx="36" fill="url(#demo-bg)" />
+  <text x="44" y="62" class="eyebrow">machine-generated cli evidence</text>
+  <text x="44" y="112" class="headline">Current Packsmith example-pack proof</text>
+  <text x="44" y="146" class="subhead">Generated from the current repository state, not a hand-written terminal mockup.</text>
+  <rect x="28" y="182" width="1124" height="540" rx="28" fill="url(#demo-terminal)" />
+  <circle cx="62" cy="214" r="7" fill="#f87171" />
+  <circle cx="86" cy="214" r="7" fill="#fbbf24" />
+  <circle cx="110" cy="214" r="7" fill="#34d399" />
+  <text x="140" y="219" class="caption">packsmith-demo-terminal.svg</text>
+  <text x="36" y="110" class="terminal" fill="#7dd3fc">$ packsmith inspect examples/research-launchpad</text>
+  <text x="36" y="136" class="terminal" fill="#e2e8f0">Packsmith Inspect</text>
+  <text x="36" y="162" class="terminal" fill="#e2e8f0">Pack: research-launchpad@0.1.0</text>
+  <text x="36" y="188" class="terminal" fill="#e2e8f0">Targets: claude-code, codex</text>
+  <text x="36" y="214" class="terminal" fill="#e2e8f0">Assets: 1 skill(s), 1 prompt(s)</text>
+  <text x="36" y="240" class="terminal" fill="#e2e8f0">Estimated context: 2470 chars</text>
+  <text x="36" y="266" class="terminal" fill="#e2e8f0"></text>
+  <text x="36" y="292" class="terminal" fill="#7dd3fc">$ packsmith validate examples/research-launchpad --strict</text>
+  <text x="36" y="318" class="terminal" fill="#e2e8f0">Strictly validated pack "research-launchpad" with 1 skill(s) and 1 prompt(s).</text>
+  <text x="36" y="344" class="terminal" fill="#e2e8f0"></text>
+  <text x="36" y="370" class="terminal" fill="#7dd3fc">$ packsmith build examples/research-launchpad</text>
+  <text x="36" y="396" class="terminal" fill="#e2e8f0">Built "research-launchpad" for claude-code, codex in examples/research-launchpad/dist/research-launchpad.</text>
+  <text x="36" y="694" class="caption">tarball shasum 1bb91418ecba | node &gt;=20 | npm deterministic-pack-inspection</text>
+</svg>

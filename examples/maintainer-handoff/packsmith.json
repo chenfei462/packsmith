@@ -1,0 +1,20 @@
+{
+  "name": "maintainer-handoff",
+  "description": "Maintainer handoff pack for onboarding, runbooks, and ownership transfer.",
+  "version": "0.1.0",
+  "targets": ["claude-code", "codex"],
+  "skills": [
+    {
+      "id": "system-handoff",
+      "path": "skills/system-handoff",
+      "description": "Turn scattered repo knowledge into a clear maintainer handoff with ownership boundaries and operational risks."
+    }
+  ],
+  "prompts": [
+    {
+      "id": "onboarding-brief",
+      "path": "prompts/onboarding-brief.md",
+      "description": "Convert raw repo notes into a first-week onboarding brief for a new maintainer."
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export async function readJson(filePath) {
@@ -60,12 +60,20 @@ export async function directorySize(dirPath) {
 
 export async function copyDirectory(sourceDir, targetDir) {
   await ensureDir(path.dirname(targetDir));
-  await cp(sourceDir, targetDir, { recursive: true, force: true });
+  await cp(sourceDir, targetDir, { recursive: true, force: true, preserveTimestamps: true });
 }
 
 export async function copyFileOrDirectory(sourcePath, targetPath) {
   await ensureDir(path.dirname(targetPath));
-  await cp(sourcePath, targetPath, { recursive: true, force: true });
+  await cp(sourcePath, targetPath, { recursive: true, force: true, preserveTimestamps: true });
+}
+
+export async function removePath(targetPath) {
+  if (!(await pathExists(targetPath))) {
+    return;
+  }
+
+  await rm(targetPath, { recursive: true, force: true });
 }
 
 export async function writeJson(filePath, value) {

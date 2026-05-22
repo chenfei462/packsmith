@@ -8,7 +8,7 @@ Packsmith is the missing packaging layer for AI agent skills: author once, valid
 
 - README with first-run flow
 - GitHub demand research doc
-- one realistic example pack
+- example packs with a verification gate
 - CI and tests
 - contribution and roadmap docs
 
@@ -31,6 +31,7 @@ Packsmith is the missing packaging layer for AI agent skills: author once, valid
 ```bash
 node src/cli.mjs init demo-pack
 node src/cli.mjs validate demo-pack
-node src/cli.mjs build demo-pack
-node src/cli.mjs install demo-pack/dist/demo-pack --target codex --dest demo-install
+node src/cli.mjs install demo-pack --target codex --dest demo-install
+npm run examples:check
+node src/cli.mjs doctor --target claude-code --scope user
 ```

@@ -1,0 +1,20 @@
+{
+  "name": "incident-triage",
+  "description": "Incident triage pack for production debugging and stakeholder updates.",
+  "version": "0.1.0",
+  "targets": ["claude-code", "codex"],
+  "skills": [
+    {
+      "id": "service-triage",
+      "path": "skills/service-triage",
+      "description": "Turn raw incident symptoms into a scoped triage plan with evidence and next actions."
+    }
+  ],
+  "prompts": [
+    {
+      "id": "status-brief",
+      "path": "prompts/status-brief.md",
+      "description": "Convert technical debugging output into a concise stakeholder-facing incident brief."
+    }
+  ]
+}

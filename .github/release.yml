@@ -1,0 +1,20 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+    authors:
+      - dependabot
+  categories:
+    - title: Release Flow
+      labels:
+        - release
+        - automation
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Fixes
+      labels:
+        - bug
+    - title: Other Changes
+      labels:
+        - "*"
