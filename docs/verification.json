@@ -13,11 +13,11 @@
   "npmPublished": false,
   "npmVersion": null,
   "toolchain": {
-    "nodeVersion": "v25.8.2",
-    "npmVersion": "11.11.1"
+    "nodeVersion": "v24.16.0",
+    "npmVersion": null
   },
   "cliEvidence": {
-    "inspectOutput": "Packsmith Inspect\nPack: research-launchpad@0.1.0\nPath: C:\\Users\\CYL\\Documents\\New project 3\\packsmith\\examples\\research-launchpad\nTargets: claude-code, codex\nAssets: 1 skill(s), 1 prompt(s)\nEstimated context: 1,265 chars\n\nSkills:\n- github-demand: 815 chars, 815 bytes, 1 file(s)\n\nPrompts:\n- launch: 450 chars, 450 bytes\n\nDiagnostics:\n- none\n\nDuplicate content:\n- none",
+    "inspectOutput": "Packsmith Inspect\nPack: research-launchpad@0.1.0\nPath: C:\\Users\\CYL\\Documents\\New project 3\\packsmith\\examples\\research-launchpad\nTargets: claude-code, codex\nAssets: 1 skill(s), 1 prompt(s)\nEstimated context: 2,470 chars\n\nDuplicate context: none\nLargest duplicate group: none\n\nDiagnostics:\n- none\n\nDuplicate content:\n- none\n\nSkills:\n- github-demand: 1,405 chars, 1,405 bytes, 1 file(s)\n\nPrompts:\n- launch: 1,065 chars, 1,065 bytes",
     "validateOutput": "Strictly validated pack \"research-launchpad\" with 1 skill(s) and 1 prompt(s).",
     "buildOutput": "Built \"research-launchpad\" for claude-code, codex in C:\\Users\\CYL\\Documents\\New project 3\\packsmith\\examples\\research-launchpad\\dist\\research-launchpad."
   },
@@ -25,10 +25,10 @@
     "id": "@chenfei462/packsmith@0.1.0",
     "filename": "chenfei462-packsmith-0.1.0.tgz",
     "entryCount": 6,
-    "sizeBytes": 18603,
-    "sizeLabel": "18.2 KB",
-    "shasum": "a12ea06a61ed856eeaabd986f0e4748af0fb2aa4",
-    "integrity": "sha512-65UqGZMDk6wWKqv6HPAb7Ip8fHHFG9qaXirQ15+KtJJiJwYr6H1irnRyQPhzNQkwflFnaqIa2Lj0w5Q0QSqN7A==",
+    "sizeBytes": 17691,
+    "sizeLabel": "17.3 KB",
+    "shasum": "a129f10d9ecb970a3439861b21dc3fdec25b6121",
+    "integrity": "sha512-ZEt1/TTrF5W16BI1Ea9dt2vUGbQBioBIPitfub6aIFCAqj1PgDc3WIBcrrB3ZsLqdoFqF5QJXvbFfTJW7/sdgQ==",
     "files": [
       "LICENSE",
       "README.md",
@@ -38,10 +38,27 @@
       "src/lib/pack.mjs"
     ]
   },
+  "cleanMachineDemo": {
+    "command": "npm run smoke:example",
+    "environment": "temporary workspace, HOME, npm prefix, and install destinations",
+    "reproducible": true
+  },
+  "installSuccessRate": {
+    "successful": 4,
+    "total": 4,
+    "label": "4/4 install paths verified by smoke:example",
+    "paths": [
+      "source CLI init/inspect/validate/build",
+      "Codex --dest install",
+      "Claude Code scoped project install/list/doctor/uninstall",
+      "packaged tarball CLI install"
+    ]
+  },
   "proofPoints": [
     "source CLI path via npm run eval",
     "Codex AGENTS.md bridge artifact via smoke:example",
     "packaged CLI entrypoint via tarball install",
-    "release-check gate for README, publish metadata, and workflows"
+    "release-check gate for README, publish metadata, and workflows",
+    "post-publish verification refresh PR"
   ]
 }

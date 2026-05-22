@@ -1,0 +1,54 @@
+name: Post-publish verification
+
+on:
+  workflow_run:
+    workflows: ["Publish"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh-proof:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Refresh verification proof
+        run: npm run verification:sync
+
+      - name: Open proof refresh PR
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: automation/post-publish-verification
+          title: "docs: refresh post-publish verification proof"
+          commit-message: "docs: refresh post-publish verification proof"
+          body: |
+            Refreshes Packsmith release proof after npm publication.
+
+            Expected files:
+            - README.md
+            - docs/verification.json
+            - docs/verification.md
+            - docs/assets/packsmith-verification-card.svg
+            - docs/assets/packsmith-demo-terminal.svg
+          add-paths: |
+            README.md
+            docs/verification.json
+            docs/verification.md
+            docs/assets/packsmith-verification-card.svg
+            docs/assets/packsmith-demo-terminal.svg

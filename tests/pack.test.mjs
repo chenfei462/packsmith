@@ -10,7 +10,7 @@ import { promisify } from "node:util";
 import { buildPack, inspectInstalledBundles, inspectInstallTargets, inspectPack, installBundle, uninstallBundle, validatePack } from "../src/lib/pack.mjs";
 import { createPacksmithTarball, installPacksmithTarball, inspectPackedRepo, runInstalledPacksmith } from "../scripts/npm-helpers.mjs";
 import { verifyReleaseReadiness } from "../scripts/release-check.mjs";
-import { buildVerificationSnapshot } from "../scripts/verification-status.mjs";
+import { buildVerificationSnapshot, renderReadmeVerificationBlock } from "../scripts/verification-status.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -145,6 +145,14 @@ async function buildExamplePackInTemp(label) {
   return buildPack(examplePack, tempRoot);
 }
 
+function assertActionableError(error, code, commandPattern) {
+  assert.equal(error.code, code);
+  assert.equal(typeof error.fix, "string");
+  assert.ok(error.fix.length > 0);
+  assert.equal(typeof error.command, "string");
+  assert.match(error.command, commandPattern);
+}
+
 test("validatePack accepts the example pack", async () => {
   const result = await validatePack(examplePack);
 
@@ -161,6 +169,9 @@ test("inspectPack reports context metadata", async () => {
   assert.equal(result.skillCount, 1);
   assert.equal(result.promptCount, 1);
   assert.ok(result.estimatedContextChars > 0);
+  assert.equal(result.duplicateContextChars, 0);
+  assert.equal(result.duplicateContextRatio, 0);
+  assert.equal(result.largestDuplicateGroup, null);
   assert.equal(result.skills[0].id, "github-demand");
   assert.equal(result.prompts[0].id, "launch");
   assert.deepEqual(result.diagnostics, []);
@@ -213,7 +224,85 @@ test("validatePack rejects a skill without SKILL.md", async () => {
   );
   await writeFile(path.join(packDir, "prompts", "launch.md"), "Prompt", "utf8");
 
-  await assert.rejects(validatePack(packDir), /must include SKILL\.md/);
+  await assert.rejects(validatePack(packDir), (error) => {
+    assert.match(error.message, /must include SKILL\.md/);
+    assertActionableError(error, "PSM006", /packsmith validate <pack-dir>/);
+    return true;
+  });
+});
+
+test("validatePack exposes stable actionable errors for common pack failures", async () => {
+  const missingManifestRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-missing-manifest-"));
+  await assert.rejects(
+    validatePack(path.join(missingManifestRoot, "missing-pack")),
+    (error) => {
+      assertActionableError(error, "PSM001", /packsmith init <pack-dir>/);
+      return true;
+    }
+  );
+
+  const missingNamePack = await createTempPack({ name: "missing-name-pack" });
+  await writeFile(
+    path.join(missingNamePack, "packsmith.json"),
+    JSON.stringify(
+      {
+        description: "Missing name.",
+        version: "0.1.0",
+        targets: ["claude-code"],
+        skills: []
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+  await assert.rejects(validatePack(missingNamePack), (error) => {
+    assertActionableError(error, "PSM002", /packsmith inspect <pack-dir>/);
+    return true;
+  });
+
+  const unsupportedTargetPack = await createTempPack({
+    name: "unsupported-target-pack",
+    targets: ["unknown-runtime"]
+  });
+  await assert.rejects(validatePack(unsupportedTargetPack), (error) => {
+    assertActionableError(error, "PSM003", /packsmith inspect <pack-dir>/);
+    return true;
+  });
+
+  const duplicateSkillPack = await createTempPack({
+    name: "duplicate-skill-pack",
+    skills: [
+      {
+        id: "same-skill",
+        description: "First skill.",
+        content: buildSkillMarkdown("same-skill", "First skill.", "# First\n")
+      },
+      {
+        id: "same-skill",
+        description: "Second skill.",
+        content: buildSkillMarkdown("same-skill", "Second skill.", "# Second\n")
+      }
+    ]
+  });
+  await assert.rejects(validatePack(duplicateSkillPack), (error) => {
+    assertActionableError(error, "PSM004", /packsmith inspect <pack-dir>/);
+    return true;
+  });
+
+  const missingSkillDirPack = await createTempPack({ name: "missing-skill-dir-pack" });
+  await rm(path.join(missingSkillDirPack, "skills", "starter-skill"), { recursive: true, force: true });
+  await assert.rejects(validatePack(missingSkillDirPack), (error) => {
+    assertActionableError(error, "PSM005", /packsmith validate <pack-dir>/);
+    return true;
+  });
+
+  const missingPromptPack = await createTempPack({ name: "missing-prompt-pack" });
+  await rm(path.join(missingPromptPack, "prompts", "starter-prompt.md"), { force: true });
+  await assert.rejects(validatePack(missingPromptPack), (error) => {
+    assertActionableError(error, "PSM009", /packsmith validate <pack-dir>/);
+    return true;
+  });
 });
 
 test("validatePack rejects a skill without required frontmatter", async () => {
@@ -228,7 +317,11 @@ test("validatePack rejects a skill without required frontmatter", async () => {
     ]
   });
 
-  await assert.rejects(validatePack(packDir), /must start with YAML frontmatter/);
+  await assert.rejects(validatePack(packDir), (error) => {
+    assert.match(error.message, /must start with YAML frontmatter/);
+    assertActionableError(error, "PSM007", /packsmith validate <pack-dir>/);
+    return true;
+  });
 });
 
 test("validatePack rejects a skill without frontmatter name and description", async () => {
@@ -248,7 +341,11 @@ name: bad-skill
     ]
   });
 
-  await assert.rejects(validatePack(packDir), /frontmatter must include a non-empty description/);
+  await assert.rejects(validatePack(packDir), (error) => {
+    assert.match(error.message, /frontmatter must include a non-empty description/);
+    assertActionableError(error, "PSM007", /packsmith validate <pack-dir>/);
+    return true;
+  });
 });
 
 test("validatePack rejects a skill with invalid frontmatter name format", async () => {
@@ -269,7 +366,11 @@ description: Invalid name format.
     ]
   });
 
-  await assert.rejects(validatePack(packDir), /frontmatter name must use lowercase letters, numbers, and hyphens/);
+  await assert.rejects(validatePack(packDir), (error) => {
+    assert.match(error.message, /frontmatter name must use lowercase letters, numbers, and hyphens/);
+    assertActionableError(error, "PSM008", /packsmith validate <pack-dir>/);
+    return true;
+  });
 });
 
 test("validatePack rejects prompt basename collisions that would overwrite on build", async () => {
@@ -320,7 +421,11 @@ test("validatePack rejects prompt basename collisions that would overwrite on bu
     "utf8"
   );
 
-  await assert.rejects(validatePack(packDir), /Duplicate prompt output basename "launch\.md"/);
+  await assert.rejects(validatePack(packDir), (error) => {
+    assert.match(error.message, /Duplicate prompt output basename "launch\.md"/);
+    assertActionableError(error, "PSM010", /packsmith inspect <pack-dir>/);
+    return true;
+  });
 });
 
 test("init command scaffolds a new pack that validates", async () => {
@@ -349,6 +454,157 @@ test("install command copies a built target bundle into a destination", async ()
   const agentsContent = await readFile(agentsPath, "utf8");
 
   assert.match(agentsContent, /research-launchpad/i);
+});
+
+test("installBundle rejects a file at the destination root", async () => {
+  const built = await buildExamplePackInTemp("install-file-dest");
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-install-file-dest-"));
+  const installRoot = path.join(tempRoot, "installed");
+
+  await writeFile(installRoot, "not a directory", "utf8");
+
+  await assert.rejects(
+    installBundle(built.outputRoot, {
+      target: "codex",
+      dest: installRoot
+    }),
+    (error) => {
+      assert.match(error.message, /must be a directory|writable destination/i);
+      assertActionableError(error, "PSM021", /packsmith install <pack-or-built-dir> --target <name> --dest <dir>/);
+      return true;
+    }
+  );
+});
+
+test("installBundle reports the exact Codex destination path when parent creation fails", async () => {
+  const built = await buildExamplePackInTemp("install-blocked-dest-parent");
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-install-blocked-dest-parent-"));
+  const blockedParent = path.join(tempRoot, "blocked");
+  const installRoot = path.join(blockedParent, "installed");
+
+  await writeFile(blockedParent, "not a directory", "utf8");
+
+  await assert.rejects(
+    installBundle(built.outputRoot, {
+      target: "codex",
+      dest: installRoot
+    }),
+    (error) => {
+      assert.match(error.message, /Codex destination/i);
+      assert.match(error.message, /not writable or cannot be created/i);
+      assert.match(error.message, new RegExp(installRoot.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+      assert.match(error.message, /choose a different --dest/i);
+      assertActionableError(error, "PSM021", /packsmith install <pack-or-built-dir> --target <name> --dest <dir>/);
+      return true;
+    }
+  );
+});
+
+test("installBundle rejects invalid install scopes", async () => {
+  const built = await buildExamplePackInTemp("install-invalid-scope");
+
+  await assert.rejects(
+    installBundle(built.outputRoot, {
+      target: "claude-code",
+      scope: "team"
+    }),
+    (error) => {
+      assert.match(error.message, /Install scope must be one of: project, user\./);
+      assertActionableError(error, "PSM020", /packsmith doctor --target claude-code --scope user/);
+      return true;
+    }
+  );
+});
+
+test("installBundle reports replacement when reinstalling the same bundle", async () => {
+  const built = await buildExamplePackInTemp("install-replace");
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-install-replace-"));
+  const installRoot = path.join(tempRoot, "installed");
+
+  const first = await installBundle(built.outputRoot, {
+    target: "codex",
+    dest: installRoot
+  });
+  const second = await installBundle(built.outputRoot, {
+    target: "codex",
+    dest: installRoot
+  });
+
+  assert.equal(first.replaced, false);
+  assert.equal(second.replaced, true);
+});
+
+test("install command reports updates when reinstalling the same bundle", async () => {
+  const built = await buildExamplePackInTemp("install-cli-replace");
+  const tempRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-install-cli-replace-"));
+  const installRoot = path.join(tempRoot, "installed");
+
+  await runCli(["install", built.outputRoot, "--target", "codex", "--dest", installRoot]);
+  const { stdout } = await runCli(["install", built.outputRoot, "--target", "codex", "--dest", installRoot]);
+
+  assert.match(stdout, /Updated "research-launchpad" target "codex"/i);
+  assert.match(stdout, /Next:/i);
+});
+
+test("list command explains how to add the first Claude Code bundle", async () => {
+  const tempHome = await mkdtemp(path.join(os.tmpdir(), "packsmith-home-empty-list-"));
+
+  const { stdout } = await runCli(["list", "--target", "claude-code", "--scope", "user"], {
+    env: {
+      HOME: tempHome,
+      USERPROFILE: tempHome
+    }
+  });
+
+  assert.match(stdout, /No installed bundles found/i);
+  assert.match(stdout, /packsmith install/i);
+});
+
+test("doctor command explains how to add the first Claude Code bundle", async () => {
+  const tempHome = await mkdtemp(path.join(os.tmpdir(), "packsmith-home-empty-doctor-"));
+
+  const { stdout } = await runCli(["doctor", "--target", "claude-code", "--scope", "user"], {
+    env: {
+      HOME: tempHome,
+      USERPROFILE: tempHome
+    }
+  });
+
+  assert.match(stdout, /No installed bundles found/i);
+  assert.match(stdout, /packsmith install/i);
+  assert.match(stdout, /Skills root:/i);
+});
+
+test("inspectInstallTargets reports missing Claude Code install roots without creating them", async () => {
+  const tempHome = await mkdtemp(path.join(os.tmpdir(), "packsmith-home-doctor-missing-roots-"));
+
+  const result = await inspectInstallTargets({
+    target: "claude-code",
+    scope: "user",
+    homeDir: tempHome
+  });
+
+  assert.equal(result.pathChecks.skillsRoot.exists, false);
+  assert.equal(result.pathChecks.skillsRoot.writable, false);
+  assert.equal(result.pathChecks.skillsRoot.code, "PSM024");
+  assert.equal(typeof result.pathChecks.skillsRoot.fix, "string");
+  assert.match(result.pathChecks.skillsRoot.command, /packsmith install <pack-or-built-dir> --target claude-code --scope user/);
+  assert.equal(result.pathChecks.metadataRoot.exists, false);
+  assert.equal(result.pathChecks.metadataRoot.writable, false);
+  assert.equal(result.pathChecks.metadataRoot.code, "PSM024");
+  assert.equal(typeof result.pathChecks.metadataRoot.fix, "string");
+  assert.match(result.pathChecks.metadataRoot.command, /packsmith install <pack-or-built-dir> --target claude-code --scope user/);
+  assert.equal(await existsAt(path.join(tempHome, ".claude")), false);
+});
+
+test("buildPack normalizes bundle paths to forward slashes", async () => {
+  const built = await buildExamplePackInTemp("posix-paths");
+  const bundle = JSON.parse(await readFile(path.join(built.outputRoot, "codex", "bundle.json"), "utf8"));
+
+  assert.ok(bundle.skills.every((skill) => skill.path.includes("/")));
+  assert.ok(bundle.prompts.every((prompt) => prompt.path.includes("/")));
+  assert.ok(bundle.skills.every((skill) => !skill.path.includes("\\")));
+  assert.ok(bundle.prompts.every((prompt) => !prompt.path.includes("\\")));
 });
 
 test("packaged tarball installs a working packsmith CLI entrypoint", async () => {
@@ -421,7 +677,55 @@ Use the same workflow in every asset.
   assert.equal(result.duplicateGroups.length, 1);
   assert.deepEqual(result.duplicateGroups[0].assets.sort(), ["prompt:launch", "skill:alpha-skill", "skill:beta-skill"]);
   assert.ok(result.duplicateGroups[0].repeatedChars > 0);
+  assert.equal(result.duplicateContextChars, result.duplicateGroups[0].repeatedChars * (result.duplicateGroups[0].assets.length - 1));
+  assert.equal(result.largestDuplicateGroup.assets.length, 3);
+  assert.equal(result.largestDuplicateGroup.repeatedChars, result.duplicateGroups[0].repeatedChars);
   assert.equal(result.diagnostics[0].code, "duplicate-content");
+  assert.equal(typeof result.diagnostics[0].fix, "string");
+  assert.match(result.diagnostics[0].command, /packsmith inspect <pack-dir>/);
+});
+
+test("inspectPack surfaces duplicate context summary for a highly repeated pack", async () => {
+  const repeatedContent = `# Shared workflow
+
+Use the same workflow in every asset.
+`;
+  const packDir = await createTempPack({
+    name: "high-duplicate-pack",
+    targets: ["claude-code"],
+    skills: [
+      {
+        id: "alpha-skill",
+        description: "Alpha skill.",
+        content: buildSkillMarkdown("alpha-skill", "Alpha skill.", repeatedContent)
+      },
+      {
+        id: "beta-skill",
+        description: "Beta skill.",
+        content: buildSkillMarkdown("beta-skill", "Beta skill.", repeatedContent)
+      },
+      {
+        id: "gamma-skill",
+        description: "Gamma skill.",
+        content: buildSkillMarkdown("gamma-skill", "Gamma skill.", repeatedContent)
+      }
+    ],
+    prompts: [
+      {
+        id: "launch",
+        description: "Launch prompt.",
+        fileName: "launch.md",
+        content: repeatedContent
+      }
+    ]
+  });
+
+  const result = await inspectPack(packDir);
+
+  assert.equal(result.duplicateGroups.length, 1);
+  assert.equal(result.largestDuplicateGroup.assets.length, 4);
+  assert.ok(result.duplicateContextChars > 0);
+  assert.ok(result.duplicateContextRatio > 0);
 });
 
 test("inspectPack flags oversized packs", async () => {
@@ -440,6 +744,10 @@ test("inspectPack flags oversized packs", async () => {
 
   assert.equal(result.diagnostics[0].code, "oversized-pack");
   assert.equal(result.diagnostics[0].severity, "warning");
+  assert.equal(result.diagnostics[0].thresholdChars, 8000);
+  assert.equal(result.diagnostics[0].overageChars, result.estimatedContextChars - 8000);
+  assert.equal(typeof result.diagnostics[0].fix, "string");
+  assert.match(result.diagnostics[0].command, /packsmith inspect <pack-dir>/);
 });
 
 test("inspect command prints a human-readable summary by default", async () => {
@@ -447,6 +755,8 @@ test("inspect command prints a human-readable summary by default", async () => {
 
   assert.match(stdout, /Packsmith Inspect/);
   assert.match(stdout, /Estimated context:/);
+  assert.match(stdout, /Duplicate context: none/);
+  assert.match(stdout, /Largest duplicate group: none/);
   assert.match(stdout, /Diagnostics:\r?\n- none/);
 });
 
@@ -456,6 +766,32 @@ test("inspect command supports --json output", async () => {
 
   assert.equal(result.name, "research-launchpad");
   assert.equal(result.promptCount, 1);
+});
+
+test("inspect json includes actionable diagnostics", async () => {
+  const packDir = await createTempPack({
+    name: "inspect-actionable-pack",
+    skills: [
+      {
+        id: "alpha-skill",
+        description: "Alpha skill.",
+        content: buildSkillMarkdown("alpha-skill", "Alpha skill.", "# Shared\n\nRepeated body.")
+      },
+      {
+        id: "beta-skill",
+        description: "Beta skill.",
+        content: buildSkillMarkdown("beta-skill", "Beta skill.", "# Shared\n\nRepeated body.")
+      }
+    ],
+    prompts: []
+  });
+
+  const { stdout } = await runCli(["inspect", packDir, "--json"]);
+  const result = JSON.parse(stdout);
+
+  assert.equal(result.diagnostics[0].code, "duplicate-content");
+  assert.equal(typeof result.diagnostics[0].fix, "string");
+  assert.match(result.diagnostics[0].command, /packsmith inspect <pack-dir>/);
 });
 
 test("validatePack strict mode rejects diagnostics", async () => {
@@ -487,7 +823,11 @@ Use the same workflow in every asset.
     ]
   });
 
-  await assert.rejects(validatePack(packDir, { strict: true }), /Strict validation failed: duplicate-content/);
+  await assert.rejects(validatePack(packDir, { strict: true }), (error) => {
+    assert.match(error.message, /Strict validation failed: duplicate-content/);
+    assertActionableError(error, "PSM011", /packsmith inspect <pack-dir>/);
+    return true;
+  });
 });
 
 test("validate command supports --strict", async () => {
@@ -519,7 +859,12 @@ Use the same workflow in every asset.
     ]
   });
 
-  await assert.rejects(runCli(["validate", packDir, "--strict"]), /Strict validation failed: duplicate-content/);
+  await assert.rejects(runCli(["validate", packDir, "--strict"]), (error) => {
+    assert.match(error.stderr, /Error \[PSM011\]: Strict validation failed: duplicate-content/);
+    assert.match(error.stderr, /Fix:/);
+    assert.match(error.stderr, /Run: packsmith inspect <pack-dir>/);
+    return true;
+  });
 });
 
 test("installBundle installs Claude Code skills into user scope directories", async () => {
@@ -539,6 +884,30 @@ test("installBundle installs Claude Code skills into user scope directories", as
   assert.ok(result.installDir.endsWith(path.join(".claude", "skills")));
   assert.ok(await readFile(skillEntryPath, "utf8"));
   assert.ok(await readFile(manifestPath, "utf8"));
+});
+
+test("installBundle records source, locked version, and installed files for lifecycle checks", async () => {
+  const built = await buildExamplePackInTemp("claude-user-lifecycle");
+  const tempHome = await mkdtemp(path.join(os.tmpdir(), "packsmith-home-lifecycle-"));
+
+  await installBundle(built.outputRoot, {
+    target: "claude-code",
+    scope: "user",
+    homeDir: tempHome
+  });
+
+  const lock = JSON.parse(await readFile(path.join(tempHome, ".claude", "packsmith", "research-launchpad", "install-lock.json"), "utf8"));
+
+  assert.equal(lock.name, "research-launchpad");
+  assert.equal(lock.version, "0.1.0");
+  assert.equal(lock.lockedVersion, "0.1.0");
+  assert.equal(lock.target, "claude-code");
+  assert.equal(lock.scope, "user");
+  assert.equal(lock.source.type, "built-bundle");
+  assert.equal(lock.source.path, built.outputRoot);
+  assert.match(lock.installedAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.ok(lock.files.some((file) => file.kind === "skill" && file.id === "github-demand" && file.path.endsWith(path.join("skills", "github-demand", "SKILL.md")) && /^sha256-[A-Za-z0-9+/=]+$/.test(file.integrity)));
+  assert.ok(lock.files.some((file) => file.kind === "prompt" && file.id === "launch" && file.path.endsWith(path.join("packsmith", "research-launchpad", "prompts", "launch.md")) && /^sha256-[A-Za-z0-9+/=]+$/.test(file.integrity)));
 });
 
 test("installBundle installs Claude Code skills into project scope directories", async () => {
@@ -591,6 +960,35 @@ test("install command can install directly from a source pack directory", async 
 
   assert.match(stdout, /user scope/i);
   assert.ok(await readFile(skillEntryPath, "utf8"));
+});
+
+test("upgrade command updates an existing Claude Code scoped install", async () => {
+  const packDir = await createTempPack({ name: "upgrade-pack" });
+  const tempHome = await mkdtemp(path.join(os.tmpdir(), "packsmith-home-upgrade-"));
+
+  await runCli(["install", packDir, "--target", "claude-code", "--scope", "user"], {
+    env: {
+      HOME: tempHome,
+      USERPROFILE: tempHome
+    }
+  });
+
+  const manifestPath = path.join(packDir, "packsmith.json");
+  const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+  manifest.version = "0.2.0";
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+
+  const { stdout } = await runCli(["upgrade", packDir, "--target", "claude-code", "--scope", "user"], {
+    env: {
+      HOME: tempHome,
+      USERPROFILE: tempHome
+    }
+  });
+  const lock = JSON.parse(await readFile(path.join(tempHome, ".claude", "packsmith", "upgrade-pack", "install-lock.json"), "utf8"));
+
+  assert.match(stdout, /Upgraded "upgrade-pack" target "claude-code" using user scope/i);
+  assert.equal(lock.lockedVersion, "0.2.0");
+  assert.equal(lock.previousVersion, "0.1.0");
 });
 
 test("uninstallBundle removes Claude Code user scope installs using metadata", async () => {
@@ -827,6 +1225,9 @@ test("inspectInstallTargets reports missing installed Claude Code skill director
   assert.equal(result.installed[0].integrity.ok, false);
   assert.equal(result.installed[0].integrity.missingSkills.length, 1);
   assert.equal(result.installed[0].integrity.missingSkills[0], "github-demand");
+  assert.equal(result.installed[0].integrity.code, "PSM023");
+  assert.equal(typeof result.installed[0].integrity.fix, "string");
+  assert.match(result.installed[0].integrity.command, /packsmith install <pack-or-built-dir> --target claude-code --scope user/);
 });
 
 test("inspectInstallTargets reports missing mirrored prompt files", async () => {
@@ -850,6 +1251,34 @@ test("inspectInstallTargets reports missing mirrored prompt files", async () => 
   assert.equal(result.installed[0].integrity.ok, false);
   assert.equal(result.installed[0].integrity.missingPrompts.length, 1);
   assert.equal(result.installed[0].integrity.missingPrompts[0], "launch");
+  assert.equal(result.installed[0].integrity.code, "PSM023");
+  assert.equal(typeof result.installed[0].integrity.fix, "string");
+  assert.match(result.installed[0].integrity.command, /packsmith install <pack-or-built-dir> --target claude-code --scope user/);
+});
+
+test("inspectInstallTargets reports content drift against the install lock", async () => {
+  const built = await buildExamplePackInTemp("claude-user-doctor-drift");
+  const tempHome = await mkdtemp(path.join(os.tmpdir(), "packsmith-home-doctor-drift-"));
+
+  await installBundle(built.outputRoot, {
+    target: "claude-code",
+    scope: "user",
+    homeDir: tempHome
+  });
+  await writeFile(path.join(tempHome, ".claude", "skills", "github-demand", "SKILL.md"), "---\nname: github-demand\ndescription: Changed.\n---\n\n# Drifted\n", "utf8");
+
+  const result = await inspectInstallTargets({
+    target: "claude-code",
+    scope: "user",
+    homeDir: tempHome
+  });
+
+  assert.equal(result.installed[0].integrity.ok, false);
+  assert.equal(result.installed[0].integrity.code, "PSM025");
+  assert.deepEqual(result.installed[0].integrity.driftedSkills, ["github-demand"]);
+  assert.equal(result.installed[0].integrity.driftedPrompts.length, 0);
+  assert.match(result.installed[0].integrity.fix, /upgrade|reinstall/i);
+  assert.match(result.installed[0].integrity.command, /packsmith upgrade <pack-or-built-dir> --target claude-code --scope user/);
 });
 
 test("inspectInstallTargets reports unmanaged Claude Code skill directories", async () => {
@@ -915,6 +1344,32 @@ test("doctor command reports integrity issues in human-readable output", async (
 
   assert.match(stdout, /integrity: broken/i);
   assert.match(stdout, /missing skills: github-demand/i);
+  assert.match(stdout, /Fix:/i);
+  assert.match(stdout, /Run: packsmith install <pack-or-built-dir> --target claude-code --scope user/i);
+});
+
+test("doctor command reports drift in human-readable output", async () => {
+  const built = await buildExamplePackInTemp("claude-user-cli-doctor-drift");
+  const tempHome = await mkdtemp(path.join(os.tmpdir(), "packsmith-home-cli-doctor-drift-"));
+
+  await runCli(["install", built.outputRoot, "--target", "claude-code", "--scope", "user"], {
+    env: {
+      HOME: tempHome,
+      USERPROFILE: tempHome
+    }
+  });
+  await writeFile(path.join(tempHome, ".claude", "skills", "github-demand", "SKILL.md"), "---\nname: github-demand\ndescription: Changed.\n---\n\n# Drifted\n", "utf8");
+
+  const { stdout } = await runCli(["doctor", "--target", "claude-code", "--scope", "user"], {
+    env: {
+      HOME: tempHome,
+      USERPROFILE: tempHome
+    }
+  });
+
+  assert.match(stdout, /integrity: drifted/i);
+  assert.match(stdout, /drifted skills: github-demand/i);
+  assert.match(stdout, /Run: packsmith upgrade <pack-or-built-dir> --target claude-code --scope user/i);
 });
 
 test("doctor command reports unmanaged skill directories in human-readable output", async () => {
@@ -957,6 +1412,10 @@ test("doctor command supports json output", async () => {
   assert.equal(result.installed.length, 1);
   assert.deepEqual(result.installed[0].skillIds, ["github-demand"]);
   assert.deepEqual(result.installed[0].promptIds, ["launch"]);
+  assert.equal(result.pathChecks.skillsRoot.code, null);
+  assert.equal(result.pathChecks.skillsRoot.command, null);
+  assert.equal(result.installed[0].integrity.code, null);
+  assert.equal(result.installed[0].integrity.command, null);
 });
 
 test("uninstallBundle rejects unsupported uninstall targets", async () => {
@@ -966,7 +1425,11 @@ test("uninstallBundle rejects unsupported uninstall targets", async () => {
       scope: "project",
       cwd: repoRoot
     }),
-    /only supported for claude-code/
+    (error) => {
+      assert.match(error.message, /only supported for claude-code/);
+      assertActionableError(error, "PSM020", /packsmith doctor --target claude-code --scope user/);
+      return true;
+    }
   );
 });
 
@@ -979,7 +1442,11 @@ test("installBundle rejects scoped install for unsupported targets", async () =>
       scope: "project",
       cwd: repoRoot
     }),
-    /only supported for claude-code/
+    (error) => {
+      assert.match(error.message, /only supported for claude-code/);
+      assertActionableError(error, "PSM020", /packsmith doctor --target claude-code --scope user/);
+      return true;
+    }
   );
 });
 
@@ -992,7 +1459,11 @@ test("installBundle rejects mixing dest and scope", async () => {
       dest: path.join(repoRoot, "temp-installed"),
       scope: "user"
     }),
-    /either --dest or --scope/
+    (error) => {
+      assert.match(error.message, /either --dest or --scope/);
+      assertActionableError(error, "PSM020", /packsmith install <pack-or-built-dir> --target <name> --dest <dir>/);
+      return true;
+    }
   );
 });
 
@@ -1035,7 +1506,11 @@ test("installBundle rejects Claude Code scope collisions from another pack", asy
       scope: "user",
       homeDir: tempHome
     }),
-    /already owned by pack "first-pack"/
+    (error) => {
+      assert.match(error.message, /already owned by pack "first-pack"/);
+      assertActionableError(error, "PSM022", /packsmith list --target claude-code --scope user/);
+      return true;
+    }
   );
 });
 
@@ -1123,6 +1598,23 @@ test("installBundle cleans up removed skills and prompts when reinstalling the s
   assert.equal(await existsAt(betaPromptPath), true);
 });
 
+test("uninstallBundle exposes actionable metadata errors", async () => {
+  const tempHome = await mkdtemp(path.join(os.tmpdir(), "packsmith-home-missing-metadata-"));
+
+  await assert.rejects(
+    uninstallBundle("missing-pack", {
+      target: "claude-code",
+      scope: "user",
+      homeDir: tempHome
+    }),
+    (error) => {
+      assert.match(error.message, /Missing installed bundle metadata/);
+      assertActionableError(error, "PSM023", /packsmith list --target claude-code --scope user/);
+      return true;
+    }
+  );
+});
+
 test("smoke script runs in temp space without polluting the repo root", async () => {
   const beforeClaude = await existsInRepo(".claude");
   const beforeTempPack = await existsInRepo("temp-smoke-pack");
@@ -1156,6 +1648,24 @@ test("examples check script validates and builds every example pack without poll
   assert.match(stdout, /Built example "maintainer-handoff"/);
   assert.match(stdout, /Verified install artifacts for "maintainer-handoff"/);
   assert.equal(await existsInRepo("examples/research-launchpad/dist-examples-check"), beforeExamplesDist);
+});
+
+test("example packs document copyable template structure", async () => {
+  for (const exampleName of ["research-launchpad", "incident-triage", "maintainer-handoff"]) {
+    const exampleDir = path.join(repoRoot, "examples", exampleName);
+    const manifest = JSON.parse(await readFile(path.join(exampleDir, "packsmith.json"), "utf8"));
+    const skillContent = await readFile(path.join(exampleDir, manifest.skills[0].path, "SKILL.md"), "utf8");
+    const promptContent = await readFile(path.join(exampleDir, manifest.prompts[0].path), "utf8");
+    const combined = `${skillContent}\n${promptContent}`;
+
+    assert.match(combined, /When to use/i, `${exampleName} should explain when to use the template`);
+    assert.match(combined, /Inputs/i, `${exampleName} should name expected inputs`);
+    assert.match(combined, /Output format/i, `${exampleName} should define output format`);
+    assert.match(combined, /Naming convention/i, `${exampleName} should document naming convention`);
+    assert.match(combined, /Copyable structure/i, `${exampleName} should show copyable structure`);
+    assert.match(combined, new RegExp(`skills/${manifest.skills[0].id}/SKILL\\.md`), `${exampleName} should show skill path`);
+    assert.match(combined, new RegExp(manifest.prompts[0].path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `${exampleName} should show prompt path`);
+  }
 });
 
 test("eval script runs the recommended repository evaluation flow", async () => {
@@ -1214,6 +1724,45 @@ test("verification snapshot exposes tarball provenance and a README evidence car
   assert.match(demoCard, /\$ packsmith inspect examples\/research-launchpad/);
   assert.match(demoCard, /Strictly validated pack "research-launchpad"/);
   assert.match(demoCard, new RegExp(snapshot.publishFootprint.shasum.slice(0, 12)));
+});
+
+test("README verification block switches install guidance for a published npm package", () => {
+  const block = renderReadmeVerificationBlock({
+    packageName: "@chenfei462/packsmith",
+    version: "0.1.0",
+    recommendedCommand: "npm run eval",
+    examplePackCount: 3,
+    npmPublished: true,
+    npmVersion: "0.1.0",
+    publishFootprint: {
+      entryCount: 6
+    }
+  });
+
+  assert.match(block, /npm published: true \(0\.1\.0\)/);
+  assert.match(block, /preferred install: npm install -g @chenfei462\/packsmith/i);
+  assert.match(block, /global install: published/i);
+  assert.match(block, /claude code scoped install: packsmith install .* --target claude-code --scope user/i);
+  assert.match(block, /codex bridge: packsmith install .* --target codex --dest/i);
+  assert.doesNotMatch(block, /future path/i);
+});
+
+test("README verification block keeps global install future-only before npm publication", () => {
+  const block = renderReadmeVerificationBlock({
+    packageName: "@chenfei462/packsmith",
+    version: "0.1.0",
+    recommendedCommand: "npm run eval",
+    examplePackCount: 3,
+    npmPublished: false,
+    npmVersion: null,
+    publishFootprint: {
+      entryCount: 6
+    }
+  });
+
+  assert.match(block, /npm published: false/);
+  assert.match(block, /preferred install: source eval \(npm run eval\)/i);
+  assert.match(block, /global install: future path until npm publication/i);
 });
 
 test("examples check script ignores non-pack directories under examples", async () => {
@@ -1297,6 +1846,10 @@ test("verifyReleaseReadiness accepts the repo's release metadata", async () => {
   assert.ok(result.checks.some((check) => check.code === "demo-terminal-card-fresh"));
   assert.ok(result.checks.some((check) => check.code === "readme-demand-research-links"));
   assert.ok(result.checks.some((check) => check.code === "readme-no-mojibake"));
+  assert.ok(result.checks.some((check) => check.code === "post-publish-verification-workflow"));
+  assert.ok(result.checks.some((check) => check.code === "release-playbook-present"));
+  assert.ok(result.checks.some((check) => check.code === "launch-kit-present"));
+  assert.ok(result.checks.some((check) => check.code === "changelog-version-entry"));
 });
 
 test("inspectPackedRepo reports the real current tarball footprint", async () => {
@@ -1304,7 +1857,7 @@ test("inspectPackedRepo reports the real current tarball footprint", async () =>
 
   assert.equal(packed.entryCount, 6);
   assert.ok(packed.size > 0);
-  assert.deepEqual(packed.files, ["LICENSE", "README.md", "package.json", "src/cli.mjs", "src/lib/fs-utils.mjs", "src/lib/pack.mjs"]);
+  assert.deepEqual([...packed.files].sort(), ["LICENSE", "README.md", "package.json", "src/cli.mjs", "src/lib/fs-utils.mjs", "src/lib/pack.mjs"].sort());
 });
 
 test("verifyReleaseReadiness rejects a repo whose npm pack dry-run includes unexpected docs files", async () => {
@@ -1721,7 +2274,7 @@ jobs:
   const result = await verifyReleaseReadiness(tempRoot);
 
   assert.equal(result.ok, false);
-  assert.ok(result.errors.some((error) => /signals near the top/i.test(error)));
+  assert.ok(result.errors.some((error) => /top release signals/i.test(error)));
 });
 
 test("verifyReleaseReadiness rejects a README whose verification summary drifts from the generated snapshot", async () => {
@@ -2109,7 +2662,7 @@ jobs:
   const result = await verifyReleaseReadiness(tempRoot);
 
   assert.equal(result.ok, false);
-  assert.ok(result.errors.some((error) => /future path until the package is published/i.test(error)));
+  assert.ok(result.errors.some((error) => /future until publication/i.test(error)));
 });
 
 test("verifyReleaseReadiness rejects a repo without a code of conduct", async () => {
@@ -2989,6 +3542,46 @@ test("package.json prepublishOnly runs eval and release:check before publish", a
   assert.equal(packageJson.scripts.eval, "node scripts/eval.mjs");
 });
 
+test("package.json exposes verification:sync as a single script entrypoint", async () => {
+  const packageJson = JSON.parse(await readFile(path.join(repoRoot, "package.json"), "utf8"));
+
+  assert.equal(packageJson.scripts["verification:sync"], "node scripts/verification-status.mjs sync");
+  assert.doesNotMatch(packageJson.scripts["verification:sync"], /&&/);
+});
+
+test("post-publish verification workflow opens a proof refresh PR", async () => {
+  const workflow = await readFile(path.join(repoRoot, ".github", "workflows", "post-publish-verification.yml"), "utf8");
+
+  assert.match(workflow, /workflow_run:/);
+  assert.match(workflow, /workflows:\s*\["Publish"\]/);
+  assert.match(workflow, /npm run verification:sync/);
+  assert.match(workflow, /peter-evans\/create-pull-request@v/);
+  assert.match(workflow, /README\.md/);
+  assert.match(workflow, /docs\/verification\.json/);
+  assert.match(workflow, /docs\/verification\.md/);
+});
+
+test("launch documentation ships release playbook, launch kit, changelog, and release template", async () => {
+  const changelog = await readFile(path.join(repoRoot, "CHANGELOG.md"), "utf8");
+  const playbook = await readFile(path.join(repoRoot, "docs", "release-playbook.md"), "utf8");
+  const launchKit = await readFile(path.join(repoRoot, "docs", "launch-kit.md"), "utf8");
+  const releaseTemplate = await readFile(path.join(repoRoot, ".github", "release.yml"), "utf8");
+
+  assert.match(changelog, /## 0\.1\.0/);
+  assert.match(playbook, /v0\.1\.0/);
+  assert.match(playbook, /node --test tests\/pack\.test\.mjs/);
+  assert.match(playbook, /node scripts\/eval\.mjs/);
+  assert.match(playbook, /npm trusted publishing/i);
+  assert.match(playbook, /post-publish verification refresh/i);
+  assert.match(launchKit, /GitHub Release body/i);
+  assert.match(launchKit, /npm page positioning/i);
+  assert.match(launchKit, /Community announcement/i);
+  assert.match(launchKit, /60-90 Second Demo/);
+  assert.match(launchKit, /Issue seed/i);
+  assert.match(releaseTemplate, /changelog:/);
+  assert.match(releaseTemplate, /categories:/);
+});
+
 test("README market-demand claims link to in-repo research evidence", async () => {
   const readme = await readFile(path.join(repoRoot, "README.md"), "utf8");
 
@@ -2996,9 +3589,18 @@ test("README market-demand claims link to in-repo research evidence", async () =
   assert.match(readme, /133k/);
   assert.match(readme, /May 13, 2026/);
   assert.match(readme, /See \[GitHub demand research\]\(\.\/docs\/github-demand-2026-05\.md\) for source links and issue context\./);
-  assert.match(readme, /更多来源和 issue 上下文见 \[GitHub 需求研究\]\(\.\/docs\/github-demand-2026-05\.md\)\。/);
   assert.match(readme, /\[GitHub demand research\]\(\.\/docs\/github-demand-2026-05\.md\)/);
-  assert.match(readme, /\[GitHub 需求研究\]\(\.\/docs\/github-demand-2026-05\.md\)/);
+});
+
+test("README shows copyable example pack structure", async () => {
+  const readme = await readFile(path.join(repoRoot, "README.md"), "utf8");
+
+  assert.match(readme, /Copy this structure/i);
+  assert.match(readme, /examples\/research-launchpad\/packsmith\.json/);
+  assert.match(readme, /skills\/github-demand\/SKILL\.md/);
+  assert.match(readme, /prompts\/launch\.md/);
+  assert.match(readme, /examples\/incident-triage/);
+  assert.match(readme, /examples\/maintainer-handoff/);
 });
 
 test("README avoids common mojibake patterns in bilingual trust-critical sections", async () => {

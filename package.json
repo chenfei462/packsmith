@@ -40,7 +40,7 @@
     "validate:example": "node src/cli.mjs validate examples/research-launchpad",
     "build:example": "node src/cli.mjs build examples/research-launchpad",
     "inspect:example": "node src/cli.mjs inspect examples/research-launchpad",
-    "verification:sync": "node scripts/verification-status.mjs && node scripts/verification-status.mjs sync-readme",
+    "verification:sync": "node scripts/verification-status.mjs sync",
     "eval": "node scripts/eval.mjs",
     "examples:check": "node scripts/examples-check.mjs",
     "smoke:example": "node scripts/smoke.mjs",

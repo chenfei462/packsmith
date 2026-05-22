@@ -1,6 +1,8 @@
 import path from "node:path";
 import os from "node:os";
-import { mkdtemp, readdir, readFile } from "node:fs/promises";
+import crypto from "node:crypto";
+import { access, mkdtemp, readdir, readFile, stat } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
 
 import {
   copyDirectory,
@@ -20,15 +22,42 @@ const SUPPORTED_INSTALL_SCOPES = new Set(["project", "user"]);
 const OVERSIZED_PACK_CONTEXT_THRESHOLD = 8000;
 const SKILL_NAME_PATTERN = /^[a-z0-9-]+$/;
 
+function createActionableError(code, message, fix, command, options = {}) {
+  const error = new Error(message);
+  error.code = code;
+  error.fix = fix;
+  error.command = command;
+
+  if (options.cause) {
+    error.cause = options.cause;
+  }
+
+  return error;
+}
+
+function throwActionableError(code, message, fix, command, options = {}) {
+  throw createActionableError(code, message, fix, command, options);
+}
+
 function assertString(value, label) {
   if (typeof value !== "string" || value.trim().length === 0) {
-    throw new Error(`${label} must be a non-empty string.`);
+    throwActionableError(
+      "PSM002",
+      `${label} must be a non-empty string.`,
+      "Add the missing manifest field or make it a non-empty string.",
+      "packsmith inspect <pack-dir>"
+    );
   }
 }
 
 function assertArray(value, label) {
   if (!Array.isArray(value) || value.length === 0) {
-    throw new Error(`${label} must be a non-empty array.`);
+    throwActionableError(
+      "PSM002",
+      `${label} must be a non-empty array.`,
+      "Add the missing manifest array or include at least one entry.",
+      "packsmith inspect <pack-dir>"
+    );
   }
 }
 
@@ -39,7 +68,12 @@ function ensureUniqueIds(items, label) {
     assertString(item.id, `${label}.id`);
 
     if (seen.has(item.id)) {
-      throw new Error(`Duplicate ${label} id "${item.id}".`);
+      throwActionableError(
+        "PSM004",
+        `Duplicate ${label} id "${item.id}".`,
+        "Give each skill and prompt a unique id in packsmith.json.",
+        "packsmith inspect <pack-dir>"
+      );
     }
 
     seen.add(item.id);
@@ -50,7 +84,12 @@ function parseSkillFrontmatter(skillMarkdown, skillId) {
   const frontmatterMatch = skillMarkdown.match(/^---\r?\n([\s\S]*?)\r?\n---/);
 
   if (!frontmatterMatch) {
-    throw new Error(`Skill "${skillId}" must start with YAML frontmatter in SKILL.md.`);
+    throwActionableError(
+      "PSM007",
+      `Skill "${skillId}" must start with YAML frontmatter in SKILL.md.`,
+      "Add YAML frontmatter with name and description at the top of SKILL.md.",
+      "packsmith validate <pack-dir>"
+    );
   }
 
   const frontmatter = {};
@@ -73,15 +112,30 @@ function parseSkillFrontmatter(skillMarkdown, skillId) {
   }
 
   if (typeof frontmatter.name !== "string" || frontmatter.name.length === 0) {
-    throw new Error(`Skill "${skillId}" frontmatter must include a non-empty name.`);
+    throwActionableError(
+      "PSM007",
+      `Skill "${skillId}" frontmatter must include a non-empty name.`,
+      "Add a non-empty name field to the SKILL.md frontmatter.",
+      "packsmith validate <pack-dir>"
+    );
   }
 
   if (typeof frontmatter.description !== "string" || frontmatter.description.length === 0) {
-    throw new Error(`Skill "${skillId}" frontmatter must include a non-empty description.`);
+    throwActionableError(
+      "PSM007",
+      `Skill "${skillId}" frontmatter must include a non-empty description.`,
+      "Add a non-empty description field to the SKILL.md frontmatter.",
+      "packsmith validate <pack-dir>"
+    );
   }
 
   if (!SKILL_NAME_PATTERN.test(frontmatter.name)) {
-    throw new Error(`Skill "${skillId}" frontmatter name must use lowercase letters, numbers, and hyphens.`);
+    throwActionableError(
+      "PSM008",
+      `Skill "${skillId}" frontmatter name must use lowercase letters, numbers, and hyphens.`,
+      "Rename the skill frontmatter name to kebab-case, for example starter-skill.",
+      "packsmith validate <pack-dir>"
+    );
   }
 
   return frontmatter;
@@ -95,7 +149,12 @@ async function loadManifest(packDir) {
   const manifestPath = path.join(packDir, "packsmith.json");
 
   if (!(await pathExists(manifestPath))) {
-    throw new Error(`Missing manifest: ${manifestPath}`);
+    throwActionableError(
+      "PSM001",
+      `Missing manifest: ${manifestPath}`,
+      "Create a packsmith.json manifest at the pack root.",
+      "packsmith init <pack-dir>"
+    );
   }
 
   const manifest = await readJson(manifestPath);
@@ -107,14 +166,24 @@ async function loadManifest(packDir) {
 
   for (const target of manifest.targets) {
     if (!SUPPORTED_TARGETS.has(target)) {
-      throw new Error(`Unsupported target "${target}". Supported targets: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`);
+      throwActionableError(
+        "PSM003",
+        `Unsupported target "${target}". Supported targets: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`,
+        "Use one of the supported targets in packsmith.json.",
+        "packsmith inspect <pack-dir>"
+      );
     }
   }
 
   manifest.prompts ??= [];
 
   if (!Array.isArray(manifest.prompts)) {
-    throw new Error("manifest.prompts must be an array when present.");
+    throwActionableError(
+      "PSM002",
+      "manifest.prompts must be an array when present.",
+      "Change manifest.prompts to an array, or remove it when the pack has no prompts.",
+      "packsmith inspect <pack-dir>"
+    );
   }
 
   ensureUniqueIds(manifest.skills, "skill");
@@ -143,11 +212,21 @@ async function validateAssets(packDir, manifest) {
     const skillEntryPath = path.join(absoluteSkillDir, "SKILL.md");
 
     if (!(await pathExists(absoluteSkillDir))) {
-      throw new Error(`Missing skill directory for "${skill.id}": ${absoluteSkillDir}`);
+      throwActionableError(
+        "PSM005",
+        `Missing skill directory for "${skill.id}": ${absoluteSkillDir}`,
+        "Create the skill directory or update the skill path in packsmith.json.",
+        "packsmith validate <pack-dir>"
+      );
     }
 
     if (!(await pathExists(skillEntryPath))) {
-      throw new Error(`Skill "${skill.id}" must include SKILL.md: ${skillEntryPath}`);
+      throwActionableError(
+        "PSM006",
+        `Skill "${skill.id}" must include SKILL.md: ${skillEntryPath}`,
+        "Create SKILL.md inside the skill directory.",
+        "packsmith validate <pack-dir>"
+      );
     }
 
     const bytes = await directorySize(absoluteSkillDir);
@@ -171,13 +250,23 @@ async function validateAssets(packDir, manifest) {
     const promptBasename = path.basename(prompt.path);
 
     if (!(await pathExists(absolutePromptPath))) {
-      throw new Error(`Missing prompt file for "${prompt.id}": ${absolutePromptPath}`);
+      throwActionableError(
+        "PSM009",
+        `Missing prompt file for "${prompt.id}": ${absolutePromptPath}`,
+        "Create the prompt file or update the prompt path in packsmith.json.",
+        "packsmith validate <pack-dir>"
+      );
     }
 
     const existingPrompt = promptBasenames.get(promptBasename);
 
     if (existingPrompt && existingPrompt !== prompt.id) {
-      throw new Error(`Duplicate prompt output basename "${promptBasename}" for prompts "${existingPrompt}" and "${prompt.id}".`);
+      throwActionableError(
+        "PSM010",
+        `Duplicate prompt output basename "${promptBasename}" for prompts "${existingPrompt}" and "${prompt.id}".`,
+        "Rename one prompt file so built bundles do not overwrite prompt output.",
+        "packsmith inspect <pack-dir>"
+      );
     }
 
     promptBasenames.set(promptBasename, prompt.id);
@@ -222,11 +311,64 @@ async function loadScopedInstalledPacks(scopedInstall) {
     installed.push({
       metadataDir,
       bundle: await readJson(bundlePath),
-      manifest: await readJson(manifestPath)
+      manifest: await readJson(manifestPath),
+      installLock: (await pathExists(path.join(metadataDir, "install-lock.json")))
+        ? await readJson(path.join(metadataDir, "install-lock.json"))
+        : null
     });
   }
 
   return installed;
+}
+
+async function hashFile(filePath) {
+  const content = await readFile(filePath);
+  return `sha256-${crypto.createHash("sha256").update(content).digest("base64")}`;
+}
+
+function buildInstallSource(bundleDir, bundleRoot, cleanupRoot) {
+  return {
+    type: cleanupRoot ? "source-pack" : "built-bundle",
+    path: path.resolve(bundleDir),
+    bundleRoot
+  };
+}
+
+async function buildInstallLock({ manifest, target, scope, source, metadataRoot, skillsRoot, targetBundle, previousVersion }) {
+  const files = [];
+
+  for (const skill of targetBundle.skills ?? []) {
+    const skillDirName = path.basename(path.dirname(skill.path));
+    const skillEntryPath = path.join(skillsRoot, skillDirName, "SKILL.md");
+    files.push({
+      kind: "skill",
+      id: skill.id,
+      path: skillEntryPath,
+      integrity: await hashFile(skillEntryPath)
+    });
+  }
+
+  for (const prompt of targetBundle.prompts ?? []) {
+    const promptPath = path.join(metadataRoot, prompt.path);
+    files.push({
+      kind: "prompt",
+      id: prompt.id,
+      path: promptPath,
+      integrity: await hashFile(promptPath)
+    });
+  }
+
+  return {
+    name: manifest.name,
+    version: manifest.version,
+    lockedVersion: manifest.version,
+    previousVersion: previousVersion ?? null,
+    target,
+    scope,
+    source,
+    installedAt: new Date().toISOString(),
+    files
+  };
 }
 
 function buildCatalog(manifest, skillSummaries, promptSummaries) {
@@ -263,6 +405,21 @@ function summarizePrompt(prompt) {
     path: prompt.path,
     bytes: prompt.bytes,
     contextChars: prompt.contextChars
+  };
+}
+
+function buildDuplicateSummary(catalog, duplicateGroups) {
+  const duplicateContextChars = duplicateGroups.reduce(
+    (sum, group) => sum + group.repeatedChars * Math.max(0, group.assets.length - 1),
+    0
+  );
+  const duplicateContextRatio = catalog.estimatedContextChars > 0 ? duplicateContextChars / catalog.estimatedContextChars : 0;
+  const largestDuplicateGroup = duplicateGroups.length > 0 ? { ...duplicateGroups[0], assets: [...duplicateGroups[0].assets] } : null;
+
+  return {
+    duplicateContextChars,
+    duplicateContextRatio,
+    largestDuplicateGroup
   };
 }
 
@@ -313,6 +470,8 @@ function buildDiagnostics(catalog, skillSummaries, promptSummaries) {
       code: "duplicate-content",
       severity: "warning",
       message: `Found ${duplicateGroups.length} repeated content group(s) across skills and prompts.`,
+      fix: "Move repeated guidance into one skill or prompt and reference it instead of duplicating the same body.",
+      command: "packsmith inspect <pack-dir>",
       groups: duplicateGroups.map((group) => ({
         assets: group.assets,
         repeatedChars: group.repeatedChars
@@ -321,10 +480,20 @@ function buildDiagnostics(catalog, skillSummaries, promptSummaries) {
   }
 
   if (catalog.estimatedContextChars >= OVERSIZED_PACK_CONTEXT_THRESHOLD) {
+    const thresholdChars = OVERSIZED_PACK_CONTEXT_THRESHOLD;
+    const overageChars = catalog.estimatedContextChars - thresholdChars;
+
     diagnostics.push({
       code: "oversized-pack",
       severity: "warning",
-      message: `Estimated context ${catalog.estimatedContextChars} chars exceeds the ${OVERSIZED_PACK_CONTEXT_THRESHOLD}-char warning threshold.`
+      thresholdChars,
+      overageChars,
+      fix: "Split the pack into narrower skills or move large reference material outside the loaded skill body.",
+      command: "packsmith inspect <pack-dir>",
+      message:
+        overageChars > 0
+          ? `Estimated context ${catalog.estimatedContextChars} chars exceeds the ${thresholdChars}-char warning threshold by ${overageChars} chars.`
+          : `Estimated context ${catalog.estimatedContextChars} chars reaches the ${thresholdChars}-char warning threshold.`
     });
   }
 
@@ -336,11 +505,127 @@ function toPosixPath(value) {
 }
 
 function resolveHomeDir(options = {}) {
-  return path.resolve(options.homeDir ?? process.env.HOME ?? process.env.USERPROFILE ?? os.homedir());
+  const envHome =
+    process.env.HOME ??
+    process.env.USERPROFILE ??
+    (process.env.HOMEDRIVE && process.env.HOMEPATH ? path.join(process.env.HOMEDRIVE, process.env.HOMEPATH) : null);
+
+  return path.resolve(options.homeDir ?? envHome ?? os.homedir());
 }
 
 function resolveWorkingDir(options = {}) {
   return path.resolve(options.cwd ?? process.cwd());
+}
+
+async function statIfExists(filePath) {
+  try {
+    return await stat(filePath);
+  } catch {
+    return null;
+  }
+}
+
+async function ensureWritableDirectory(targetPath, label, fix = "Create the directory, fix permissions, or choose a different destination.") {
+  const details = await statIfExists(targetPath);
+
+  if (details) {
+    if (!details.isDirectory()) {
+      throwActionableError(
+        "PSM021",
+        `${label} must be a directory: ${targetPath}`,
+        fix,
+        "packsmith install <pack-or-built-dir> --target <name> --dest <dir>"
+      );
+    }
+
+    try {
+      await access(targetPath, fsConstants.W_OK);
+    } catch {
+      throwActionableError(
+        "PSM021",
+        `${label} is not writable: ${targetPath}`,
+        fix,
+        "packsmith install <pack-or-built-dir> --target <name> --dest <dir>"
+      );
+    }
+
+    return { existed: true };
+  }
+
+  try {
+    await ensureDir(targetPath);
+  } catch (error) {
+    const reason = error?.message ? ` Reason: ${error.message}` : "";
+    throwActionableError(
+      "PSM021",
+      `${label} is not writable or cannot be created: ${targetPath}.${reason} ${fix}`,
+      fix,
+      "packsmith install <pack-or-built-dir> --target <name> --dest <dir>",
+      { cause: error }
+    );
+  }
+
+  return { existed: false };
+}
+
+async function inspectDirectoryState(targetPath, label) {
+  const details = await statIfExists(targetPath);
+
+  if (!details) {
+    return {
+      label,
+      path: targetPath,
+      exists: false,
+      kind: "missing",
+      writable: false,
+      message: `${label} does not exist yet: ${targetPath}`,
+      code: "PSM024",
+      fix: "Run packsmith install for this scope, or create the directory before retrying.",
+      command: "packsmith install <pack-or-built-dir> --target claude-code --scope user"
+    };
+  }
+
+  if (!details.isDirectory()) {
+    return {
+      label,
+      path: targetPath,
+      exists: true,
+      kind: "file",
+      writable: false,
+      message: `${label} must be a directory, but found a file: ${targetPath}`,
+      code: "PSM024",
+      fix: "Move or remove the file, then retry the command.",
+      command: "packsmith doctor --target claude-code --scope user"
+    };
+  }
+
+  try {
+    await access(targetPath, fsConstants.W_OK);
+
+    return {
+      label,
+      path: targetPath,
+      exists: true,
+      kind: "directory",
+      writable: true,
+      message: `${label} is present and writable: ${targetPath}`,
+      code: null,
+      fix: null,
+      command: null
+    };
+  } catch {
+    return {
+      label,
+      path: targetPath,
+      exists: true,
+      kind: "directory",
+      writable: false,
+      message: `${label} is not writable: ${targetPath}`,
+      code: "PSM024",
+      fix: "Fix directory permissions or choose a different install scope.",
+      command: "packsmith doctor --target claude-code --scope user"
+    };
+  }
 }
 
 function resolveScopedInstallPaths(target, manifest, options = {}) {
@@ -351,11 +636,21 @@ function resolveScopedInstallPaths(target, manifest, options = {}) {
   }
 
   if (!SUPPORTED_INSTALL_SCOPES.has(scope)) {
-    throw new Error(`Install scope must be one of: ${Array.from(SUPPORTED_INSTALL_SCOPES).join(", ")}.`);
+    throwActionableError(
+      "PSM020",
+      `Install scope must be one of: ${Array.from(SUPPORTED_INSTALL_SCOPES).join(", ")}.`,
+      "Use --scope user or --scope project.",
+      "packsmith doctor --target claude-code --scope user"
+    );
   }
 
   if (target !== "claude-code") {
-    throw new Error(`Scoped install is only supported for claude-code. Received target "${target}".`);
+    throwActionableError(
+      "PSM020",
+      `Scoped install is only supported for claude-code. Received target "${target}".`,
+      "Use --scope only with --target claude-code, or use --dest for custom installs.",
+      "packsmith doctor --target claude-code --scope user"
+    );
   }
 
   const baseDir =
@@ -372,9 +667,11 @@ function listBundleSkillDirNames(bundle) {
   return (bundle.skills ?? []).map((skill) => path.basename(path.dirname(skill.path)));
 }
 
-async function inspectInstalledBundleIntegrity(scopedInstall, bundle) {
+async function inspectInstalledBundleIntegrity(scopedInstall, bundle, installLock = null) {
   const missingSkills = [];
   const missingPrompts = [];
+  const driftedSkills = [];
+  const driftedPrompts = [];
 
   for (const skill of bundle.skills ?? []) {
     const skillDirName = path.basename(path.dirname(skill.path));
@@ -392,15 +689,58 @@ async function inspectInstalledBundleIntegrity(scopedInstall, bundle) {
     }
   }
 
+  if (installLock?.files) {
+    for (const file of installLock.files) {
+      if (!(await pathExists(file.path))) {
+        continue;
+      }
+
+      const actualIntegrity = await hashFile(file.path);
+
+      if (actualIntegrity === file.integrity) {
+        continue;
+      }
+
+      if (file.kind === "skill") {
+        driftedSkills.push(file.id);
+      }
+
+      if (file.kind === "prompt") {
+        driftedPrompts.push(file.id);
+      }
+    }
+  }
+
+  const missing = missingSkills.length > 0 || missingPrompts.length > 0;
+  const drifted = driftedSkills.length > 0 || driftedPrompts.length > 0;
+
   return {
-    ok: missingSkills.length === 0 && missingPrompts.length === 0,
+    ok: !missing && !drifted,
     missingSkills,
-    missingPrompts
+    missingPrompts,
+    driftedSkills,
+    driftedPrompts,
+    code: missing ? "PSM023" : drifted ? "PSM025" : null,
+    status: missing ? "broken" : drifted ? "drifted" : "ok",
+    fix:
+      !missing && !drifted
+        ? null
+        : drifted
+          ? "Run upgrade or reinstall the pack to replace drifted managed files with the locked source version."
+          : "Reinstall the pack to restore missing managed skill or prompt files.",
+    command:
+      !missing && !drifted
+        ? null
+        : drifted
+          ? "packsmith upgrade <pack-or-built-dir> --target claude-code --scope user"
+          : "packsmith install <pack-or-built-dir> --target claude-code --scope user"
   };
 }
 
 async function listUnmanagedSkillDirectories(scopedInstall, installedBundles) {
-  if (!(await pathExists(scopedInstall.skillsRoot))) {
+  const skillsRootState = await statIfExists(scopedInstall.skillsRoot);
+
+  if (!skillsRootState?.isDirectory()) {
     return [];
   }
 
@@ -521,7 +861,12 @@ export async function validatePack(packDir, options = {}) {
 
   if (options.strict && diagnostics.length > 0) {
     const codes = diagnostics.map((diagnostic) => diagnostic.code).join(", ");
-    throw new Error(`Strict validation failed: ${codes}.`);
+    throwActionableError(
+      "PSM011",
+      `Strict validation failed: ${codes}.`,
+      "Run inspect to review diagnostics, then remove duplicated or oversized context before retrying strict validation.",
+      "packsmith inspect <pack-dir>"
+    );
   }
 
   return {
@@ -539,6 +884,7 @@ export async function inspectPack(packDir) {
   const { skillSummaries, promptSummaries } = await validateAssets(absolutePackDir, manifest);
   const catalog = buildCatalog(manifest, skillSummaries, promptSummaries);
   const { diagnostics, duplicateGroups } = buildDiagnostics(catalog, skillSummaries, promptSummaries);
+  const { duplicateContextChars, duplicateContextRatio, largestDuplicateGroup } = buildDuplicateSummary(catalog, duplicateGroups);
 
   return {
     packDir: absolutePackDir,
@@ -548,6 +894,9 @@ export async function inspectPack(packDir) {
     skillCount: catalog.skills.length,
     promptCount: catalog.prompts.length,
     estimatedContextChars: catalog.estimatedContextChars,
+    duplicateContextChars,
+    duplicateContextRatio,
+    largestDuplicateGroup,
     skills: skillSummaries.map(summarizeSkill),
     prompts: promptSummaries.map(summarizePrompt),
     diagnostics,
@@ -642,7 +991,12 @@ async function resolveInstallBundleSource(bundleDir) {
   const sourceManifestPath = path.join(absoluteInputDir, "packsmith.json");
 
   if (!(await pathExists(sourceManifestPath))) {
-    throw new Error(`Expected either a built bundle (manifest.json) or a source pack (packsmith.json): ${absoluteInputDir}`);
+    throwActionableError(
+      "PSM001",
+      `Expected either a built bundle (manifest.json) or a source pack (packsmith.json): ${absoluteInputDir}`,
+      "Pass a source pack directory with packsmith.json or a built bundle directory with manifest.json.",
+      "packsmith build <pack-dir>"
+    );
   }
 
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-install-build-"));
@@ -663,17 +1017,32 @@ export async function installBundle(bundleDir, options = {}) {
     const target = options.target ?? manifest.targets?.[0];
 
     if (!target || !SUPPORTED_TARGETS.has(target)) {
-      throw new Error(`Install target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`);
+      throwActionableError(
+        "PSM020",
+        `Install target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`,
+        "Use --target claude-code or --target codex.",
+        "packsmith install <pack-or-built-dir> --target <name> --dest <dir>"
+      );
     }
 
     const targetSourceDir = path.join(bundleRoot, target);
 
     if (!(await pathExists(targetSourceDir))) {
-      throw new Error(`Missing built target directory: ${targetSourceDir}`);
+      throwActionableError(
+        "PSM020",
+        `Missing built target directory: ${targetSourceDir}`,
+        "Rebuild the pack for the requested target before installing.",
+        "packsmith build <pack-dir>"
+      );
     }
 
     if (options.dest && options.scope) {
-      throw new Error("Use either --dest or --scope for install, not both.");
+      throwActionableError(
+        "PSM020",
+        "Use either --dest or --scope for install, not both.",
+        "Choose --scope for Claude Code known paths or --dest for an explicit destination.",
+        "packsmith install <pack-or-built-dir> --target <name> --dest <dir>"
+      );
     }
 
     const scopedInstall = resolveScopedInstallPaths(target, manifest, options);
@@ -682,6 +1051,12 @@ export async function installBundle(bundleDir, options = {}) {
       const targetBundle = await readJson(path.join(targetSourceDir, "bundle.json"));
       const installedPacks = await loadScopedInstalledPacks(scopedInstall);
       const installedPack = installedPacks.find(({ manifest: installedManifest }) => installedManifest.name === manifest.name);
+      const previousVersion = installedPack?.manifest?.version ?? null;
+      const skillsRootState = await ensureWritableDirectory(
+        scopedInstall.skillsRoot,
+        `Claude Code ${scopedInstall.scope} scope skills root`,
+        "Create the Claude Code skills directory, fix permissions, or choose a different --scope."
+      );
 
       for (const skill of targetBundle.skills ?? []) {
         const skillDirName = path.basename(path.dirname(skill.path));
@@ -694,7 +1069,12 @@ export async function installBundle(bundleDir, options = {}) {
         });
 
         if (conflictingPack) {
-          throw new Error(`Claude Code skill "${skillDirName}" is already owned by pack "${conflictingPack.manifest.name}" in ${scopedInstall.scope} scope.`);
+          throwActionableError(
+            "PSM022",
+            `Claude Code skill "${skillDirName}" is already owned by pack "${conflictingPack.manifest.name}" in ${scopedInstall.scope} scope.`,
+            "Rename the skill id or uninstall the pack that owns the existing skill directory.",
+            `packsmith list --target claude-code --scope ${scopedInstall.scope}`
+          );
         }
       }
 
@@ -729,18 +1109,42 @@ export async function installBundle(bundleDir, options = {}) {
         await copyDirectory(promptsDir, path.join(scopedInstall.metadataRoot, "prompts"));
       }
 
+      const installLock = await buildInstallLock({
+        manifest,
+        target,
+        scope: scopedInstall.scope,
+        source: buildInstallSource(bundleDir, bundleRoot, cleanupRoot),
+        metadataRoot: scopedInstall.metadataRoot,
+        skillsRoot: scopedInstall.skillsRoot,
+        targetBundle,
+        previousVersion
+      });
+      await writeJson(path.join(scopedInstall.metadataRoot, "install-lock.json"), installLock);
+
       return {
         manifest,
         target,
         scope: scopedInstall.scope,
         installDir: scopedInstall.skillsRoot,
-        metadataDir: scopedInstall.metadataRoot
+        metadataDir: scopedInstall.metadataRoot,
+        installLock,
+        replaced: Boolean(installedPack),
+        created: !skillsRootState.existed
       };
     }
 
     const defaultDestinationRoot = cleanupRoot ? path.join(path.resolve(bundleDir), "installed") : path.join(bundleRoot, "installed");
     const destinationRoot = path.resolve(options.dest ?? defaultDestinationRoot);
     const installDir = path.join(destinationRoot, manifest.name);
+    const destinationLabel = target === "codex" ? "Codex destination" : "Install destination";
+
+    await ensureWritableDirectory(destinationRoot, destinationLabel, "Create the directory, fix permissions, or choose a different --dest.");
+
+    const installDirExisted = await pathExists(installDir);
+
+    if (installDirExisted) {
+      await removePath(installDir);
+    }
 
     await copyDirectory(targetSourceDir, installDir);
     await copyFileOrDirectory(path.join(bundleRoot, "manifest.json"), path.join(installDir, "manifest.json"));
@@ -750,7 +1154,9 @@ export async function installBundle(bundleDir, options = {}) {
       manifest,
       target,
       scope: "custom",
-      installDir
+      installDir,
+      replaced: installDirExisted,
+      created: !installDirExisted
     };
   } finally {
     if (cleanupRoot) {
@@ -759,25 +1165,44 @@ export async function installBundle(bundleDir, options = {}) {
   }
 }
 
+export async function upgradeBundle(bundleDir, options = {}) {
+  return installBundle(bundleDir, options);
+}
+
 export async function uninstallBundle(packName, options = {}) {
   assertString(packName, "packName");
 
   const target = options.target;
 
   if (!target || !SUPPORTED_TARGETS.has(target)) {
-    throw new Error(`Uninstall target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`);
+    throwActionableError(
+      "PSM020",
+      `Uninstall target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`,
+      "Use --target claude-code with --scope user or --scope project.",
+      "packsmith doctor --target claude-code --scope user"
+    );
   }
 
   const scopedInstall = resolveScopedInstallPaths(target, { name: packName }, options);
 
   if (!scopedInstall) {
-    throw new Error("Uninstall currently requires --scope.");
+    throwActionableError(
+      "PSM020",
+      "Uninstall currently requires --scope.",
+      "Pass --scope user or --scope project.",
+      "packsmith doctor --target claude-code --scope user"
+    );
   }
 
   const bundlePath = path.join(scopedInstall.metadataRoot, "bundle.json");
 
   if (!(await pathExists(bundlePath))) {
-    throw new Error(`Missing installed bundle metadata: ${bundlePath}`);
+    throwActionableError(
+      "PSM023",
+      `Missing installed bundle metadata: ${bundlePath}`,
+      "Use list or doctor to confirm the pack name and install scope before uninstalling.",
+      `packsmith list --target claude-code --scope ${scopedInstall.scope}`
+    );
   }
 
   const bundle = await readJson(bundlePath);
@@ -802,22 +1227,34 @@ export async function inspectInstalledBundles(options = {}) {
   const target = options.target;
 
   if (!target || !SUPPORTED_TARGETS.has(target)) {
-    throw new Error(`List target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`);
+    throwActionableError(
+      "PSM020",
+      `List target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`,
+      "Use --target claude-code with --scope user or --scope project.",
+      "packsmith doctor --target claude-code --scope user"
+    );
   }
 
   const scopedInstall = resolveScopedInstallPaths(target, { name: "__placeholder__" }, options);
 
   if (!scopedInstall) {
-    throw new Error("List currently requires --scope.");
+    throwActionableError(
+      "PSM020",
+      "List currently requires --scope.",
+      "Pass --scope user or --scope project.",
+      "packsmith doctor --target claude-code --scope user"
+    );
   }
 
   const installedPacks = await loadScopedInstalledPacks(scopedInstall);
   const installed = [];
 
-  for (const { metadataDir, manifest, bundle } of installedPacks) {
+  for (const { metadataDir, manifest, bundle, installLock } of installedPacks) {
     installed.push({
       name: manifest.name,
       version: manifest.version,
+      lockedVersion: installLock?.lockedVersion ?? manifest.version,
+      source: installLock?.source ?? null,
       target: bundle.target,
       scope: scopedInstall.scope,
       skillCount: Array.isArray(bundle.skills) ? bundle.skills.length : 0,
@@ -830,7 +1267,8 @@ export async function inspectInstalledBundles(options = {}) {
           ...scopedInstall,
           metadataRoot: metadataDir
         },
-        bundle
+        bundle,
+        installLock
       )
     });
   }
@@ -848,23 +1286,38 @@ export async function inspectInstallTargets(options = {}) {
   const target = options.target;
 
   if (!target || !SUPPORTED_TARGETS.has(target)) {
-    throw new Error(`Doctor target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`);
+    throwActionableError(
+      "PSM020",
+      `Doctor target must be one of: ${Array.from(SUPPORTED_TARGETS).join(", ")}.`,
+      "Use --target claude-code with --scope user or --scope project.",
+      "packsmith doctor --target claude-code --scope user"
+    );
   }
 
   const scopedInstall = resolveScopedInstallPaths(target, { name: "__placeholder__" }, options);
 
   if (!scopedInstall) {
-    throw new Error("Doctor currently requires --scope.");
+    throwActionableError(
+      "PSM020",
+      "Doctor currently requires --scope.",
+      "Pass --scope user or --scope project.",
+      "packsmith doctor --target claude-code --scope user"
+    );
   }
 
   const installed = await inspectInstalledBundles(options);
   const unmanagedSkills = await listUnmanagedSkillDirectories(scopedInstall, installed.installed);
+  const metadataRoot = path.dirname(scopedInstall.metadataRoot);
 
   return {
     target,
     scope: scopedInstall.scope,
     skillsRoot: scopedInstall.skillsRoot,
-    metadataRoot: path.dirname(scopedInstall.metadataRoot),
+    metadataRoot,
+    pathChecks: {
+      skillsRoot: await inspectDirectoryState(scopedInstall.skillsRoot, `Claude Code ${scopedInstall.scope} scope skills root`),
+      metadataRoot: await inspectDirectoryState(metadataRoot, `Claude Code ${scopedInstall.scope} scope Packsmith metadata root`)
+    },
     installed: installed.installed,
     unmanagedSkills
   };

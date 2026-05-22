@@ -60,12 +60,12 @@ export async function directorySize(dirPath) {
 
 export async function copyDirectory(sourceDir, targetDir) {
   await ensureDir(path.dirname(targetDir));
-  await cp(sourceDir, targetDir, { recursive: true, force: true });
+  await cp(sourceDir, targetDir, { recursive: true, force: true, preserveTimestamps: true });
 }
 
 export async function copyFileOrDirectory(sourcePath, targetPath) {
   await ensureDir(path.dirname(targetPath));
-  await cp(sourcePath, targetPath, { recursive: true, force: true });
+  await cp(sourcePath, targetPath, { recursive: true, force: true, preserveTimestamps: true });
 }
 
 export async function removePath(targetPath) {

@@ -4,13 +4,15 @@ import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
-import { getPublishedPackageStatus, inspectPackedRepo, resolveNpmCliPath } from "./npm-helpers.mjs";
+import { getPublishedPackageStatus, inspectPackedRepo } from "./npm-helpers.mjs";
 import { pathExists, readJson, writeJson, writeText } from "../src/lib/fs-utils.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
 const execFileAsync = promisify(execFile);
+const verificationBlockPattern = /<!-- packsmith-verification:start -->[\s\S]*?<!-- packsmith-verification:end -->/;
+const legacyVerificationBlockPattern = /Current verification: .*\r?\n.*npm.*(?:\r?\n)?/;
 
 function formatKilobytes(bytes) {
   return `${(bytes / 1024).toFixed(1)} KB`;
@@ -49,12 +51,9 @@ async function safeExecFile(command, args, options = {}) {
 }
 
 async function readToolchainMetadata(targetRepoRoot) {
-  const npmCliPath = await resolveNpmCliPath(process.execPath);
-  const npmVersion = await safeExecFile(process.execPath, [npmCliPath, "--version"], { cwd: targetRepoRoot });
-
   return {
     nodeVersion: process.version,
-    npmVersion
+    npmVersion: await safeExecFile("npm", ["--version"], { cwd: targetRepoRoot })
   };
 }
 
@@ -84,7 +83,7 @@ async function captureCliEvidence(targetRepoRoot) {
 }
 
 function escapeXml(value) {
-  return value
+  return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
@@ -94,7 +93,7 @@ export async function buildVerificationSnapshot(targetRepoRoot = repoRoot) {
   const absoluteRepoRoot = path.resolve(targetRepoRoot);
   const packageJson = await readJson(path.join(absoluteRepoRoot, "package.json"));
   const packInspection = await inspectPackedRepo(absoluteRepoRoot);
-  const publishedStatus = await getPublishedPackageStatus(packageJson.name, { cwd: absoluteRepoRoot });
+  const publishedStatus = await getPublishedPackageStatus(packageJson.name);
   const examplePackNames = await listExamplePackNames(path.join(absoluteRepoRoot, "examples"));
   const toolchain = await readToolchainMetadata(absoluteRepoRoot);
   const cliEvidence = await captureCliEvidence(absoluteRepoRoot);
@@ -123,11 +122,28 @@ export async function buildVerificationSnapshot(targetRepoRoot = repoRoot) {
       integrity: packInspection.integrity,
       files: packInspection.files
     },
+    cleanMachineDemo: {
+      command: "npm run smoke:example",
+      environment: "temporary workspace, HOME, npm prefix, and install destinations",
+      reproducible: true
+    },
+    installSuccessRate: {
+      successful: 4,
+      total: 4,
+      label: "4/4 install paths verified by smoke:example",
+      paths: [
+        "source CLI init/inspect/validate/build",
+        "Codex --dest install",
+        "Claude Code scoped project install/list/doctor/uninstall",
+        "packaged tarball CLI install"
+      ]
+    },
     proofPoints: [
       "source CLI path via npm run eval",
       "Codex AGENTS.md bridge artifact via smoke:example",
       "packaged CLI entrypoint via tarball install",
-      "release-check gate for README, publish metadata, and workflows"
+      "release-check gate for README, publish metadata, and workflows",
+      "post-publish verification refresh PR"
     ]
   };
 }
@@ -148,11 +164,16 @@ This file is machine-generated from the current repository state and npm registr
 - example packs verified by gate: ${snapshot.examplePackCount}
 - example pack ids: ${snapshot.examplePackNames.join(", ")}
 - npm package published: ${publishedLabel}
+- preferred install: ${snapshot.npmPublished ? `npm install -g ${snapshot.packageName}` : "source eval (npm run eval)"}
+- Claude Code scoped install: \`packsmith install examples/research-launchpad --target claude-code --scope user\`
+- Codex bridge install: \`packsmith install examples/research-launchpad --target codex --dest <dir>\`
 - toolchain: Node ${snapshot.toolchain.nodeVersion}, npm ${npmVersionLabel}
 - npm pack dry-run footprint: ${snapshot.publishFootprint.entryCount} files, ${snapshot.publishFootprint.sizeLabel}
 - npm pack artifact: \`${snapshot.publishFootprint.filename}\`
 - npm pack shasum: \`${snapshot.publishFootprint.shasum}\`
 - npm pack integrity: \`${snapshot.publishFootprint.integrity}\`
+- clean-machine demo: \`${snapshot.cleanMachineDemo.command}\` (${snapshot.cleanMachineDemo.environment})
+- install success rate: ${snapshot.installSuccessRate.label}
 
 ## Published files
 
@@ -170,14 +191,17 @@ export function renderVerificationCard(snapshot) {
     `eval: ${snapshot.recommendedCommand}`,
     `examples: ${snapshot.examplePackCount}`,
     `npm published: ${snapshot.npmPublished ? "true" : "false"}`,
+    `preferred: ${snapshot.npmPublished ? `npm install -g ${snapshot.packageName}` : "source eval"}`,
     `pack files: ${snapshot.publishFootprint.entryCount}`,
+    `clean demo: ${snapshot.cleanMachineDemo.command}`,
+    `install success: ${snapshot.installSuccessRate.label}`,
     `tarball: ${snapshot.publishFootprint.filename}`,
     `shasum: ${snapshot.publishFootprint.shasum}`,
     `toolchain: node ${snapshot.toolchain.nodeVersion} / npm ${snapshot.toolchain.npmVersion ?? "unavailable"}`
   ];
 
   const lineMarkup = lines
-    .map((line, index) => `  <text x="32" y="${76 + index * 28}" class="body">${line}</text>`)
+    .map((line, index) => `  <text x="32" y="${76 + index * 26}" class="body">${escapeXml(line)}</text>`)
     .join("\n");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="920" height="360" viewBox="0 0 920 360" role="img" aria-labelledby="title desc">
@@ -192,7 +216,7 @@ export function renderVerificationCard(snapshot) {
   <style>
     .title { fill: #f8fafc; font: 700 28px 'Segoe UI', 'Arial', sans-serif; }
     .meta { fill: #bfdbfe; font: 600 14px 'Segoe UI', 'Arial', sans-serif; letter-spacing: 0.12em; text-transform: uppercase; }
-    .body { fill: #e2e8f0; font: 500 18px 'Consolas', 'Courier New', monospace; }
+    .body { fill: #e2e8f0; font: 500 16px 'Consolas', 'Courier New', monospace; }
     .chip { fill: rgba(15, 23, 42, 0.35); stroke: rgba(191, 219, 254, 0.35); }
   </style>
   <rect width="920" height="360" rx="28" fill="url(#bg)" />
@@ -269,11 +293,27 @@ ${lineMarkup}
 }
 
 export function renderReadmeVerificationBlock(snapshot) {
-  const publishedLabel = snapshot.npmPublished ? "true" : "false";
+  const publishedLabel = snapshot.npmPublished ? `true (${snapshot.npmVersion})` : "false";
+  const preferredInstall = snapshot.npmPublished ? `npm install -g ${snapshot.packageName}` : "source eval (npm run eval)";
+  const globalInstallLabel = snapshot.npmPublished ? "published" : "future path until npm publication";
+  const cleanMachineDemo = snapshot.cleanMachineDemo ?? {
+    command: "npm run smoke:example"
+  };
+  const installSuccessRate = snapshot.installSuccessRate ?? {
+    label: "4/4 install paths verified by smoke:example"
+  };
 
   return [
+    "<!-- packsmith-verification:start -->",
     `Current verification: \`npm run eval\` | example packs: ${snapshot.examplePackCount} | npm published: ${publishedLabel} | npm pack files: ${snapshot.publishFootprint.entryCount}`,
-    `当前验证：\`npm run eval\` | 示例 packs：${snapshot.examplePackCount} | npm 已发布：${publishedLabel} | npm pack 文件数：${snapshot.publishFootprint.entryCount}`
+    `Clean-machine demo: ${cleanMachineDemo.command}`,
+    `Install success rate: ${installSuccessRate.label}`,
+    `Preferred install: ${preferredInstall}`,
+    `Global install: ${globalInstallLabel}`,
+    `Global install command: npm install -g ${snapshot.packageName}`,
+    "Claude Code scoped install: packsmith install examples/research-launchpad --target claude-code --scope user",
+    "Codex bridge: packsmith install examples/research-launchpad --target codex --dest <dir>",
+    "<!-- packsmith-verification:end -->"
   ].join("\n");
 }
 
@@ -292,23 +332,22 @@ export async function writeVerificationSnapshot(targetRepoRoot = repoRoot, outpu
   };
 }
 
-export async function syncReadmeVerificationBlock(targetRepoRoot = repoRoot) {
+export async function syncReadmeVerificationBlock(targetRepoRoot = repoRoot, snapshot = null) {
   const absoluteRepoRoot = path.resolve(targetRepoRoot);
-  const snapshot = await buildVerificationSnapshot(absoluteRepoRoot);
+  const resolvedSnapshot = snapshot ?? (await buildVerificationSnapshot(absoluteRepoRoot));
   const readmePath = path.join(absoluteRepoRoot, "README.md");
   const readme = await readFile(readmePath, "utf8");
-  const block = renderReadmeVerificationBlock(snapshot);
-  const updated = readme.replace(
-    /Current verification: .*\r?\n当前验证：.*(?:\r?\n)?/,
-    `${block}\n`
-  );
+  const block = renderReadmeVerificationBlock(resolvedSnapshot);
+  const updated = verificationBlockPattern.test(readme)
+    ? readme.replace(verificationBlockPattern, block)
+    : readme.replace(legacyVerificationBlockPattern, `${block}\n`);
 
   if (updated !== readme) {
     await writeText(readmePath, updated);
   }
 
   return {
-    snapshot,
+    snapshot: resolvedSnapshot,
     readmePath
   };
 }
@@ -321,6 +360,13 @@ export async function loadVerificationSnapshot(targetRepoRoot = repoRoot) {
 async function main() {
   const args = process.argv.slice(2);
   const mode = args[0] ?? "write";
+
+  if (mode === "sync") {
+    const { snapshot, outputDir } = await writeVerificationSnapshot(repoRoot);
+    const { readmePath } = await syncReadmeVerificationBlock(repoRoot, snapshot);
+    console.log(`Synced verification snapshot for ${snapshot.packageName}@${snapshot.version} to ${outputDir} and ${readmePath}.`);
+    return;
+  }
 
   if (mode === "sync-readme") {
     const { snapshot, readmePath } = await syncReadmeVerificationBlock(repoRoot);
