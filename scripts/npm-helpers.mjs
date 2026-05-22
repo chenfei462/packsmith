@@ -273,6 +273,29 @@ export async function getPublishedPackageStatus(packageName) {
 }
 
 export async function inspectPackedRepo(repoRoot, options = {}) {
+  if (options.deterministic) {
+    const tempRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-inspect-"));
+
+    try {
+      const result = await buildCustomPackArchive(repoRoot, tempRoot);
+
+      return {
+        name: result.name,
+        version: result.version,
+        id: result.id,
+        filename: result.filename,
+        size: result.size,
+        unpackedSize: result.unpackedSize,
+        shasum: result.shasum,
+        integrity: result.integrity,
+        entryCount: result.entryCount,
+        files: result.files
+      };
+    } finally {
+      await removePath(tempRoot);
+    }
+  }
+
   const official = await runOfficialNpmCommand(["pack", "--json", "--dry-run"], {
     ...options,
     cwd: repoRoot

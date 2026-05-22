@@ -32,17 +32,12 @@
   <text x="36" y="162" class="terminal" fill="#e2e8f0">Pack: research-launchpad@0.1.0</text>
   <text x="36" y="188" class="terminal" fill="#e2e8f0">Targets: claude-code, codex</text>
   <text x="36" y="214" class="terminal" fill="#e2e8f0">Assets: 1 skill(s), 1 prompt(s)</text>
-  <text x="36" y="240" class="terminal" fill="#e2e8f0">Estimated context: 2,470 chars</text>
-  <text x="36" y="266" class="terminal" fill="#e2e8f0">Duplicate context: none</text>
-  <text x="36" y="292" class="terminal" fill="#e2e8f0">Largest duplicate group: none</text>
-  <text x="36" y="318" class="terminal" fill="#e2e8f0">Diagnostics:</text>
-  <text x="36" y="344" class="terminal" fill="#e2e8f0">- none</text>
-  <text x="36" y="370" class="terminal" fill="#e2e8f0">Duplicate content:</text>
-  <text x="36" y="396" class="terminal" fill="#e2e8f0"></text>
-  <text x="36" y="422" class="terminal" fill="#7dd3fc">$ packsmith validate examples/research-launchpad --strict</text>
-  <text x="36" y="448" class="terminal" fill="#e2e8f0">Strictly validated pack "research-launchpad" with 1 skill(s) and 1 prompt(s).</text>
-  <text x="36" y="474" class="terminal" fill="#e2e8f0"></text>
-  <text x="36" y="500" class="terminal" fill="#7dd3fc">$ packsmith build examples/research-launchpad</text>
-  <text x="36" y="526" class="terminal" fill="#e2e8f0">Built "research-launchpad" for claude-code, codex in C:\Users\CYL\Documents\New project 3\packsmith\examples\research-launchpad\dist\research-launchpad.</text>
-  <text x="36" y="694" class="caption">tarball shasum a129f10d9ecb | node v24.16.0 | npm unavailable</text>
+  <text x="36" y="240" class="terminal" fill="#e2e8f0">Estimated context: 2470 chars</text>
+  <text x="36" y="266" class="terminal" fill="#e2e8f0"></text>
+  <text x="36" y="292" class="terminal" fill="#7dd3fc">$ packsmith validate examples/research-launchpad --strict</text>
+  <text x="36" y="318" class="terminal" fill="#e2e8f0">Strictly validated pack "research-launchpad" with 1 skill(s) and 1 prompt(s).</text>
+  <text x="36" y="344" class="terminal" fill="#e2e8f0"></text>
+  <text x="36" y="370" class="terminal" fill="#7dd3fc">$ packsmith build examples/research-launchpad</text>
+  <text x="36" y="396" class="terminal" fill="#e2e8f0">Built "research-launchpad" for claude-code, codex in examples/research-launchpad/dist/research-launchpad.</text>
+  <text x="36" y="694" class="caption">tarball shasum 1bb91418ecba | node &gt;=20 | npm deterministic-pack-inspection</text>
 </svg>

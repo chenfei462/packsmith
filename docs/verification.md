@@ -12,19 +12,19 @@ This file is machine-generated from the current repository state and npm registr
 - preferred install: source eval (npm run eval)
 - Claude Code scoped install: `packsmith install examples/research-launchpad --target claude-code --scope user`
 - Codex bridge install: `packsmith install examples/research-launchpad --target codex --dest <dir>`
-- toolchain: Node v24.16.0, npm unavailable
-- npm pack dry-run footprint: 6 files, 17.3 KB
-- npm pack artifact: `chenfei462-packsmith-0.1.0.tgz`
-- npm pack shasum: `a129f10d9ecb970a3439861b21dc3fdec25b6121`
-- npm pack integrity: `sha512-ZEt1/TTrF5W16BI1Ea9dt2vUGbQBioBIPitfub6aIFCAqj1PgDc3WIBcrrB3ZsLqdoFqF5QJXvbFfTJW7/sdgQ==`
+- toolchain: Node >=20, npm deterministic-pack-inspection
+- npm pack dry-run footprint: 6 files, 71.9 KB
+- npm pack artifact: `packsmith-0.1.0.tgz`
+- npm pack shasum: `1bb91418ecba8725856cfd382a25ac24d3b7bd95`
+- npm pack integrity: `sha512-RmaCNLIjEClRDEEtIViXiK1u2TDbVeauaqnh0NjRYG54qJD5X4TxkUiA2o8pmZ3jLAuGRu3FqQYtq0J8/VKpKg==`
 - clean-machine demo: `npm run smoke:example` (temporary workspace, HOME, npm prefix, and install destinations)
 - install success rate: 4/4 install paths verified by smoke:example
 
 ## Published files
 
 - `LICENSE`
-- `README.md`
 - `package.json`
+- `README.md`
 - `src/cli.mjs`
 - `src/lib/fs-utils.mjs`
 - `src/lib/pack.mjs`

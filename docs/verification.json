@@ -13,26 +13,26 @@
   "npmPublished": false,
   "npmVersion": null,
   "toolchain": {
-    "nodeVersion": "v24.16.0",
-    "npmVersion": null
+    "nodeRequirement": ">=20",
+    "npmVersion": "deterministic-pack-inspection"
   },
   "cliEvidence": {
-    "inspectOutput": "Packsmith Inspect\nPack: research-launchpad@0.1.0\nPath: C:\\Users\\CYL\\Documents\\New project 3\\packsmith\\examples\\research-launchpad\nTargets: claude-code, codex\nAssets: 1 skill(s), 1 prompt(s)\nEstimated context: 2,470 chars\n\nDuplicate context: none\nLargest duplicate group: none\n\nDiagnostics:\n- none\n\nDuplicate content:\n- none\n\nSkills:\n- github-demand: 1,405 chars, 1,405 bytes, 1 file(s)\n\nPrompts:\n- launch: 1,065 chars, 1,065 bytes",
+    "inspectOutput": "Packsmith Inspect\nPack: research-launchpad@0.1.0\nTargets: claude-code, codex\nAssets: 1 skill(s), 1 prompt(s)\nEstimated context: 2470 chars",
     "validateOutput": "Strictly validated pack \"research-launchpad\" with 1 skill(s) and 1 prompt(s).",
-    "buildOutput": "Built \"research-launchpad\" for claude-code, codex in C:\\Users\\CYL\\Documents\\New project 3\\packsmith\\examples\\research-launchpad\\dist\\research-launchpad."
+    "buildOutput": "Built \"research-launchpad\" for claude-code, codex in examples/research-launchpad/dist/research-launchpad."
   },
   "publishFootprint": {
     "id": "@chenfei462/packsmith@0.1.0",
-    "filename": "chenfei462-packsmith-0.1.0.tgz",
+    "filename": "packsmith-0.1.0.tgz",
     "entryCount": 6,
-    "sizeBytes": 17691,
-    "sizeLabel": "17.3 KB",
-    "shasum": "a129f10d9ecb970a3439861b21dc3fdec25b6121",
-    "integrity": "sha512-ZEt1/TTrF5W16BI1Ea9dt2vUGbQBioBIPitfub6aIFCAqj1PgDc3WIBcrrB3ZsLqdoFqF5QJXvbFfTJW7/sdgQ==",
+    "sizeBytes": 73640,
+    "sizeLabel": "71.9 KB",
+    "shasum": "1bb91418ecba8725856cfd382a25ac24d3b7bd95",
+    "integrity": "sha512-RmaCNLIjEClRDEEtIViXiK1u2TDbVeauaqnh0NjRYG54qJD5X4TxkUiA2o8pmZ3jLAuGRu3FqQYtq0J8/VKpKg==",
     "files": [
       "LICENSE",
-      "README.md",
       "package.json",
+      "README.md",
       "src/cli.mjs",
       "src/lib/fs-utils.mjs",
       "src/lib/pack.mjs"

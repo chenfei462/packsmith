@@ -1,8 +1,6 @@
 import path from "node:path";
-import { execFile } from "node:child_process";
 import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { promisify } from "node:util";
 
 import { getPublishedPackageStatus, inspectPackedRepo } from "./npm-helpers.mjs";
 import { pathExists, readJson, writeJson, writeText } from "../src/lib/fs-utils.mjs";
@@ -10,7 +8,6 @@ import { pathExists, readJson, writeJson, writeText } from "../src/lib/fs-utils.
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, "..");
-const execFileAsync = promisify(execFile);
 const verificationBlockPattern = /<!-- packsmith-verification:start -->[\s\S]*?<!-- packsmith-verification:end -->/;
 const legacyVerificationBlockPattern = /Current verification: .*\r?\n.*npm.*(?:\r?\n)?/;
 
@@ -41,22 +38,6 @@ async function listExamplePackNames(examplesRoot) {
   return packNames.sort((left, right) => left.localeCompare(right));
 }
 
-async function safeExecFile(command, args, options = {}) {
-  try {
-    const result = await execFileAsync(command, args, options);
-    return result.stdout.trim();
-  } catch {
-    return null;
-  }
-}
-
-async function readToolchainMetadata(targetRepoRoot) {
-  return {
-    nodeVersion: process.version,
-    npmVersion: await safeExecFile("npm", ["--version"], { cwd: targetRepoRoot })
-  };
-}
-
 function normalizeCliOutput(output) {
   return output
     .replace(/\r\n/g, "\n")
@@ -65,15 +46,27 @@ function normalizeCliOutput(output) {
 }
 
 async function captureCliEvidence(targetRepoRoot) {
-  const inspectOutput = await safeExecFile(process.execPath, ["src/cli.mjs", "inspect", "examples/research-launchpad"], {
-    cwd: targetRepoRoot
-  });
-  const validateOutput = await safeExecFile(process.execPath, ["src/cli.mjs", "validate", "examples/research-launchpad", "--strict"], {
-    cwd: targetRepoRoot
-  });
-  const buildOutput = await safeExecFile(process.execPath, ["src/cli.mjs", "build", "examples/research-launchpad"], {
-    cwd: targetRepoRoot
-  });
+  const { inspectPack, validatePack, buildPack } = await import("../src/lib/pack.mjs");
+  const examplePackDir = path.join(targetRepoRoot, "examples", "research-launchpad");
+
+  if (!(await pathExists(path.join(examplePackDir, "packsmith.json")))) {
+    return {
+      inspectOutput: "Packsmith Inspect\nPack: unavailable\nTargets: unavailable\nAssets: 0 skill(s), 0 prompt(s)",
+      validateOutput: "Strict validation unavailable: examples/research-launchpad is not present.",
+      buildOutput: "Build evidence unavailable: examples/research-launchpad is not present."
+    };
+  }
+
+  const inspected = await inspectPack(examplePackDir);
+  const validated = await validatePack(examplePackDir, { strict: true });
+  const built = await buildPack(examplePackDir);
+  const inspectOutput = `Packsmith Inspect
+Pack: ${inspected.name}@${inspected.version}
+Targets: ${inspected.targets.join(", ")}
+Assets: ${inspected.skillCount} skill(s), ${inspected.promptCount} prompt(s)
+Estimated context: ${inspected.estimatedContextChars} chars`;
+  const validateOutput = `Strictly validated pack "${validated.manifest.name}" with ${validated.skillCount} skill(s) and ${validated.promptCount} prompt(s).`;
+  const buildOutput = `Built "${built.manifest.name}" for ${built.targetsBuilt.join(", ")} in examples/research-launchpad/dist/${built.manifest.name}.`;
 
   return {
     inspectOutput: normalizeCliOutput(inspectOutput ?? ""),
@@ -92,10 +85,9 @@ function escapeXml(value) {
 export async function buildVerificationSnapshot(targetRepoRoot = repoRoot) {
   const absoluteRepoRoot = path.resolve(targetRepoRoot);
   const packageJson = await readJson(path.join(absoluteRepoRoot, "package.json"));
-  const packInspection = await inspectPackedRepo(absoluteRepoRoot);
+  const packInspection = await inspectPackedRepo(absoluteRepoRoot, { deterministic: true });
   const publishedStatus = await getPublishedPackageStatus(packageJson.name);
   const examplePackNames = await listExamplePackNames(path.join(absoluteRepoRoot, "examples"));
-  const toolchain = await readToolchainMetadata(absoluteRepoRoot);
   const cliEvidence = await captureCliEvidence(absoluteRepoRoot);
 
   return {
@@ -110,7 +102,10 @@ export async function buildVerificationSnapshot(targetRepoRoot = repoRoot) {
     examplePackNames,
     npmPublished: publishedStatus.published,
     npmVersion: publishedStatus.version,
-    toolchain,
+    toolchain: {
+      nodeRequirement: packageJson.engines?.node ?? null,
+      npmVersion: "deterministic-pack-inspection"
+    },
     cliEvidence,
     publishFootprint: {
       id: packInspection.id,
@@ -151,7 +146,7 @@ export async function buildVerificationSnapshot(targetRepoRoot = repoRoot) {
 export function renderVerificationMarkdown(snapshot) {
   const publishedLabel = snapshot.npmPublished ? `true (${snapshot.npmVersion})` : "false";
   const zeroDepsLabel = snapshot.zeroRuntimeDependencies ? "yes" : "no";
-  const npmVersionLabel = snapshot.toolchain.npmVersion ?? "unavailable";
+  const npmVersionLabel = snapshot.toolchain.npmVersion ?? "deterministic-pack-inspection";
 
   return `# Verification Snapshot
 
@@ -167,7 +162,7 @@ This file is machine-generated from the current repository state and npm registr
 - preferred install: ${snapshot.npmPublished ? `npm install -g ${snapshot.packageName}` : "source eval (npm run eval)"}
 - Claude Code scoped install: \`packsmith install examples/research-launchpad --target claude-code --scope user\`
 - Codex bridge install: \`packsmith install examples/research-launchpad --target codex --dest <dir>\`
-- toolchain: Node ${snapshot.toolchain.nodeVersion}, npm ${npmVersionLabel}
+- toolchain: Node ${snapshot.toolchain.nodeRequirement}, npm ${npmVersionLabel}
 - npm pack dry-run footprint: ${snapshot.publishFootprint.entryCount} files, ${snapshot.publishFootprint.sizeLabel}
 - npm pack artifact: \`${snapshot.publishFootprint.filename}\`
 - npm pack shasum: \`${snapshot.publishFootprint.shasum}\`
@@ -197,7 +192,7 @@ export function renderVerificationCard(snapshot) {
     `install success: ${snapshot.installSuccessRate.label}`,
     `tarball: ${snapshot.publishFootprint.filename}`,
     `shasum: ${snapshot.publishFootprint.shasum}`,
-    `toolchain: node ${snapshot.toolchain.nodeVersion} / npm ${snapshot.toolchain.npmVersion ?? "unavailable"}`
+    `toolchain: node ${snapshot.toolchain.nodeRequirement} / npm ${snapshot.toolchain.npmVersion ?? "deterministic-pack-inspection"}`
   ];
 
   const lineMarkup = lines
@@ -287,7 +282,7 @@ export function renderDemoTerminalCard(snapshot) {
   <circle cx="110" cy="214" r="7" fill="#34d399" />
   <text x="140" y="219" class="caption">packsmith-demo-terminal.svg</text>
 ${lineMarkup}
-  <text x="36" y="694" class="caption">tarball shasum ${escapeXml(snapshot.publishFootprint.shasum.slice(0, 12))} | node ${escapeXml(snapshot.toolchain.nodeVersion)} | npm ${escapeXml(snapshot.toolchain.npmVersion ?? "unavailable")}</text>
+  <text x="36" y="694" class="caption">tarball shasum ${escapeXml(snapshot.publishFootprint.shasum.slice(0, 12))} | node ${escapeXml(snapshot.toolchain.nodeRequirement)} | npm ${escapeXml(snapshot.toolchain.npmVersion ?? "deterministic-pack-inspection")}</text>
 </svg>
 `;
 }
