@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -17,6 +17,19 @@ const riskSchema = z.enum(["low", "medium", "high", "blocked"]);
 const permissionSchema = z.enum(["none", "optional", "required"]);
 const nonEmptyString = z.string().trim().min(1);
 const slugSchema = z.string().regex(slugPattern, "must be a lowercase kebab-case slug");
+const sandboxRootPattern =
+  /(?:^|\/)run-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/(home|project)(?=\/|$)/i;
+
+export function isHttpUrl(value) {
+  try {
+    const protocol = new URL(value).protocol;
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+const httpUrlSchema = z.url().refine(isHttpUrl, "must use the http or https protocol");
 
 const permissionsSchema = z
   .object({
@@ -51,8 +64,8 @@ const catalogPackSchema = z
     usageExample: nonEmptyString,
     verified: z.boolean(),
     publisher: publisherSchema,
-    repository: z.url(),
-    homepage: z.url(),
+    repository: httpUrlSchema,
+    homepage: httpUrlSchema,
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
     stars: z.number().int().nonnegative(),
@@ -239,14 +252,11 @@ export function normalizePortablePath(filePath, label = "path") {
     throw new Error(`${label} contains non-portable parent traversal: ${filePath}`);
   }
 
-  const markers = [
-    { index: normalized.lastIndexOf("/home/"), replacement: "<home>/", length: "/home/".length },
-    { index: normalized.lastIndexOf("/project/"), replacement: "<project>/", length: "/project/".length }
-  ].sort((left, right) => right.index - left.index);
-  const marker = markers[0];
+  const sandboxRoot = sandboxRootPattern.exec(normalized);
 
-  if (marker.index >= 0) {
-    normalized = `${marker.replacement}${normalized.slice(marker.index + marker.length)}`;
+  if (sandboxRoot) {
+    const suffixIndex = sandboxRoot.index + sandboxRoot[0].length;
+    normalized = `<${sandboxRoot[1].toLowerCase()}>${normalized.slice(suffixIndex)}`;
   }
 
   if (
@@ -311,18 +321,15 @@ async function collectFiles(directoryPath) {
   return files;
 }
 
-async function fingerprintRepository(repoRoot) {
+export async function fingerprintRepository(repoRoot) {
   const fixedFiles = [
     path.join(repoRoot, "registry", "catalog.json"),
-    path.join(repoRoot, "src", "cli.mjs"),
-    path.join(repoRoot, "src", "lib", "targets.mjs"),
-    path.join(repoRoot, "src", "lib", "pack.mjs"),
-    path.join(repoRoot, "src", "lib", "registry.mjs"),
     path.join(repoRoot, "site", "scripts", "generate-repository-data.mjs"),
     path.join(repoRoot, "site", "scripts", "passport-client.mjs")
   ];
   const files = [
     ...fixedFiles,
+    ...(await collectFiles(path.join(repoRoot, "src"))),
     ...(await collectFiles(path.join(repoRoot, "i18n"))),
     ...(await collectFiles(path.join(repoRoot, "official-packs")))
   ];
@@ -332,7 +339,10 @@ async function fingerprintRepository(repoRoot) {
   const digest = createHash("sha256");
 
   for (const filePath of uniqueFiles) {
+    const details = await stat(filePath);
     digest.update(toPosixPath(path.relative(repoRoot, filePath)));
+    digest.update("\0");
+    digest.update(String(details.mode & 0o777));
     digest.update("\0");
     digest.update(await readFile(filePath));
     digest.update("\0");
@@ -582,20 +592,35 @@ function buildSitePack(pack, rawPassport, translations, supportedAdapters) {
   };
 }
 
-async function mapWithConcurrency(values, concurrency, mapper) {
+export async function mapWithConcurrency(values, concurrency, mapper) {
   const results = new Array(values.length);
   let nextIndex = 0;
+  let stopped = false;
+  let failure;
 
   async function worker() {
-    while (nextIndex < values.length) {
+    while (!stopped && nextIndex < values.length) {
       const index = nextIndex;
       nextIndex += 1;
-      results[index] = await mapper(values[index], index);
+
+      try {
+        results[index] = await mapper(values[index], index);
+      } catch (error) {
+        if (!stopped) {
+          stopped = true;
+          failure = error;
+        }
+      }
     }
   }
 
   const workerCount = Math.min(concurrency, values.length);
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+  if (stopped) {
+    throw failure;
+  }
+
   return results;
 }
 
@@ -620,6 +645,11 @@ async function loadRepositoryInputs(repoRoot) {
 
 export async function generateRepositoryData(options = {}) {
   const repoRoot = path.resolve(options.repoRoot ?? defaultRepoRoot);
+
+  if (path.relative(defaultRepoRoot, repoRoot) !== "") {
+    throw new Error("Alternate repository roots are not supported by the site data generator.");
+  }
+
   const outputPath = path.resolve(options.outputPath ?? path.join(repoRoot, "site", "src", "generated", "repository-data.json"));
   const fingerprintPath = path.resolve(
     options.fingerprintPath ?? path.join(repoRoot, "site", ".cache", "repository-data-fingerprint.json")
