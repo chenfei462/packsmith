@@ -138,7 +138,7 @@ const passportSchema = z
       .passthrough(),
     audit: z
       .object({
-        status: nonEmptyString,
+        status: z.literal("preview-only"),
         reason: nonEmptyString
       })
       .passthrough(),
@@ -224,15 +224,19 @@ function normalizeRelativePath(filePath, label) {
   return normalized;
 }
 
-function normalizePortablePath(filePath, label) {
+export function normalizePortablePath(filePath, label = "path") {
   if (typeof filePath !== "string" || filePath.length === 0) {
     throw new Error(`${label} must be a non-empty path.`);
   }
 
   let normalized = toPosixPath(filePath);
 
-  if (/^file:\/\//i.test(normalized)) {
+  if (/^file:/i.test(normalized)) {
     throw new Error(`${label} contains a non-portable file URL: ${filePath}`);
+  }
+
+  if (normalized.split("/").includes("..")) {
+    throw new Error(`${label} contains non-portable parent traversal: ${filePath}`);
   }
 
   const markers = [
@@ -259,7 +263,7 @@ function normalizePortablePath(filePath, label) {
 
 function assertPortableStrings(value, label = "repository data") {
   if (typeof value === "string") {
-    if (/^file:\/\//i.test(value)) {
+    if (/^file:/i.test(value)) {
       throw new Error(`${label} contains a non-portable file URL: ${value}`);
     }
 
@@ -437,36 +441,30 @@ function buildRuntimeTargets(supportedAdapters) {
     return {
       id: adapter.id,
       name: adapter.name,
-      status: "supported",
-      platforms: [...adapter.platforms],
       scopes: [...adapter.scopes],
       defaultScope,
-      installSubdir: normalizeRelativePath(adapter.installSubdir, `${adapter.id} install subdirectory`),
       installSubdirs,
-      configFiles: adapter.configFiles.map((filePath) => normalizeRelativePath(filePath, `${adapter.id} config file`)),
       skillDirectoryFormat: adapter.skillDirectoryFormat,
-      promptFormat: adapter.promptFormat,
       bridgeFiles: [...adapter.bridgeFiles],
-      validationRules: [...adapter.validationRules],
-      compatibilityWarnings: [...adapter.compatibilityWarnings],
-      documentationUrl: adapter.documentationUrl ?? null,
-      docsConfirmedAt: adapter.docsConfirmedAt ?? null
+      compatibilityWarnings: [...adapter.compatibilityWarnings]
     };
   });
 }
 
-function emptyPreview(status, reason) {
-  return {
+function emptyPreview(targetId, status, reason) {
+  const preview = {
+    targetId,
     status,
-    scope: null,
-    installPath: null,
     writes: [],
-    checksum: null,
-    checksumStatus: null,
     bridgeFiles: [],
-    warnings: [],
-    reason
+    warnings: []
   };
+
+  if (reason !== undefined) {
+    preview.reason = reason;
+  }
+
+  return preview;
 }
 
 function buildTargetPreviews(pack, passport, supportedAdapters) {
@@ -476,7 +474,7 @@ function buildTargetPreviews(pack, passport, supportedAdapters) {
 
   for (const adapter of supportedAdapters) {
     if (!declaredTargets.has(adapter.id)) {
-      previews[adapter.id] = emptyPreview("not-declared", "Not declared by the catalog.");
+      previews[adapter.id] = emptyPreview(adapter.id, "not-declared");
       continue;
     }
 
@@ -484,7 +482,7 @@ function buildTargetPreviews(pack, passport, supportedAdapters) {
     if (!target || target.status !== "preview-ready") {
       const reason = target?.reason ?? "The CLI did not return a preview for this declared target.";
       assertPortableStrings(reason, `${pack.id}.${adapter.id}.reason`);
-      previews[adapter.id] = emptyPreview("not-ready", reason);
+      previews[adapter.id] = emptyPreview(adapter.id, "not-ready", reason);
       continue;
     }
 
@@ -493,7 +491,7 @@ function buildTargetPreviews(pack, passport, supportedAdapters) {
     const planTarget = planTargets.find((candidate) => candidate?.target === adapter.id);
 
     if (!planTarget || !Array.isArray(planTarget.writes)) {
-      previews[adapter.id] = emptyPreview("not-ready", "The CLI preview omitted its target write plan.");
+      previews[adapter.id] = emptyPreview(adapter.id, "not-ready", "The CLI preview omitted its target write plan.");
       continue;
     }
 
@@ -502,22 +500,22 @@ function buildTargetPreviews(pack, passport, supportedAdapters) {
     const checksumStatus = target.checksumStatus ?? plan?.provenance?.checksumStatus;
 
     if (!installPath || !checksum || !checksumStatus) {
-      previews[adapter.id] = emptyPreview("not-ready", "The CLI preview omitted required target metadata.");
+      previews[adapter.id] = emptyPreview(adapter.id, "not-ready", "The CLI preview omitted required target metadata.");
       continue;
     }
 
     previews[adapter.id] = {
+      targetId: adapter.id,
       status: "preview-ready",
-      scope: planTarget.scope ?? target.scope ?? null,
-      installPath: normalizePortablePath(installPath, `${pack.id}.${adapter.id}.installPath`),
+      scope: planTarget.scope,
+      installPathTemplate: normalizePortablePath(installPath, `${pack.id}.${adapter.id}.installPathTemplate`),
       writes: planTarget.writes.map((writePath, index) =>
         normalizePortablePath(writePath, `${pack.id}.${adapter.id}.writes[${index}]`)
       ),
       checksum,
       checksumStatus,
       bridgeFiles: [...(planTarget.bridgeFiles ?? target.bridgeFiles ?? [])],
-      warnings: [...(planTarget.warnings ?? target.warnings ?? [])],
-      reason: null
+      warnings: [...(planTarget.warnings ?? target.warnings ?? [])]
     };
   }
 

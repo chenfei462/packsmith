@@ -4,10 +4,34 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { generateRepositoryData } from "./generate-repository-data.mjs";
+import { generateRepositoryData, normalizePortablePath } from "./generate-repository-data.mjs";
 
 const runtimeIds = ["claude-code", "codex", "github-copilot", "opencode", "cursor", "trae"];
 const catalogLocales = ["en", "zh", "ja", "ko", "es", "fr", "de"];
+
+test("normalizes safe relative paths to POSIX separators", () => {
+  assert.equal(normalizePortablePath("safe\\nested/file.txt"), "safe/nested/file.txt");
+  assert.equal(normalizePortablePath("C:\\temp\\run\\home\\.codex\\skills\\pack"), "<home>/.codex/skills/pack");
+  assert.equal(normalizePortablePath("/tmp/run/project/.github/skills/pack"), "<project>/.github/skills/pack");
+});
+
+test("rejects traversal, file URIs, and absolute paths", async (t) => {
+  const unsafePaths = [
+    ["parent traversal", "../outside"],
+    ["nested traversal", "safe/../../outside"],
+    ["single-slash file URI", "file:/etc/passwd"],
+    ["triple-slash file URI", "file:///etc/passwd"],
+    ["Windows drive path", "C:\\Users\\name\\secret"],
+    ["Windows UNC path", "\\\\server\\share\\secret"],
+    ["POSIX absolute path", "/etc/passwd"]
+  ];
+
+  for (const [name, unsafePath] of unsafePaths) {
+    await t.test(name, () => {
+      assert.throws(() => normalizePortablePath(unsafePath), /non-portable/i);
+    });
+  }
+});
 
 test("generates truthful, localized repository data with portable previews", async () => {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-repository-data-test-"));
@@ -34,6 +58,18 @@ test("generates truthful, localized repository data with portable previews", asy
     assert.equal(data.packs.length, 53);
     assert.deepEqual(data.supportedTargetIds, runtimeIds);
     assert.equal(data.targets.length, 6);
+    for (const target of data.targets) {
+      assert.deepEqual(Object.keys(target), [
+        "id",
+        "name",
+        "scopes",
+        "defaultScope",
+        "installSubdirs",
+        "skillDirectoryFormat",
+        "bridgeFiles",
+        "compatibilityWarnings"
+      ]);
+    }
     assert.deepEqual(
       data.packs.map((pack) => pack.id),
       data.packs.map((pack) => pack.id).toSorted()
@@ -49,11 +85,25 @@ test("generates truthful, localized repository data with portable previews", asy
     assert.equal(seniorReviewer.passport.audit.status, "preview-only");
     assert.match(seniorReviewer.passport.checksum, /^sha256-/);
     assert.equal(seniorReviewer.previews.codex.status, "preview-ready");
+    assert.equal(seniorReviewer.previews.codex.targetId, "codex");
+    assert.match(seniorReviewer.previews.codex.installPathTemplate, /^<home>\//);
+    assert.equal(Object.hasOwn(seniorReviewer.previews.codex, "installPath"), false);
     assert.ok(seniorReviewer.previews.codex.writes.length > 0);
     assert.ok(seniorReviewer.previews.codex.writes.every((writePath) => writePath.startsWith("<home>/")));
 
     const accessibilityAuditor = data.packs.find((pack) => pack.id === "accessibility-auditor");
-    assert.equal(accessibilityAuditor.previews["github-copilot"].status, "not-declared");
+    const undeclaredPreview = accessibilityAuditor.previews["github-copilot"];
+    assert.equal(undeclaredPreview.targetId, "github-copilot");
+    assert.equal(undeclaredPreview.status, "not-declared");
+    for (const optionalKey of ["scope", "installPathTemplate", "installPath", "checksum", "checksumStatus", "reason"]) {
+      assert.equal(Object.hasOwn(undeclaredPreview, optionalKey), false, `${optionalKey} must be omitted when unavailable`);
+    }
+
+    for (const pack of data.packs) {
+      for (const [targetId, preview] of Object.entries(pack.previews)) {
+        assert.equal(preview.targetId, targetId, `${pack.id} preview key must match targetId`);
+      }
+    }
 
     assert.doesNotMatch(serialized, /(?:^|["\s])[A-Za-z]:[\\/]/m);
     assert.doesNotMatch(serialized, /\/home\/runner(?:\/|\b)/);

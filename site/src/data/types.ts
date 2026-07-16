@@ -9,86 +9,81 @@ export type CatalogLocale = 'en' | 'zh' | 'ja' | 'ko' | 'es' | 'fr' | 'de'
 export type SiteLocale = 'en' | 'zh'
 
 export interface RuntimeTarget {
-  id: RuntimeId
-  name: string
-  status: 'supported'
-  platforms: string[]
-  scopes: string[]
-  defaultScope: string
-  installSubdir: string
-  installSubdirs: Record<string, string>
-  configFiles: string[]
-  skillDirectoryFormat: string
-  promptFormat: string
-  bridgeFiles: string[]
-  validationRules: string[]
-  compatibilityWarnings: string[]
-  documentationUrl: string | null
-  docsConfirmedAt: string | null
+  readonly id: RuntimeId
+  readonly name: string
+  readonly scopes: readonly string[]
+  readonly defaultScope: string
+  readonly installSubdirs: Readonly<Record<string, string>>
+  readonly skillDirectoryFormat: string
+  readonly bridgeFiles: readonly string[]
+  readonly compatibilityWarnings: readonly string[]
 }
 
 export interface TargetPreview {
-  status: 'preview-ready' | 'not-declared' | 'not-ready'
-  scope: string | null
-  installPath: string | null
-  writes: string[]
-  checksum: string | null
-  checksumStatus: 'calculated' | 'matched' | 'mismatch' | null
-  bridgeFiles: string[]
-  warnings: string[]
-  reason: string | null
+  readonly targetId: RuntimeId
+  readonly status: 'preview-ready' | 'not-declared' | 'not-ready'
+  readonly scope?: string
+  readonly installPathTemplate?: string
+  readonly writes: readonly string[]
+  readonly checksum?: string
+  readonly checksumStatus?: 'calculated' | 'matched' | 'mismatch'
+  readonly bridgeFiles: readonly string[]
+  readonly warnings: readonly string[]
+  readonly reason?: string
 }
 
 export interface SitePack {
-  id: string
-  name: string
-  description: string
-  version: string
-  author: string
-  category: string
-  tags: string[]
-  license: string
-  repository: string
-  homepage: string
-  updatedAt: string
-  compatibilityNotes: string
-  targetIds: RuntimeId[]
-  permissions: {
-    shell: PermissionLevel
-    filesystem: PermissionLevel
-    network: PermissionLevel
-    browser: PermissionLevel
+  readonly id: string
+  readonly name: string
+  readonly description: string
+  readonly version: string
+  readonly author: string
+  readonly category: string
+  readonly tags: readonly string[]
+  readonly license: string
+  readonly repository: string
+  readonly homepage: string
+  readonly updatedAt: string
+  readonly compatibilityNotes: string
+  readonly targetIds: readonly RuntimeId[]
+  readonly permissions: {
+    readonly shell: PermissionLevel
+    readonly filesystem: PermissionLevel
+    readonly network: PermissionLevel
+    readonly browser: PermissionLevel
   }
-  declaredRisk: RiskLevel
-  estimatedContextSize: number
-  verified: boolean
-  publisher: {
-    id: string
-    verified: boolean
+  readonly declaredRisk: RiskLevel
+  readonly estimatedContextSize: number
+  readonly verified: boolean
+  readonly publisher: {
+    readonly id: string
+    readonly verified: boolean
   }
-  localizations: Record<CatalogLocale, { name: string; description: string }>
-  passport: {
-    computedRisk: RiskLevel
-    riskReasons: string[]
-    qualityScore: number
-    checksum: string
-    checksumStatus: 'calculated' | 'matched' | 'mismatch'
-    context: {
-      estimatedChars: number
-      tokenPressure: 'low' | 'medium' | 'high'
+  readonly localizations: Readonly<
+    Partial<Record<CatalogLocale, { readonly name: string; readonly description: string }>>
+  >
+  readonly passport: {
+    readonly computedRisk: RiskLevel
+    readonly riskReasons: readonly string[]
+    readonly qualityScore: number
+    readonly checksum: string
+    readonly checksumStatus: 'calculated' | 'matched' | 'mismatch'
+    readonly context: {
+      readonly estimatedChars: number
+      readonly tokenPressure: 'low' | 'medium' | 'high'
     }
-    audit: {
-      status: string
-      reason: string
+    readonly audit: {
+      readonly status: 'preview-only'
+      readonly reason: string
     }
   }
-  previews: Record<RuntimeId, TargetPreview>
+  readonly previews: Readonly<Record<RuntimeId, TargetPreview>>
 }
 
 export interface RepositoryData {
-  schemaVersion: number
-  catalogUpdatedAt: string
-  supportedTargetIds: RuntimeId[]
-  targets: RuntimeTarget[]
-  packs: SitePack[]
+  readonly schemaVersion: number
+  readonly catalogUpdatedAt: string
+  readonly supportedTargetIds: readonly RuntimeId[]
+  readonly targets: readonly RuntimeTarget[]
+  readonly packs: readonly SitePack[]
 }
