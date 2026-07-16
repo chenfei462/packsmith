@@ -16,6 +16,7 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       provider: 'v8',
+      reporter: ['text', 'html'],
       thresholds: {
         lines: 80,
         functions: 75,
