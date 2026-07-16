@@ -1,14 +1,15 @@
 # Packsmith Immersive Website Design
 
 **Date:** 2026-07-13
-**Status:** Approved in conversation; awaiting written-spec review
-**Scope:** Public marketing homepage plus a preserved standalone Registry route
+**Last updated:** 2026-07-16
+**Status:** Approved in conversation; updated written spec awaiting review
+**Scope:** Four-route immersive product site: homepage, Registry, Pack detail, and documentation
 
 ## 1. Product Objective
 
 Build a production-grade public website that makes a first-time developer understand Packsmith in seconds, experience the product before installing it, and copy a real command as the primary conversion.
 
-The page must establish one belief:
+The site must establish one belief:
 
 > One useful AI workflow can be safely reused across the agents a developer already uses.
 
@@ -39,7 +40,8 @@ The first release succeeds when a new visitor can:
 3. See truthful evidence from the repository: real packs, supported runtimes, permissions, risk, checksums, file writes, and commands.
 4. Copy a real Packsmith command from the completed demo.
 5. Reach GitHub, Registry, and documentation without losing orientation.
-6. Use the core page on keyboard, touch, reduced-motion settings, and a 375px-wide viewport.
+6. Use every route on keyboard, touch, reduced-motion settings, and a 375px-wide viewport.
+7. Recognize a distinct, content-linked 3D experience on every route without waiting for animation to understand the page.
 
 Primary conversion: copy the real CLI command after completing or skipping into the interactive demo.
 
@@ -49,12 +51,14 @@ Supporting conversion: browse the Registry.
 
 ## 4. Information Architecture
 
-- `/`: immersive marketing homepage and interactive demo.
-- `/registry`: searchable catalog generated from `registry/catalog.json`.
-- `/registry/:pack-id`: future pack detail and Passport route; the initial release may link to the in-page Passport experience until this route exists.
-- `/docs`: installation, authoring, publishing, trust, and team-governance documentation.
+- `/`: immersive marketing homepage and interactive product demo.
+- `/registry`: searchable catalog with a spatial Pack map derived from `registry/catalog.json`.
+- `/registry/:pack-id`: complete Pack detail and Passport experience for every valid catalog entry.
+- `/docs`: animated documentation hub covering installation, authoring, publishing, trust, and team governance.
 
-The existing `docs/site/generate.mjs` catalog generator remains a source of data and behavior, not the implementation base for the new cinematic homepage. The homepage and Registry share catalog and localization data so pack counts and compatibility claims cannot drift.
+All four routes are in the first-release scope. Direct navigation and static-host deep links must work. The Pack detail route fails clearly for an unknown ID and never fabricates a fallback Pack.
+
+The existing `docs/site/generate.mjs` catalog generator remains a source of data and behavior, not the implementation base for the new immersive application. All routes share catalog, target, and localization data so Pack facts, counts, and compatibility claims cannot drift.
 
 ## 5. Content and Narrative
 
@@ -114,6 +118,36 @@ The homepage is an eight-scene scroll narrative.
 - Provide one-click copy with visible and screen-reader confirmation.
 - Keep Registry, documentation, and GitHub as clearly subordinate next steps.
 
+### Registry route
+
+- Open on an explorable 3D field of official Packs, with category, risk, and target support encoded through position, label, and restrained color.
+- Searching, filtering, and sorting smoothly rearrange the field while a synchronized DOM result list remains the authoritative, keyboard-operable catalog.
+- Pack objects respond to pointer proximity, focus, and tap with tilt, separation, and label reveals; these effects never gate navigation or data.
+- The page resolves from spatial exploration into a dense, scannable result surface rather than a grid of decorative cards.
+
+### Pack detail route
+
+- Present the selected Pack as an exploded 3D Passport object whose layers correspond to manifest, permissions, risk, checksum, publisher, quality, audit, file writes, and runtime adapters.
+- Scroll progression separates and reconnects those layers while adjacent DOM sections expose the exact underlying catalog facts.
+- Changing the target runtime rotates the adapter layer and updates the real preview path and command.
+- The final verification beat reassembles the Pack and leads to a copyable command, Registry return, and relevant documentation.
+
+### Documentation route
+
+- Use a route-specific 3D command pipeline to connect installation, authoring, publishing, trust, policy, and audit topics.
+- Section navigation moves the camera and activates the corresponding pipeline stage without hijacking normal document scrolling.
+- Code examples, headings, links, and prose remain semantic DOM content; the 3D topology is an expressive navigation companion, not the only representation.
+- Long documentation sections use restrained local motion so reading remains comfortable while the page still feels part of the same animated system.
+
+### Route experience map
+
+| Route | Signature 3D scene | Primary motion | Product meaning |
+| --- | --- | --- | --- |
+| `/` | Pack forge and scan chamber | Assembly, scanning, one-to-six expansion | Understand the product and complete the demo |
+| `/registry` | Spatial Pack field | Search-driven rearrangement and focus separation | Explore the real catalog |
+| `/registry/:pack-id` | Exploded Passport object | Layer inspection, adapter rotation, verification reassembly | Decide whether and where to install |
+| `/docs` | Command and policy pipeline | Camera progression, node activation, path tracing | Learn the workflow from install through audit |
+
 ## 6. Visual Direction
 
 ### Concept
@@ -122,9 +156,14 @@ The homepage is an eight-scene scroll narrative.
 
 The page is cinematic and technologically expressive, but the memorable device is Packsmith’s forge-and-verification metaphor. It must not resemble a generic purple-gradient AI landing page.
 
+### Reference adaptation
+
+Noomo informs the spatial grammar: full-viewport scenes, oversized uppercase typography, editorial asymmetry, generous negative space, scene-based scrolling, and 3D objects interrupting the type plane. Packsmith does not copy Noomo source code, proprietary assets, logos, copy, project compositions, or exact scene geometry. Every visual object and transition is rebuilt around Packs, Passports, runtime adapters, permissions, previews, and audit evidence.
+
 ### Color system
 
 - Background: obsidian and graphite, not pure flat black everywhere.
+- Light evidence surfaces: cool blueprint blue-gray, used as deliberate contrast to dark forge scenes rather than as the dominant palette.
 - Primary technical light: electric cyan for scanning, connectivity, and focus.
 - Brand energy and primary CTA: forge orange.
 - Success: green-leaning cyan with explicit labels and check icons.
@@ -135,10 +174,10 @@ All colors are exposed as semantic CSS variables. Normal text must meet WCAG AA 
 
 ### Typography
 
-- Display: a distinctive geometric or industrial sans; avoid Inter, Roboto, Arial, and Space Grotesk as the primary brand face.
-- Body: a highly readable modern sans.
-- Commands, telemetry, statuses, and numeric data: a consistent engineering mono.
-- Chinese: a modern CJK sans with natural metrics; do not fake monospacing for Chinese prose.
+- Display: Archivo Black for oversized English statements and route titles.
+- Body: IBM Plex Sans for dense product explanation and documentation.
+- Commands, telemetry, statuses, and numeric data: IBM Plex Mono.
+- Chinese: Noto Sans SC with natural CJK metrics; do not fake monospacing for Chinese prose.
 - Use `font-display: swap` and reserve stable metrics to minimize layout shift.
 
 ### Composition
@@ -161,28 +200,32 @@ References inform behavior, not copied layouts:
 
 Motion rules:
 
+- A single persistent WebGL canvas spans the route shell. Route changes morph the current Pack object, lighting, camera, and environment into the next route scene instead of flashing or rebuilding the renderer.
+- Every route includes at least one signature 3D hero composition, one scroll-linked 3D transformation, one pointer/tap/focus response, and one route-specific enter/exit transition.
+- High motion density comes from coordinated sequences: oversized text reveals, object assembly or separation, path tracing, terminal output, counters, focus lighting, and section transitions share one timeline rather than competing loops.
 - Every major motion communicates assembly, inspection, adaptation, transfer, or successful verification.
 - Do not run unrelated decorative loops across every section.
 - Scroll remains native and interruptible; no scroll-jacking.
 - Pointer effects never gate information or primary actions.
 - Micro-interactions target 150–300ms; long scene transitions may exceed this when they remain interruptible.
 - Animate transform, opacity, shader uniforms, and canvas state; avoid layout-triggering animation.
-- Pause WebGL and continuous animation when the page is hidden or the scene is offscreen.
+- At steady state only the active route scene renders; a route transition may briefly blend outgoing and incoming scene states. Pause WebGL and continuous animation when the page is hidden, and dispose route-specific geometry, materials, textures, observers, and timelines after exit.
 
 ## 8. Responsive and Accessibility Behavior
 
 ### Desktop
 
-- Full scan-grid and particle hero.
-- Pointer-reactive Passport surfaces.
-- Scroll-linked staged transitions and one lightweight 3D hero object.
+- Full route-specific 3D environments, scan grids, particles, depth, and restrained post-processing.
+- Pointer-reactive Pack, Passport, Registry, and documentation objects.
+- Scroll-linked staged transformations on every route plus cross-route object morphing.
 
 ### Mobile and lower-power devices
 
-- Replace dense particle fields with a lighter canvas or CSS/SVG fallback.
-- Reduce blur, shadow layers, path count, and parallax.
+- Keep a lightweight version of each route's signature 3D composition on WebGL-capable devices.
+- Reduce particle count, device-pixel ratio, post-processing, blur, shadow layers, path count, and parallax according to an automatic performance tier.
 - Convert hover-only responses to tap/focus states.
-- Preserve the demo, command copy, navigation, and all product facts.
+- Use the CSS/SVG fallback only when WebGL is unavailable or the renderer cannot recover from context loss.
+- Preserve route transitions, the demo, command copy, navigation, and all product facts.
 - Maintain at least 44px touch targets and 8px separation.
 
 ### Reduced motion
@@ -197,8 +240,9 @@ Motion rules:
 - Use semantic landmarks and sequential headings.
 - Keep DOM reading order aligned with the visual story.
 - Provide visible focus and keyboard activation for every control.
+- Move focus to the destination page heading after route navigation without stealing focus during ordinary section scrolling.
 - Announce copied-command and demo state changes with a polite live region.
-- Treat animated canvas and 3D objects as decorative unless they communicate content; provide equivalent adjacent text for meaningful scenes.
+- Keep the persistent canvas outside the tab order. Treat 3D objects as decorative unless they communicate content; provide equivalent adjacent text and DOM controls for meaningful scenes.
 
 ## 9. Localization
 
@@ -214,9 +258,9 @@ Motion rules:
 ### Application
 
 - React + Vite + TypeScript static application.
-- Route-level separation between marketing homepage and Registry.
+- React Router route separation for homepage, Registry, Pack detail, and documentation.
 - GSAP with ScrollTrigger for orchestrated narrative scenes.
-- React Three Fiber / Three.js only for the hero’s Pack object and essential spatial effects.
+- One persistent React Three Fiber / Three.js canvas with lazy route-specific scene modules and shared renderer state.
 - CSS and small SVG/canvas modules for lower-cost effects.
 - Lucide or a single coherent SVG icon family for interface icons.
 
@@ -225,12 +269,16 @@ Motion rules:
 - `site/src/data`: typed adapters for catalog, targets, and localized copy.
 - `site/src/i18n`: language detection, persistence, and message dictionaries.
 - `site/src/components`: reusable navigation, command copy, status, and accessibility primitives.
+- `site/src/experience`: persistent canvas, scene registry, route transitions, performance tiering, capability fallback, and animation lifecycle.
 - `site/src/features/hero`: scan scene and Pack object.
 - `site/src/features/demo`: deterministic interactive product flow state machine.
 - `site/src/features/passport`: fact cards and inspection details.
 - `site/src/features/runtime-network`: one-to-many adapter visualization.
 - `site/src/features/proof`: repository-derived evidence.
-- `site/src/pages`: homepage and Registry route composition.
+- `site/src/features/registry-scene`: searchable 3D Pack field synchronized with catalog state.
+- `site/src/features/pack-detail`: exploded Passport scene, target selection, preview facts, and install command.
+- `site/src/features/docs-scene`: animated command and policy pipeline synchronized with documentation sections.
+- `site/src/pages`: `HomePage`, `RegistryPage`, `PackDetailPage`, `DocsPage`, and route-level not-found composition.
 - `site/src/styles`: semantic tokens, typography, motion tokens, responsive rules, and global accessibility styles.
 
 Files should remain focused; scene rendering, demo state, data parsing, and copy must not be combined in one large page component.
@@ -238,10 +286,12 @@ Files should remain focused; scene rendering, demo state, data parsing, and copy
 ### Data flow
 
 1. Build-time imports read `registry/catalog.json`, supported target metadata, and localization data.
-2. A typed adapter normalizes these sources into UI-safe `PackSummary`, `PassportFact`, and `RuntimeTarget` records.
+2. A typed adapter normalizes these sources into UI-safe `PackSummary`, `PackDetail`, `PassportFact`, and `RuntimeTarget` records.
 3. The demo uses a deterministic local state machine; it does not claim to install files from the browser.
 4. The final command is derived from selected pack and target, then copied through the Clipboard API with a fallback selection path.
 5. Counts and claims are computed from normalized data rather than hard-coded in components.
+6. Registry query state drives both the accessible DOM results and the spatial Pack field through the same filtered record set.
+7. Route and section state select scene variants; 3D objects never become a second source of product data.
 
 The command source is release-aware. The site may show an `npx @packsmith/cli` command only after package publication is represented by verified repository configuration or release metadata. Until then, the primary runnable path uses the documented source-tree command and labels the npm path as unavailable rather than implying publication.
 
@@ -254,10 +304,12 @@ The command source is release-aware. The site may show an `npx @packsmith/cli` c
 ## 11. Failure and Fallback Behavior
 
 - Invalid catalog data fails the build with a clear schema error; the UI never silently publishes fabricated defaults.
-- If WebGL is unavailable, the hero uses an SVG/CSS scan field and static Pack composition.
+- If WebGL is unavailable, every route uses a route-specific SVG/CSS composition that preserves its visual metaphor and complete DOM content.
+- If WebGL context is lost, attempt one renderer recovery; if recovery fails, switch to the route fallback without blocking navigation.
 - If clipboard permission fails, select the command and explain how to copy it manually.
 - If browser language is unsupported, use English.
 - If a runtime or field is absent, show “not available” or omit the claim; never infer support.
+- If a Pack ID does not exist, render the route-level not-found state with Registry search and documentation links.
 - Lazy scene-loading failures keep the page readable and expose a retry only when retry can help.
 - External fonts or media must have system fallbacks so content remains available during network failure.
 
@@ -272,7 +324,8 @@ Implementation follows red-green-refactor for behavior-bearing code.
 - Language detection and stored override.
 - Demo state transitions and command generation.
 - Clipboard success and fallback behavior.
-- Reduced-motion and WebGL capability decisions.
+- Route scene selection, transition state, performance tier, reduced-motion, and WebGL capability decisions.
+- Pack detail lookup, unknown-ID behavior, and target-specific command derivation.
 
 ### Component tests
 
@@ -281,18 +334,24 @@ Implementation follows red-green-refactor for behavior-bearing code.
 - Demo progression, skip path, and final command.
 - Language selector behavior.
 - Registry search and filtering against real fixture data.
+- Synchronization between Registry filters, accessible results, and spatial scene state.
+- Pack detail target selection, Passport facts, and final command.
+- Documentation section navigation and active pipeline stage.
+- Route transitions that release the previous scene without hiding destination content.
 
 ### Integration and visual checks
 
 - Production build with the repository’s real catalog.
-- Routes under the configured GitHub Pages base path.
+- Direct and client-side navigation for all four route types under the configured GitHub Pages base path.
 - 375px, 768px, 1024px, and 1440px viewport checks.
-- Reduced-motion rendering.
+- Reduced-motion, WebGL-disabled, and context-loss fallback rendering.
 - Keyboard-only completion of the demo and command copy.
 - Browser smoke test for console errors and broken links.
-- Screenshot review of hero, demo, Passport, runtime network, proof, commercial bridge, and final CTA.
+- Screenshot review of every route's hero, key content states, route transition endpoints, and final actions.
+- Canvas-pixel checks on desktop and mobile to prove every 3D scene is nonblank, correctly framed, and materially changes after its intended interaction or scroll step.
+- Pointer, touch, keyboard, resize, and route-change checks to catch overlap, stale timelines, and undisposed scene resources.
 
-Performance targets are budgets rather than unverifiable promises: keep initial content readable before heavy scenes load, lazy-load below-fold visual modules, and measure the production build before setting final bundle and interaction thresholds.
+Performance remains a product requirement despite the high motion density. DOM headings, navigation, and primary actions render independently of scene readiness; non-current route scenes are lazy-loaded; device pixel ratio and particle count are capped by performance tier; only one route scene and one animation lifecycle remain active; and production bundle size, long tasks, frame timing, and memory across repeated route changes are measured before handoff.
 
 ## 13. Non-Goals for the First Release
 
@@ -302,17 +361,23 @@ Performance targets are budgets rather than unverifiable promises: keep initial 
 - Customer-logo or testimonial sections without real approved evidence.
 - Full marketing translation into every existing catalog language.
 - Persistent analytics or user tracking unless separately approved.
-- Full-site 3D rendering or continuous decorative animation in every scene.
+- Multiple independent WebGL canvases competing for resources on the same route.
+- Physics-heavy simulations or decorative animation that does not reinforce Packsmith product meaning.
+- Scroll-jacking, pointer-only information, or motion that must finish before content becomes usable.
 
 ## 14. Acceptance Checklist
 
 - The hero communicates category, value, and first action without animation completing.
+- `/`, `/registry`, `/registry/:pack-id`, and `/docs` each provide a distinct, nonblank 3D scene and route-specific motion language.
+- Cross-route transitions preserve navigation state, never flash a blank canvas, and release the previous scene's resources.
 - The full six-step demo is operable by mouse, keyboard, and touch.
 - The command shown is derived from a real pack and selected supported target.
 - Passport facts and counts come from repository data.
-- The page contains no fabricated claims or social proof.
+- Registry filters drive matching DOM and spatial results, and valid catalog entries have working detail routes.
+- Unknown Pack IDs produce an honest not-found state rather than fabricated content.
+- The site contains no fabricated claims or social proof.
 - English and Chinese switching works, with sensible browser-language defaulting.
 - Reduced-motion mode retains all information and actions.
-- Mobile layout has no horizontal overflow and preserves 44px touch targets.
-- The existing Registry remains available at a distinct route.
+- Mobile layouts have no horizontal overflow, preserve 44px touch targets, and render the lightweight route-specific 3D composition or explicit fallback.
+- All meaningful canvas content has equivalent adjacent DOM text and controls.
 - Production build, automated tests, and browser smoke checks pass before handoff.
