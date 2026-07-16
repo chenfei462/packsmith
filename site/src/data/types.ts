@@ -70,7 +70,7 @@ export interface SitePack {
     readonly checksumStatus: 'calculated' | 'matched' | 'mismatch'
     readonly context: {
       readonly estimatedChars: number
-      readonly tokenPressure: 'low' | 'medium' | 'high'
+      readonly tokenPressure: string
     }
     readonly audit: {
       readonly status: 'preview-only'

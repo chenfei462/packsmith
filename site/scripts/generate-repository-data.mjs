@@ -252,7 +252,7 @@ export function normalizePortablePath(filePath, label = "path") {
   if (
     path.posix.isAbsolute(normalized) ||
     path.win32.isAbsolute(normalized) ||
-    /^[A-Za-z]:\//.test(normalized) ||
+    /^[A-Za-z]:/.test(normalized) ||
     normalized.startsWith("//")
   ) {
     throw new Error(`${label} contains a non-portable absolute path: ${filePath}`);

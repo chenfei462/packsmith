@@ -21,6 +21,8 @@ test("rejects traversal, file URIs, and absolute paths", async (t) => {
     ["nested traversal", "safe/../../outside"],
     ["single-slash file URI", "file:/etc/passwd"],
     ["triple-slash file URI", "file:///etc/passwd"],
+    ["Windows drive-relative file", "C:secret.txt"],
+    ["Windows drive-relative directory", "z:folder/file"],
     ["Windows drive path", "C:\\Users\\name\\secret"],
     ["Windows UNC path", "\\\\server\\share\\secret"],
     ["POSIX absolute path", "/etc/passwd"]
