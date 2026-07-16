@@ -14,12 +14,16 @@ export default tseslint.config(
       'src/generated/',
     ],
   },
+  {
+    languageOptions: {
+      ecmaVersion: 2022,
+    },
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
-      ecmaVersion: 2022,
       globals: globals.browser,
     },
     plugins: {
@@ -32,6 +36,12 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
+    },
+  },
+  {
+    files: ['*.config.{js,ts,mjs}', 'scripts/**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      globals: globals.node,
     },
   },
 )
