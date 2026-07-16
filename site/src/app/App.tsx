@@ -1,8 +1,9 @@
+import { RouterProvider } from 'react-router-dom'
+
+import { createAppRouter } from './routes'
+
+const router = createAppRouter()
+
 export function App() {
-  return (
-    <main>
-      <p>Packsmith</p>
-      <h1>The package manager for AI agent workflows.</h1>
-    </main>
-  )
+  return <RouterProvider router={router} />
 }
