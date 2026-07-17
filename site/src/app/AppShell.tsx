@@ -1,6 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom'
 
 import { Navigation } from '../components/Navigation'
+import { ExperienceSlot } from '../experience/ExperienceSlot'
 import { useLanguage } from '../i18n/useLanguage'
 import { RouteFocusManager } from './RouteFocusManager'
 
@@ -14,7 +15,9 @@ export function AppShell() {
         {t('common.skipToContent')}
       </a>
       <Navigation />
-      <div id="experience-root" aria-hidden="true" />
+      <div id="experience-root">
+        <ExperienceSlot />
+      </div>
       <RouteFocusManager />
       <main id="main-content" tabIndex={-1}>
         <Outlet />

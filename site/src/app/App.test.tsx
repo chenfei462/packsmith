@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 
-import { screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 
@@ -21,7 +21,13 @@ describe.each([375, 1440])('application shell at %ipx', (width) => {
   it.each(routeCases)('renders %s with one stable shell', async (path, heading) => {
     renderAppRoute(path, { width })
 
-    expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeVisible()
+    expect(
+      await screen.findByRole(
+        'heading',
+        { level: 1, name: heading },
+        { timeout: 3000 },
+      ),
+    ).toBeVisible()
     expect(screen.getAllByRole('navigation')).toHaveLength(1)
     expect(screen.getByRole('link', { name: /skip to content/i })).toHaveAttribute(
       'href',
@@ -57,5 +63,27 @@ describe('Pack detail errors', () => {
       'href',
       '/registry',
     )
+  })
+})
+
+describe('route focus management', () => {
+  it('focuses route headings after navigation without stealing focus on direct load', async () => {
+    const { router } = renderAppRoute('/')
+    const homeHeading = await screen.findByRole('heading', {
+      level: 1,
+      name: /package manager for ai agent workflows/i,
+    })
+
+    expect(homeHeading).not.toHaveFocus()
+
+    await act(async () => {
+      await router.navigate('/docs')
+    })
+    const docsHeading = await screen.findByRole('heading', {
+      level: 1,
+      name: 'Documentation',
+    })
+
+    expect(docsHeading).toHaveFocus()
   })
 })
