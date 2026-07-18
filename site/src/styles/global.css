@@ -432,6 +432,234 @@ code {
   color: var(--orange);
 }
 
+.command-copy__value {
+  min-width: 0;
+}
+
+.command-copy__selection {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--focus);
+  border-radius: 2px;
+  background: var(--forge-0);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+.command-copy__feedback {
+  min-width: 0;
+  min-height: 2.6rem;
+  color: var(--success);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+
+.fallback-composition {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.fallback-home-forge__assembly,
+.fallback-registry-field__plane,
+.fallback-pack-passport__layers,
+.fallback-docs-pipeline__graph {
+  position: absolute;
+  top: 50%;
+  left: 71%;
+  width: min(43vw, 38rem);
+  aspect-ratio: 1.45;
+  transform: translate(-50%, -50%);
+}
+
+.fallback-home-forge__assembly {
+  transform: translate(-50%, -50%) perspective(42rem) rotateX(8deg) rotateY(-18deg);
+  transform-style: preserve-3d;
+}
+
+.fallback-home-forge__core {
+  position: absolute;
+  top: 32%;
+  left: 31%;
+  width: 42%;
+  height: 39%;
+  border: 1px solid var(--blueprint);
+  background: var(--forge-1);
+  box-shadow: 1rem 1rem 0 color-mix(in srgb, var(--cyan) 14%, transparent);
+  transform: translateZ(2.4rem) rotate(-4deg);
+}
+
+.fallback-home-forge__assembly span {
+  position: absolute;
+  width: 16%;
+  aspect-ratio: 1;
+  border: 1px solid var(--cyan);
+  background: var(--graphite);
+  transform: translateZ(1rem) rotate(12deg);
+}
+
+.fallback-home-forge__assembly span:nth-of-type(1) { top: 3%; left: 12%; }
+.fallback-home-forge__assembly span:nth-of-type(2) { top: 8%; left: 48%; transform: translateZ(3rem) rotate(32deg); }
+.fallback-home-forge__assembly span:nth-of-type(3) { top: 18%; right: 2%; border-color: var(--orange); transform: translateZ(5rem) rotate(18deg); }
+.fallback-home-forge__assembly span:nth-of-type(4) { top: 44%; left: 2%; transform: translateZ(4rem) rotate(-22deg); }
+.fallback-home-forge__assembly span:nth-of-type(5) { top: 66%; left: 17%; border-color: var(--orange); }
+.fallback-home-forge__assembly span:nth-of-type(6) { right: 5%; bottom: 8%; transform: translateZ(2rem) rotate(48deg); }
+.fallback-home-forge__assembly span:nth-of-type(7) { top: 2%; right: 22%; width: 10%; }
+.fallback-home-forge__assembly span:nth-of-type(8) { bottom: 2%; left: 48%; width: 11%; transform: translateZ(6rem) rotate(-16deg); }
+.fallback-home-forge__assembly span:nth-of-type(9) { top: 39%; right: 15%; width: 9%; }
+.fallback-home-forge__assembly span:nth-of-type(10) { top: 24%; left: 20%; width: 8%; border-color: var(--orange); }
+
+.fallback-home-forge__scan {
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  left: 71%;
+  width: 1px;
+  background: var(--orange);
+  box-shadow: 0 0 1.4rem var(--orange);
+}
+
+.fallback-registry-field__plane {
+  transform: translate(-50%, -50%) perspective(38rem) rotateX(56deg) rotateZ(-16deg);
+  transform-style: preserve-3d;
+}
+
+.fallback-registry-field__plane span {
+  position: absolute;
+  top: calc(50% + var(--field-y));
+  left: calc(50% + var(--field-x));
+  width: 1.55rem;
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  background: var(--graphite);
+  box-shadow: 0.45rem 0.45rem 0 color-mix(in srgb, var(--cyan) 12%, transparent);
+  transform: translate(-50%, -50%) scale(var(--field-scale)) rotate(45deg);
+}
+
+.fallback-registry-field__plane span.is-focus {
+  border-color: var(--cyan);
+  background: color-mix(in srgb, var(--cyan) 20%, var(--graphite));
+}
+
+.fallback-registry-field__plane span.is-risk {
+  border-color: var(--orange);
+}
+
+.fallback-registry-field__axis {
+  position: absolute;
+  top: 50%;
+  left: 5%;
+  width: 90%;
+  height: 1px;
+  background: var(--line);
+}
+
+.fallback-registry-field__axis--b { transform: rotate(60deg); }
+.fallback-registry-field__axis--c { transform: rotate(-60deg); }
+
+.fallback-pack-passport__layers {
+  transform: translate(-50%, -50%) perspective(48rem) rotateX(8deg) rotateY(-14deg);
+  transform-style: preserve-3d;
+}
+
+.fallback-pack-passport__layers > span {
+  position: absolute;
+  top: calc(24% + var(--passport-layer) * 7%);
+  left: calc(4% + var(--passport-layer) * 9%);
+  display: block;
+  width: 51%;
+  height: 24%;
+  border: 1px solid var(--line);
+  background: var(--forge-1);
+  box-shadow: 0.75rem 0.75rem 0 color-mix(in srgb, var(--cyan) 10%, transparent);
+  transform: translateZ(calc(var(--passport-layer) * 1.15rem)) rotate(calc((var(--passport-layer) - 2) * 1.2deg));
+}
+
+.fallback-pack-passport__layers > span:nth-child(3),
+.fallback-pack-passport__layers > span:nth-child(6) {
+  border-color: var(--orange);
+}
+
+.fallback-pack-passport__layers i {
+  position: absolute;
+  top: 18%;
+  bottom: 18%;
+  left: 9%;
+  width: 3px;
+  background: var(--cyan);
+}
+
+.fallback-pack-passport__layers b {
+  position: relative;
+  display: block;
+  width: 58%;
+  height: 1px;
+  margin: 8% 0 0 25%;
+  background: var(--line);
+}
+
+.fallback-pack-passport__axis {
+  position: absolute;
+  top: 50%;
+  left: 43%;
+  width: 53%;
+  height: 1px;
+  background: var(--orange);
+  transform: rotate(-13deg);
+  transform-origin: left;
+}
+
+.fallback-docs-pipeline__graph {
+  overflow: visible;
+}
+
+.fallback-docs-pipeline__base,
+.fallback-docs-pipeline__trace {
+  vector-effect: non-scaling-stroke;
+}
+
+.fallback-docs-pipeline__base {
+  stroke: var(--line);
+  stroke-width: 2;
+}
+
+.fallback-docs-pipeline__trace {
+  stroke: var(--cyan);
+  stroke-dasharray: 110 700;
+  stroke-linecap: square;
+  stroke-width: 3;
+}
+
+.fallback-docs-pipeline rect {
+  fill: var(--forge-1);
+  stroke: var(--orange);
+  stroke-width: 2;
+}
+
+.fallback-docs-pipeline circle {
+  fill: var(--cyan);
+}
+
+@media (max-width: 50rem) {
+  .fallback-home-forge__assembly,
+  .fallback-registry-field__plane,
+  .fallback-pack-passport__layers,
+  .fallback-docs-pipeline__graph {
+    top: 59%;
+    left: 58%;
+    width: min(88vw, 28rem);
+    opacity: 0.62;
+  }
+
+  .fallback-home-forge__scan {
+    left: 58%;
+  }
+}
+
 @media (min-width: 50.0625rem) {
   .nav-menu-button {
     display: none;

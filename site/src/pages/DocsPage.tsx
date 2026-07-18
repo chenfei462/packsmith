@@ -27,7 +27,9 @@ const pageCopy = {
     chooseTopic: 'Choose a topic',
     copyCommand: 'Copy command',
     copied: 'Command copied',
+    fallback: 'Command selected. Press Ctrl+C or Command+C to copy.',
     outcome: 'Output',
+    selectedCommand: 'Selected command',
     source: 'Read source documentation',
   },
   zh: {
@@ -40,7 +42,9 @@ const pageCopy = {
     chooseTopic: '选择主题',
     copyCommand: '复制命令',
     copied: '命令已复制',
+    fallback: '命令已选中。请按 Ctrl+C 或 Command+C 复制。',
     outcome: '输出',
+    selectedCommand: '已选中的命令',
     source: '阅读源文档',
   },
 } as const
@@ -183,7 +187,9 @@ export function DocsPage() {
               labels={{
                 copied: copy.copied,
                 copyCommand: copy.copyCommand,
+                fallback: copy.fallback,
                 outcome: copy.outcome,
+                selectedCommand: copy.selectedCommand,
                 source: copy.source,
               }}
               locale={siteLocale}

@@ -1,5 +1,5 @@
 import { Bloom, EffectComposer } from '@react-three/postprocessing'
-import { Canvas, useThree } from '@react-three/fiber'
+import { Canvas } from '@react-three/fiber'
 import { useStore } from 'zustand'
 
 import { FallbackStage } from './fallback/FallbackStage'
@@ -9,18 +9,13 @@ import { sceneStore } from './sceneStore'
 import { SceneDirector } from './SceneDirector'
 import { useExperience } from './useExperience'
 
-function ContextRecoveryBridge() {
-  const canvas = useThree((state) => state.gl.domElement)
-  const { handleContextLoss } = useExperience()
-
-  useContextRecovery(canvas, handleContextLoss)
-  return null
-}
-
 export function ExperienceCanvas() {
-  const { config, rendererEpoch, lowerTier } = useExperience()
+  const { config, rendererEpoch, lowerTier, handleContextLoss } = useExperience()
+  const contextRecoveryRef = useContextRecovery(handleContextLoss)
   const active = useStore(sceneStore, (state) => state.active)
   const paused = useStore(sceneStore, (state) => state.paused)
+  const incomingReady = useStore(sceneStore, (state) => state.incomingReady)
+  const outgoing = useStore(sceneStore, (state) => state.outgoing)
 
   if (config.tier === 'fallback') {
     return <FallbackStage scene={active} />
@@ -34,9 +29,14 @@ export function ExperienceCanvas() {
       aria-hidden="true"
       className="experience-canvas"
       data-experience-tier={config.tier}
+      data-scene-phase={
+        !incomingReady ? 'loading' : outgoing ? 'transitioning' : 'stable'
+      }
+      data-scene-ready={incomingReady}
     >
       <Canvas
         key={rendererEpoch}
+        ref={contextRecoveryRef}
         aria-hidden="true"
         tabIndex={-1}
         camera={{ position: [0, 1.1, 10.5], fov: 46, near: 0.1, far: 80 }}
@@ -66,7 +66,6 @@ export function ExperienceCanvas() {
         <pointLight color="#2be4d0" intensity={18} position={[-5, 1, 3]} />
         <pointLight color="#ff6b2c" intensity={14} position={[5, -2, 2]} />
         <SceneDirector />
-        <ContextRecoveryBridge />
         <FrameGovernor tier={config.tier} onTierChange={lowerTier} />
         {config.postprocessing ? (
           <EffectComposer multisampling={0}>

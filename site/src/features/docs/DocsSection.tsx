@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState } from 'react'
-import { Check, Copy, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 
+import { CommandCopy } from '../../components/CommandCopy'
 import type { DocsTopicContent } from '../../content/docs'
 import type { SiteLocale } from '../../data/types'
 
 interface DocsSectionLabels {
   readonly copyCommand: string
   readonly copied: string
+  readonly fallback: string
   readonly outcome: string
+  readonly selectedCommand: string
   readonly source: string
 }
 
@@ -25,29 +27,6 @@ export function DocsSection({
   topic,
 }: DocsSectionProps) {
   const copy = topic.copy[locale]
-  const [copiedCommand, setCopiedCommand] = useState<string>()
-  const resetTimer = useRef<number>(0)
-
-  useEffect(
-    () => () => {
-      if (resetTimer.current) window.clearTimeout(resetTimer.current)
-    },
-    [],
-  )
-
-  const copyCommand = async (command: string) => {
-    try {
-      await navigator.clipboard.writeText(command)
-      setCopiedCommand(command)
-      if (resetTimer.current) window.clearTimeout(resetTimer.current)
-      resetTimer.current = window.setTimeout(
-        () => setCopiedCommand(undefined),
-        1800,
-      )
-    } catch {
-      setCopiedCommand(undefined)
-    }
-  }
 
   return (
     <section
@@ -71,37 +50,18 @@ export function DocsSection({
         </div>
 
         <div className="docs-commands" data-reveal-item>
-          {topic.commands.map((command) => {
-            const copied = command === copiedCommand
-
-            return (
-              <div className="docs-command" key={command}>
-                <span aria-hidden="true" className="docs-command__prompt">
-                  $
-                </span>
-                <code>{command}</code>
-                <button
-                  aria-label={labels.copyCommand}
-                  className="docs-command__copy"
-                  onClick={() => void copyCommand(command)}
-                  title={labels.copyCommand}
-                  type="button"
-                >
-                  {copied ? (
-                    <Check aria-hidden="true" />
-                  ) : (
-                    <Copy aria-hidden="true" />
-                  )}
-                </button>
-                <span
-                  className={`docs-command__feedback${copied ? ' is-visible' : ''}`}
-                  role="status"
-                >
-                  {copied ? labels.copied : ''}
-                </span>
-              </div>
-            )
-          })}
+          {topic.commands.map((command) => (
+            <CommandCopy
+              className="docs-command"
+              command={command}
+              copiedLabel={labels.copied}
+              copyLabel={labels.copyCommand}
+              fallbackLabel={labels.fallback}
+              key={command}
+              selectedCommandLabel={labels.selectedCommand}
+              showPrompt
+            />
+          ))}
         </div>
 
         <a

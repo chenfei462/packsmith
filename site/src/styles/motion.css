@@ -15,6 +15,68 @@
   transform: translateY(-2px);
 }
 
+.fallback-home-forge__assembly {
+  animation: fallback-forge-drift 6s ease-in-out infinite alternate;
+}
+
+.fallback-home-forge__scan {
+  animation: fallback-forge-scan 3.6s ease-in-out infinite alternate;
+}
+
+.fallback-registry-field__plane {
+  animation: fallback-field-turn 10s ease-in-out infinite alternate;
+}
+
+.fallback-registry-field__plane span.is-focus {
+  animation: fallback-node-signal 1.8s ease-in-out infinite alternate;
+}
+
+.fallback-pack-passport__layers > span {
+  animation: fallback-passport-breathe 3.4s ease-in-out infinite alternate;
+  animation-delay: calc(var(--passport-layer) * -180ms);
+}
+
+.fallback-docs-pipeline__trace {
+  animation: fallback-docs-trace 4.2s linear infinite;
+}
+
+@keyframes fallback-forge-drift {
+  from { transform: translate(-50%, -50%) perspective(42rem) rotateX(8deg) rotateY(-18deg); }
+  to { transform: translate(-50%, -52%) perspective(42rem) rotateX(5deg) rotateY(-10deg); }
+}
+
+@keyframes fallback-forge-scan {
+  from { transform: translateX(-5rem); }
+  to { transform: translateX(5rem); }
+}
+
+@keyframes fallback-field-turn {
+  from { transform: translate(-50%, -50%) perspective(38rem) rotateX(56deg) rotateZ(-16deg); }
+  to { transform: translate(-50%, -52%) perspective(38rem) rotateX(61deg) rotateZ(-9deg); }
+}
+
+@keyframes fallback-node-signal {
+  from { opacity: 0.48; }
+  to { opacity: 1; }
+}
+
+@keyframes fallback-passport-breathe {
+  from {
+    transform:
+      translate3d(0, 0, calc(var(--passport-layer) * 1.15rem))
+      rotate(calc((var(--passport-layer) - 2) * 1.2deg));
+  }
+  to {
+    transform:
+      translate3d(0.65rem, 0, calc(var(--passport-layer) * 1.15rem))
+      rotate(calc((var(--passport-layer) - 2) * 1.2deg));
+  }
+}
+
+@keyframes fallback-docs-trace {
+  to { stroke-dashoffset: -810; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -27,5 +89,12 @@
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
+  }
+
+  .fallback-home-forge__assembly,
+  .fallback-registry-field__plane,
+  .fallback-pack-passport__layers > span,
+  .fallback-docs-pipeline__trace {
+    animation: none !important;
   }
 }

@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -9,6 +10,7 @@ import { useLocation } from 'react-router-dom'
 
 import { repositoryData } from '../data/repositoryData'
 import { ExperienceContext } from './ExperienceContext'
+import { contextLossAction } from './lifecycle/useContextRecovery'
 import { useVisibilityPause } from './lifecycle/useVisibilityPause'
 import {
   derivePerformanceTier,
@@ -117,6 +119,7 @@ export function ExperienceProvider({
     derivePerformanceTier(initialInputs),
   )
   const [rendererEpoch, setRendererEpoch] = useState(0)
+  const contextLosses = useRef(0)
 
   useVisibilityPause()
 
@@ -136,10 +139,11 @@ export function ExperienceProvider({
   )
 
   const handleContextLoss = useCallback(() => {
-    const nextLossCount = sceneStore.getState().contextLosses + 1
+    const action = contextLossAction(contextLosses.current)
+    contextLosses.current += 1
     sceneStore.getState().recordContextLoss()
 
-    if (nextLossCount === 1) {
+    if (action === 'recover') {
       setRendererEpoch((current) => current + 1)
       return
     }

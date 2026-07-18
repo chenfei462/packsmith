@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import { BookOpen, Boxes, Check, Copy, ShieldCheck } from 'lucide-react'
+import { BookOpen, Boxes, ShieldCheck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+import { CommandCopy } from '../../components/CommandCopy'
 import type { SiteLocale } from '../../data/types'
 import { packDetailCopy } from './packDetailCopy'
 
@@ -13,14 +13,6 @@ export function VerificationCommand({
   readonly locale: SiteLocale
 }) {
   const copy = packDetailCopy[locale]
-  const [copied, setCopied] = useState(false)
-
-  const copyInstallCommand = async () => {
-    if (!command || !navigator.clipboard) return
-    await navigator.clipboard.writeText(command)
-    setCopied(true)
-    window.setTimeout(() => setCopied(false), 1800)
-  }
 
   return (
     <section
@@ -39,17 +31,14 @@ export function VerificationCommand({
           <p>{command ? copy.verifyBeforeInstall : copy.noCommand}</p>
         </header>
         {command ? (
-          <div className="pack-install__command" data-reveal-item>
-            <code>{command}</code>
-            <button
-              aria-label={copied ? copy.copied : copy.copyCommand}
-              onClick={copyInstallCommand}
-              title={copy.copyCommand}
-              type="button"
-            >
-              {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
-            </button>
-          </div>
+          <CommandCopy
+            className="pack-install__command"
+            command={command}
+            copiedLabel={copy.copied}
+            copyLabel={copy.copyCommand}
+            fallbackLabel={copy.copyFallback}
+            selectedCommandLabel={copy.selectedCommand}
+          />
         ) : (
           <p className="pack-install__withheld" data-reveal-item>{copy.noCommand}</p>
         )}
@@ -63,9 +52,6 @@ export function VerificationCommand({
             {copy.readDocumentation}
           </Link>
         </div>
-        <p aria-live="polite" className="sr-only" role="status">
-          {copied ? copy.copied : ''}
-        </p>
       </div>
     </section>
   )

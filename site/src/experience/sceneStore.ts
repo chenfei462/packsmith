@@ -10,6 +10,7 @@ export interface SceneStoreState {
   readonly contextLosses: number
   readonly setScene: (scene: RouteSceneInput) => void
   readonly patchScene: (patch: RouteScenePatch) => void
+  readonly markIncomingLoading: () => void
   readonly markIncomingReady: () => void
   readonly completeTransition: () => void
   readonly setPaused: (paused: boolean) => void
@@ -54,6 +55,7 @@ export function createSceneStore(initialScene: RouteSceneInput = defaultSceneInp
       set((state) => ({
         active: { ...state.active, ...patch } as RouteSceneInput,
       })),
+    markIncomingLoading: () => set({ incomingReady: false }),
     markIncomingReady: () => set({ incomingReady: true }),
     completeTransition: () =>
       set((state) =>

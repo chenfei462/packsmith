@@ -40,6 +40,8 @@ export const packDetailCopy: Readonly<
       readonly verifyBeforeInstall: string
       readonly copyCommand: string
       readonly copied: string
+      readonly copyFallback: string
+      readonly selectedCommand: string
       readonly verifyEyebrow: string
       readonly browseRegistry: string
       readonly readDocumentation: string
@@ -86,6 +88,8 @@ export const packDetailCopy: Readonly<
     verifyBeforeInstall: 'Review the Passport, then run the source-tree command.',
     copyCommand: 'Copy install command',
     copied: 'Install command copied',
+    copyFallback: 'Command selected. Press Ctrl+C or Command+C to copy.',
+    selectedCommand: 'Selected install command',
     verifyEyebrow: 'Verify',
     browseRegistry: 'Browse Registry',
     readDocumentation: 'Read documentation',
@@ -138,6 +142,8 @@ export const packDetailCopy: Readonly<
     verifyBeforeInstall: '检查护照后，再运行源码命令。',
     copyCommand: '复制安装命令',
     copied: '安装命令已复制',
+    copyFallback: '命令已选中。请按 Ctrl+C 或 Command+C 复制。',
+    selectedCommand: '已选中的安装命令',
     verifyEyebrow: '验证',
     browseRegistry: '浏览 Registry',
     readDocumentation: '阅读文档',

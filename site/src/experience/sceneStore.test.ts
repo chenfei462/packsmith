@@ -60,6 +60,16 @@ describe('scene store', () => {
     expect(store.getState().outgoing).toBeUndefined()
   })
 
+  it('marks an initially mounted lazy scene as loading until it commits', () => {
+    const store = createSceneStore(homeScene)
+
+    expect(store.getState().incomingReady).toBe(true)
+    store.getState().markIncomingLoading()
+    expect(store.getState().incomingReady).toBe(false)
+    store.getState().markIncomingReady()
+    expect(store.getState().incomingReady).toBe(true)
+  })
+
   it('tracks visibility pauses and context losses', () => {
     const store = createSceneStore(homeScene)
 

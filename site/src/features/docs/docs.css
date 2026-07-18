@@ -254,7 +254,7 @@
 .docs-commands {
   display: grid;
   margin-top: 2rem;
-  gap: 1.8rem;
+  gap: 0.75rem;
 }
 
 .docs-command {
@@ -271,19 +271,24 @@
   background: var(--forge-1);
 }
 
-.docs-command__prompt {
+.docs-command .command-copy__prompt {
   color: var(--cyan);
   font-family: var(--mono);
 }
 
+.docs-command .command-copy__value {
+  min-width: 0;
+}
+
 .docs-command code {
+  display: block;
   min-width: 0;
   overflow-wrap: anywhere;
   color: var(--paper);
   font-size: 0.8rem;
 }
 
-.docs-command__copy {
+.docs-command .command-copy__button {
   display: inline-grid;
   width: 44px;
   height: 44px;
@@ -296,29 +301,18 @@
   transition: color 160ms ease, border-color 160ms ease;
 }
 
-.docs-command__copy:hover {
+.docs-command .command-copy__button:hover {
   border-color: var(--cyan);
   color: var(--cyan);
 }
 
-.docs-command__copy svg {
+.docs-command .command-copy__button svg {
   width: 1.1rem;
 }
 
-.docs-command__feedback {
-  position: absolute;
-  right: 0;
-  bottom: -1.55rem;
-  min-width: 8rem;
-  color: var(--success);
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  opacity: 0;
-  text-align: right;
-}
-
-.docs-command__feedback.is-visible {
-  opacity: 1;
+.docs-command .command-copy__feedback {
+  grid-column: 1 / -1;
+  padding: 0.25rem 0;
 }
 
 .docs-section__source {
@@ -358,7 +352,7 @@
 
 @media (max-width: 68.75rem) {
   .docs-hero h1 {
-    font-size: 4.25rem;
+    font-size: 3.75rem;
   }
 
   .docs-section {
@@ -475,6 +469,10 @@
 }
 
 @media (max-width: 26rem) {
+  .docs-hero h1 {
+    font-size: 2.5rem;
+  }
+
   .docs-hero__flow li {
     font-size: 0.62rem;
   }
@@ -498,7 +496,7 @@
 @media (prefers-reduced-motion: reduce) {
   .docs-nav a,
   .docs-nav a::before,
-  .docs-command__copy {
+  .docs-command .command-copy__button {
     transition-duration: 120ms;
   }
 }

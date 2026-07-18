@@ -621,7 +621,12 @@
   color: var(--paper);
 }
 
+.pack-install__command .command-copy__value {
+  min-width: 0;
+}
+
 .pack-install__command code {
+  display: block;
   min-width: 0;
   padding: 1.4rem;
   color: var(--paper);
@@ -629,7 +634,7 @@
   overflow-wrap: anywhere;
 }
 
-.pack-install__command button {
+.pack-install__command .command-copy__button {
   display: grid;
   width: 48px;
   min-height: 48px;
@@ -641,14 +646,20 @@
   cursor: pointer;
 }
 
-.pack-install__command button:hover {
+.pack-install__command .command-copy__button:hover {
   background: var(--graphite);
   color: var(--paper);
 }
 
-.pack-install__command button svg {
+.pack-install__command .command-copy__button svg {
   width: 1.2rem;
   height: 1.2rem;
+}
+
+.pack-install__command .command-copy__feedback {
+  grid-column: 1 / -1;
+  padding: 0.45rem 1.4rem;
+  color: var(--success);
 }
 
 .pack-install__withheld {

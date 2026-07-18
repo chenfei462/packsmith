@@ -4,7 +4,6 @@ import {
   Color,
   DynamicDrawUsage,
   Euler,
-  MathUtils,
   Object3D,
   Vector3,
   type Group,
@@ -12,6 +11,10 @@ import {
 } from 'three'
 
 import { repositoryData } from '../../../data/repositoryData'
+import {
+  settleSceneMotion,
+  stableSceneProgress,
+} from '../../lifecycle/sceneLifecycle'
 import { ScanGrid } from '../../primitives/ScanGrid'
 import { TrailPath } from '../../primitives/TrailPath'
 import type { RouteSceneInput } from '../../types'
@@ -55,9 +58,11 @@ interface MutableTransform {
 function RegistryParticles({
   count,
   opacity,
+  reducedMotion,
 }: {
   readonly count: number
   readonly opacity: number
+  readonly reducedMotion: boolean
 }) {
   const particles = useRef<InstancedMesh>(null)
   const group = useRef<Group>(null)
@@ -84,8 +89,10 @@ function RegistryParticles({
 
   useFrame(({ clock }) => {
     if (!group.current) return
-    group.current.rotation.y = clock.elapsedTime * 0.025
-    group.current.position.y = Math.sin(clock.elapsedTime * 0.24) * 0.12
+    group.current.rotation.y = reducedMotion ? 0 : clock.elapsedTime * 0.025
+    group.current.position.y = reducedMotion
+      ? 0
+      : Math.sin(clock.elapsedTime * 0.24) * 0.12
   })
 
   return (
@@ -111,7 +118,7 @@ export function RegistryScene({
   readonly opacity?: number
   readonly scene: Extract<RouteSceneInput, { scene: 'registry' }>
 }) {
-  const { config } = useExperience()
+  const { config, reducedMotion } = useExperience()
   const instances = useRef<InstancedMesh>(null)
   const field = useRef<Group>(null)
   const dummy = useMemo(() => new Object3D(), [])
@@ -127,7 +134,13 @@ export function RegistryScene({
     () => new Map(targetLayout.map((item) => [item.id, item])),
     [targetLayout],
   )
-  const particleCount = config.tier === 'low' ? 22 : config.tier === 'balanced' ? 38 : 58
+  const particleCount = reducedMotion
+    ? 0
+    : config.tier === 'low'
+      ? 22
+      : config.tier === 'balanced'
+        ? 38
+        : 58
   const lineCount = config.tier === 'low' ? 3 : 6
 
   useEffect(() => {
@@ -136,7 +149,7 @@ export function RegistryScene({
 
   useFrame(({ clock }, delta) => {
     if (!instances.current) return
-    const interpolation = 1 - Math.exp(-delta * 5.4)
+    const interpolation = reducedMotion ? 1 : 1 - Math.exp(-delta * 5.4)
 
     for (const id of catalogIds) {
       const index = catalogIndex.get(id)
@@ -168,30 +181,31 @@ export function RegistryScene({
       }
 
       current.position.lerp(targetPosition.current, interpolation)
-      current.rotation.x = MathUtils.damp(
+      current.rotation.x = settleSceneMotion(
         current.rotation.x,
         filteredTarget?.rotation[0] ?? fullTarget.rotation[0],
-        5.4,
         delta,
+        reducedMotion,
       )
-      current.rotation.y = MathUtils.damp(
+      current.rotation.y = settleSceneMotion(
         current.rotation.y,
         (filteredTarget?.rotation[1] ?? fullTarget.rotation[1]) +
-          clock.elapsedTime * 0.035,
-        5.4,
+          (reducedMotion ? 0 : clock.elapsedTime * 0.035),
         delta,
+        reducedMotion,
       )
-      current.rotation.z = MathUtils.damp(
+      current.rotation.z = settleSceneMotion(
         current.rotation.z,
         filteredTarget?.rotation[2] ?? fullTarget.rotation[2],
-        5.4,
         delta,
+        reducedMotion,
       )
-      current.scale = MathUtils.damp(
+      current.scale = settleSceneMotion(
         current.scale,
         visible ? (filteredTarget?.scale ?? 1) * (focused ? 1.7 : 1) : 0.001,
-        5.8,
         delta,
+        reducedMotion,
+        5.8,
       )
 
       dummy.position.copy(current.position)
@@ -212,16 +226,28 @@ export function RegistryScene({
     }
 
     if (field.current) {
-      field.current.rotation.x = -0.16 + scene.progress * 0.12
-      field.current.rotation.y = 0.22 + scene.progress * 0.38
-      field.current.position.y = 0.2 - scene.progress * 0.72
+      const progress = stableSceneProgress(
+        'registry',
+        scene.progress,
+        reducedMotion,
+      )
+      field.current.rotation.x = -0.16 + progress * 0.12
+      field.current.rotation.y = 0.22 + progress * 0.38
+      field.current.position.y = 0.2 - progress * 0.72
     }
   })
 
   return (
     <group>
       <ScanGrid opacity={opacity * 0.38} />
-      <RegistryParticles key={particleCount} count={particleCount} opacity={opacity} />
+      {particleCount > 0 ? (
+        <RegistryParticles
+          key={particleCount}
+          count={particleCount}
+          opacity={opacity}
+          reducedMotion={reducedMotion}
+        />
+      ) : null}
       {constellationPaths.slice(0, lineCount).map((points, index) => (
         <TrailPath
           key={index}

@@ -1,13 +1,20 @@
-import { useEffect } from 'react'
+import { useCallback, useRef, type RefCallback } from 'react'
+
+export type ContextLossAction = 'recover' | 'fallback'
+
+export function contextLossAction(previousLosses: number): ContextLossAction {
+  return previousLosses === 0 ? 'recover' : 'fallback'
+}
 
 export function useContextRecovery(
-  canvas: HTMLCanvasElement | null,
   onContextLoss: () => void,
-) {
-  useEffect(() => {
-    if (!canvas) {
-      return
-    }
+): RefCallback<HTMLCanvasElement> {
+  const detach = useRef<() => void>(() => undefined)
+
+  return useCallback((canvas) => {
+    detach.current()
+    detach.current = () => undefined
+    if (!canvas) return
 
     function handleLoss(event: Event) {
       event.preventDefault()
@@ -15,6 +22,7 @@ export function useContextRecovery(
     }
 
     canvas.addEventListener('webglcontextlost', handleLoss)
-    return () => canvas.removeEventListener('webglcontextlost', handleLoss)
-  }, [canvas, onContextLoss])
+    detach.current = () =>
+      canvas.removeEventListener('webglcontextlost', handleLoss)
+  }, [onContextLoss])
 }

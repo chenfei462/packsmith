@@ -12,7 +12,12 @@ import {
 import { PackArtifact } from '../../primitives/PackArtifact'
 import { ScanGrid } from '../../primitives/ScanGrid'
 import { TrailPath } from '../../primitives/TrailPath'
+import {
+  settleSceneMotion,
+  stableSceneProgress,
+} from '../../lifecycle/sceneLifecycle'
 import { sceneStore } from '../../sceneStore'
+import { useExperience } from '../../useExperience'
 import {
   createFragmentLayout,
   homeFragmentCount,
@@ -36,6 +41,7 @@ export function HomeScene({ opacity = 1 }: { readonly opacity?: number }) {
   const layout = useRef(createFragmentLayout('senior-code-reviewer'))
   const currentPackId = useRef('senior-code-reviewer')
   const easedProgress = useRef(0)
+  const { reducedMotion } = useExperience()
 
   useEffect(() => {
     instances.current?.instanceMatrix.setUsage(DynamicDrawUsage)
@@ -53,16 +59,17 @@ export function HomeScene({ opacity = 1 }: { readonly opacity?: number }) {
       layout.current = createFragmentLayout(active.packId)
     }
 
-    const targetProgress = MathUtils.clamp(
-      Math.max(active.progress, active.demoStep / 8),
-      0,
-      1,
+    const targetProgress = stableSceneProgress(
+      'home',
+      MathUtils.clamp(Math.max(active.progress, active.demoStep / 8), 0, 1),
+      reducedMotion,
     )
-    easedProgress.current = MathUtils.damp(
+    easedProgress.current = settleSceneMotion(
       easedProgress.current,
       targetProgress,
-      4.2,
       delta,
+      reducedMotion,
+      4.2,
     )
     const assembly = MathUtils.smoothstep(easedProgress.current, 0.02, 0.46)
 
@@ -84,15 +91,19 @@ export function HomeScene({ opacity = 1 }: { readonly opacity?: number }) {
     instances.current.instanceMatrix.needsUpdate = true
 
     if (artifactGroup.current) {
-      artifactGroup.current.rotation.y =
-        -0.35 + easedProgress.current * 0.55 + Math.sin(clock.elapsedTime * 0.35) * 0.04
-      artifactGroup.current.position.y =
-        0.15 + Math.sin(clock.elapsedTime * 0.6) * 0.08
+      artifactGroup.current.rotation.y = reducedMotion
+        ? -0.35 + easedProgress.current * 0.55
+        : -0.35 +
+          easedProgress.current * 0.55 +
+          Math.sin(clock.elapsedTime * 0.35) * 0.04
+      artifactGroup.current.position.y = reducedMotion
+        ? 0.15
+        : 0.15 + Math.sin(clock.elapsedTime * 0.6) * 0.08
     }
 
     if (scanPlane.current) {
       scanPlane.current.position.y = -1.45 + easedProgress.current * 3.1
-      scanPlane.current.rotation.y = clock.elapsedTime * 0.08
+      scanPlane.current.rotation.y = reducedMotion ? 0 : clock.elapsedTime * 0.08
     }
   })
 

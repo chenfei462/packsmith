@@ -1,9 +1,11 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { Group } from 'three'
 import { useStore } from 'zustand'
 
+import { settleSceneMotion } from '../lifecycle/sceneLifecycle'
 import { sceneStore } from '../sceneStore'
+import { useExperience } from '../useExperience'
 
 export interface PackArtifactProps {
   readonly position?: [number, number, number]
@@ -21,23 +23,70 @@ export function PackArtifact({
   opacity = 1,
 }: PackArtifactProps) {
   const group = useRef<Group>(null)
+  const [initialPosition] = useState(position)
+  const [initialRotation] = useState(rotation)
+  const [initialScale] = useState(scale)
   const paused = useStore(sceneStore, (state) => state.paused)
+  const { reducedMotion } = useExperience()
 
   useFrame(({ clock }, delta) => {
     if (!group.current || paused) {
       return
     }
 
-    group.current.rotation.y += delta * 0.12
-    group.current.position.y = position[1] + Math.sin(clock.elapsedTime * 0.7) * 0.12
+    const float = reducedMotion ? 0 : Math.sin(clock.elapsedTime * 0.7) * 0.12
+    const turn = reducedMotion ? 0 : clock.elapsedTime * 0.12
+    group.current.position.x = settleSceneMotion(
+      group.current.position.x,
+      position[0],
+      delta,
+      reducedMotion,
+    )
+    group.current.position.y = settleSceneMotion(
+      group.current.position.y,
+      position[1] + float,
+      delta,
+      reducedMotion,
+    )
+    group.current.position.z = settleSceneMotion(
+      group.current.position.z,
+      position[2],
+      delta,
+      reducedMotion,
+    )
+    group.current.rotation.x = settleSceneMotion(
+      group.current.rotation.x,
+      rotation[0],
+      delta,
+      reducedMotion,
+    )
+    group.current.rotation.y = settleSceneMotion(
+      group.current.rotation.y,
+      rotation[1] + turn,
+      delta,
+      reducedMotion,
+    )
+    group.current.rotation.z = settleSceneMotion(
+      group.current.rotation.z,
+      rotation[2],
+      delta,
+      reducedMotion,
+    )
+    const nextScale = settleSceneMotion(
+      group.current.scale.x,
+      scale,
+      delta,
+      reducedMotion,
+    )
+    group.current.scale.setScalar(nextScale)
   })
 
   return (
     <group
       ref={group}
-      position={position}
-      rotation={rotation}
-      scale={scale}
+      position={initialPosition}
+      rotation={initialRotation}
+      scale={initialScale}
     >
       <mesh castShadow receiveShadow>
         <boxGeometry args={[2.8, 1.7, 1.25]} />

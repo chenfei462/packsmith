@@ -6,6 +6,7 @@ import { repositoryData } from '../../../data/repositoryData'
 import { PackArtifact } from '../../primitives/PackArtifact'
 import { ScanGrid } from '../../primitives/ScanGrid'
 import { TrailPath } from '../../primitives/TrailPath'
+import { stableSceneProgress } from '../../lifecycle/sceneLifecycle'
 import { sceneStore } from '../../sceneStore'
 import type { RouteSceneInput } from '../../types'
 import { useExperience } from '../../useExperience'
@@ -147,7 +148,14 @@ export function PackDetailScene({
       const group = layers.current[index]
       if (!group) return
 
-      const transform = passportLayerModel(layer, currentScene.progress)
+      const transform = passportLayerModel(
+        layer,
+        stableSceneProgress(
+          'pack-detail',
+          currentScene.progress,
+          reducedMotion,
+        ),
+      )
       group.position.x = settlePassportMotion(
         group.position.x,
         transform.position[0],
