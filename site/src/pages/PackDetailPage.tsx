@@ -17,7 +17,7 @@ import { useLanguage } from '../i18n/useLanguage'
 
 function usePackDetailSceneSync(
   root: RefObject<HTMLElement | null>,
-  targetId: ReturnType<typeof createPackDetailModel>['targetId'],
+  targetId: ReturnType<typeof createPackDetailModel>['targetId'] | undefined,
 ) {
   useEffect(() => {
     let frame = 0
@@ -27,7 +27,7 @@ function usePackDetailSceneSync(
       const article = root.current
       const active = sceneStore.getState().active
 
-      if (!article || active.scene !== 'pack-detail') return
+      if (!article || active.scene !== 'pack-detail' || !targetId) return
 
       const scrollRange = Math.max(1, article.scrollHeight - window.innerHeight)
       const progress = Math.min(
@@ -69,16 +69,38 @@ export function PackDetailPage() {
   const [searchParams] = useSearchParams()
   const { locale, siteLocale } = useLanguage()
   const root = useSectionTimeline<HTMLElement>()
-  const detail = createPackDetailModel(
-    repositoryData.packs,
-    packId,
-    searchParams.get('target'),
-  )
-  usePackDetailSceneSync(root, detail.targetId)
+  const packExists = repositoryData.packs.some((pack) => pack.id === packId)
+  const detail = packExists
+    ? createPackDetailModel(
+        repositoryData.packs,
+        packId,
+        searchParams.get('target'),
+      )
+    : undefined
+  usePackDetailSceneSync(root, detail?.targetId)
+
+  const copy = packDetailCopy[siteLocale]
+
+  if (!detail) {
+    return (
+      <article ref={root} className="route-page route-error">
+        <section className="route-hero route-hero--compact">
+          <p className="eyebrow">Packsmith / Registry</p>
+          <h1>Pack not found</h1>
+          <p className="route-lede">
+            The requested Pack is not present in this Registry build.
+          </p>
+          <Link className="text-link text-link--back" to="/registry">
+            <ArrowLeft aria-hidden="true" />
+            {copy.back}
+          </Link>
+        </section>
+      </article>
+    )
+  }
 
   const { pack, preview, targetId, installCommand } = detail
   const localized = pack.localizations[locale] ?? pack.localizations.en
-  const copy = packDetailCopy[siteLocale]
   const target = repositoryData.targets.find(({ id }) => id === targetId)
 
   return (

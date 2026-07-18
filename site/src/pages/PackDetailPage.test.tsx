@@ -103,12 +103,13 @@ describe('Pack detail route', () => {
     })
   })
 
-  it('surfaces an unknown Pack through the route error boundary', async () => {
+  it('renders an unknown Pack inside the application shell', async () => {
     renderAppRoute('/registry/not-a-real-pack')
 
     expect(
       await screen.findByRole('heading', { name: 'Pack not found' }),
     ).toBeVisible()
+    expect(screen.getByRole('navigation')).toBeVisible()
   })
 
   it('localizes the Passport interface in Chinese', async () => {
