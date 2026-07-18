@@ -2,8 +2,6 @@ import { lazy, Suspense, useEffect } from 'react'
 import { useStore } from 'zustand'
 
 import { PackArtifact } from './primitives/PackArtifact'
-import { ScanGrid } from './primitives/ScanGrid'
-import { TrailPath } from './primitives/TrailPath'
 import { sceneStore } from './sceneStore'
 import type { RouteSceneInput } from './types'
 
@@ -25,40 +23,16 @@ const PackDetailScene = lazy(() =>
   })),
 )
 
+const DocsScene = lazy(() =>
+  import('./scenes/docs/DocsScene').then((module) => ({
+    default: module.DocsScene,
+  })),
+)
+
 function sceneKey(scene: RouteSceneInput): string {
   return scene.scene === 'pack-detail'
     ? `${scene.scene}:${scene.packId}`
     : scene.scene
-}
-
-function DocsComposition({ opacity }: { readonly opacity: number }) {
-  const stages: readonly [number, number, number][] = [
-    [-4.2, -1.1, 0],
-    [-2.5, -0.25, -0.4],
-    [-0.8, 0.55, 0],
-    [0.9, 1.2, -0.35],
-    [2.6, 0.45, 0],
-    [4.3, -0.5, -0.25],
-  ]
-
-  return (
-    <group>
-      <ScanGrid opacity={opacity * 0.25} />
-      <TrailPath points={stages} color="#2be4d0" opacity={opacity} />
-      {stages.map((position, index) => (
-        <mesh key={index} position={position} rotation={[0.2, 0.35, 0]}>
-          <octahedronGeometry args={[0.42, 0]} />
-          <meshStandardMaterial
-            color={index === 2 ? '#ff6b2c' : '#c9d2e7'}
-            emissive={index === 2 ? '#ff6b2c' : '#2be4d0'}
-            emissiveIntensity={0.25}
-            transparent={opacity < 1}
-            opacity={opacity}
-          />
-        </mesh>
-      ))}
-    </group>
-  )
 }
 
 function SceneComposition({
@@ -77,7 +51,7 @@ function SceneComposition({
   }
 
   if (input.scene === 'docs') {
-    return <DocsComposition opacity={opacity} />
+    return <DocsScene scene={input} opacity={opacity} />
   }
 
   return <HomeScene opacity={opacity} />
