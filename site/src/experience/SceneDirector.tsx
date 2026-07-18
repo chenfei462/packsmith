@@ -19,38 +19,16 @@ const RegistryScene = lazy(() =>
   })),
 )
 
+const PackDetailScene = lazy(() =>
+  import('./scenes/pack-detail/PackDetailScene').then((module) => ({
+    default: module.PackDetailScene,
+  })),
+)
+
 function sceneKey(scene: RouteSceneInput): string {
   return scene.scene === 'pack-detail'
     ? `${scene.scene}:${scene.packId}`
     : scene.scene
-}
-
-function PackDetailComposition({ opacity }: { readonly opacity: number }) {
-  return (
-    <group position={[2.7, 0, -0.5]}>
-      <PackArtifact position={[0, 0, 0]} scale={1.05} opacity={opacity} />
-      {[-1, 0, 1].map((offset) => (
-        <mesh key={offset} position={[offset * 1.45, offset * 0.3, offset * -0.55]}>
-          <boxGeometry args={[1.15, 0.72, 0.08]} />
-          <meshStandardMaterial
-            color={offset === 0 ? '#c9d2e7' : '#1b2229'}
-            emissive={offset === 0 ? '#2be4d0' : '#ff6b2c'}
-            emissiveIntensity={0.18}
-            transparent
-            opacity={opacity * 0.78}
-          />
-        </mesh>
-      ))}
-      <TrailPath
-        points={[
-          [-4.8, -1.5, 0],
-          [-2.6, -0.7, 0],
-          [-1.2, 0, 0],
-        ]}
-        opacity={opacity}
-      />
-    </group>
-  )
 }
 
 function DocsComposition({ opacity }: { readonly opacity: number }) {
@@ -95,7 +73,7 @@ function SceneComposition({
   }
 
   if (input.scene === 'pack-detail') {
-    return <PackDetailComposition opacity={opacity} />
+    return <PackDetailScene scene={input} opacity={opacity} />
   }
 
   if (input.scene === 'docs') {

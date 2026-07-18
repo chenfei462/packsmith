@@ -63,6 +63,10 @@ describe('Pack detail errors', () => {
       'href',
       '/registry',
     )
+    expect(screen.getByRole('link', { name: /read documentation/i })).toHaveAttribute(
+      'href',
+      '/docs',
+    )
   })
 })
 
