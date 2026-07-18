@@ -11,7 +11,7 @@
     "dev": "npm run data:generate && vite",
     "typecheck": "npm run data:generate && tsc -b",
     "lint": "eslint . --max-warnings 0",
-    "test:data": "node --test scripts/passport-client.test.mjs scripts/generate-repository-data.test.mjs",
+    "test:data": "node --test scripts/passport-client.test.mjs scripts/generate-repository-data.test.mjs scripts/emit-route-shells.test.mjs",
     "test": "npm run data:generate && vitest run",
     "test:watch": "vitest",
     "test:coverage": "npm run data:generate && vitest run --coverage",

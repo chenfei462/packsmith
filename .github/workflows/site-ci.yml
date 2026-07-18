@@ -1,0 +1,59 @@
+name: site-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'registry/**'
+      - 'i18n/**'
+      - 'official-packs/**'
+      - 'docs/assets/**'
+      - 'src/**'
+      - 'src/cli.mjs'
+      - 'src/lib/targets.mjs'
+      - 'src/lib/pack.mjs'
+      - 'src/lib/registry.mjs'
+      - '.github/workflows/site-ci.yml'
+  pull_request:
+    paths:
+      - 'site/**'
+      - 'registry/**'
+      - 'i18n/**'
+      - 'official-packs/**'
+      - 'docs/assets/**'
+      - 'src/**'
+      - 'src/cli.mjs'
+      - 'src/lib/targets.mjs'
+      - 'src/lib/pack.mjs'
+      - 'src/lib/registry.mjs'
+      - '.github/workflows/site-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install site dependencies
+        run: npm ci --prefix site
+
+      - name: Check site
+        run: npm run check --prefix site
+
+      - name: Install Playwright Chromium
+        working-directory: site
+        run: npx playwright install --with-deps chromium
+
+      - name: Test routes, accessibility, and fallbacks
+        working-directory: site
+        run: npx playwright test e2e/routes.spec.ts e2e/accessibility.spec.ts e2e/fallback.spec.ts
