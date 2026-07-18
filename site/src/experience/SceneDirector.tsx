@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { useStore } from 'zustand'
 
 import { PackArtifact } from './primitives/PackArtifact'
@@ -6,6 +6,12 @@ import { ScanGrid } from './primitives/ScanGrid'
 import { TrailPath } from './primitives/TrailPath'
 import { sceneStore } from './sceneStore'
 import type { RouteSceneInput } from './types'
+
+const HomeScene = lazy(() =>
+  import('./scenes/home/HomeScene').then((module) => ({
+    default: module.HomeScene,
+  })),
+)
 
 function sceneKey(scene: RouteSceneInput): string {
   return scene.scene === 'pack-detail'
@@ -17,37 +23,6 @@ function stringSeed(value: string): number {
   return [...value].reduce(
     (total, character) => (total * 31 + character.charCodeAt(0)) >>> 0,
     2166136261,
-  )
-}
-
-function HomeComposition({ opacity }: { readonly opacity: number }) {
-  return (
-    <group>
-      <ScanGrid opacity={opacity * 0.32} />
-      <PackArtifact
-        position={[3.1, 0.15, -0.4]}
-        rotation={[0.25, -0.6, -0.08]}
-        scale={1.25}
-        opacity={opacity}
-      />
-      <TrailPath
-        points={[
-          [-5, -1.6, -1],
-          [-1, -0.8, 0],
-          [2.1, -0.25, -0.2],
-        ]}
-        opacity={opacity * 0.8}
-      />
-      <TrailPath
-        points={[
-          [-4, 1.8, -2],
-          [0, 1.2, -0.6],
-          [2.1, 0.55, -0.2],
-        ]}
-        color="#2be4d0"
-        opacity={opacity * 0.55}
-      />
-    </group>
   )
 }
 
@@ -174,7 +149,7 @@ function SceneComposition({
     return <DocsComposition opacity={opacity} />
   }
 
-  return <HomeComposition opacity={opacity} />
+  return <HomeScene opacity={opacity} />
 }
 
 export function SceneDirector() {
