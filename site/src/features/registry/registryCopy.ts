@@ -1,0 +1,68 @@
+import type { SiteLocale } from '../../data/types'
+
+const english = {
+  heroEyebrow: 'Official workflows / Spatial index',
+  heroLede: 'Search real Packs with Passport evidence and six-runtime previews.',
+  heroNote: 'Filters rearrange the field. The semantic list stays authoritative.',
+  search: 'Search Packs',
+  searchPlaceholder: 'Name, tag, category, or capability',
+  category: 'Category',
+  allCategories: 'All categories',
+  target: 'Target runtime',
+  allTargets: 'All runtimes',
+  risk: 'Computed risk',
+  allRisks: 'All risk levels',
+  sort: 'Sort results',
+  sortName: 'Name A-Z',
+  sortQuality: 'Quality score',
+  sortUpdated: 'Recently updated',
+  reset: 'Reset filters',
+  resultsEyebrow: 'DOM index / Spatial field',
+  resultsTitle: 'Inspect the catalog without losing the map.',
+  matchingPacks: 'matching Packs',
+  emptyTitle: 'No Packs match this query.',
+  emptyBody: 'Reset the filters or broaden the search terms.',
+  openPassport: 'Open Passport',
+  columnPack: 'Pack',
+  columnCategory: 'Category',
+  columnRisk: 'Risk',
+  columnQuality: 'Quality',
+  columnTargets: 'Targets',
+} as const
+
+type RegistryCopy = Readonly<Record<keyof typeof english, string>>
+
+const chinese: RegistryCopy = {
+  heroEyebrow: '官方工作流 / 空间索引',
+  heroLede: '检索带有 Passport 证据和六运行时预览的真实 Pack。',
+  heroNote: '筛选会重新排列空间字段，语义列表始终是权威入口。',
+  search: '搜索 Pack',
+  searchPlaceholder: '名称、标签、分类或能力',
+  category: '分类',
+  allCategories: '全部分类',
+  target: '目标运行时',
+  allTargets: '全部运行时',
+  risk: '计算风险',
+  allRisks: '全部风险级别',
+  sort: '结果排序',
+  sortName: '名称 A-Z',
+  sortQuality: '质量分数',
+  sortUpdated: '最近更新',
+  reset: '重置筛选',
+  resultsEyebrow: 'DOM 索引 / 空间字段',
+  resultsTitle: '浏览真实目录，同时保留空间方位。',
+  matchingPacks: '个匹配 Pack',
+  emptyTitle: '没有 Pack 符合当前条件。',
+  emptyBody: '请重置筛选或扩大搜索范围。',
+  openPassport: '打开 Passport',
+  columnPack: 'Pack',
+  columnCategory: '分类',
+  columnRisk: '风险',
+  columnQuality: '质量',
+  columnTargets: '运行时',
+}
+
+export const registryCopy: Readonly<Record<SiteLocale, RegistryCopy>> = {
+  en: english,
+  zh: chinese,
+}

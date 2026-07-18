@@ -13,63 +13,16 @@ const HomeScene = lazy(() =>
   })),
 )
 
+const RegistryScene = lazy(() =>
+  import('./scenes/registry/RegistryScene').then((module) => ({
+    default: module.RegistryScene,
+  })),
+)
+
 function sceneKey(scene: RouteSceneInput): string {
   return scene.scene === 'pack-detail'
     ? `${scene.scene}:${scene.packId}`
     : scene.scene
-}
-
-function stringSeed(value: string): number {
-  return [...value].reduce(
-    (total, character) => (total * 31 + character.charCodeAt(0)) >>> 0,
-    2166136261,
-  )
-}
-
-function RegistryComposition({
-  scene,
-  opacity,
-}: {
-  readonly scene: Extract<RouteSceneInput, { scene: 'registry' }>
-  readonly opacity: number
-}) {
-  return (
-    <group rotation={[-0.12, 0.2, 0]}>
-      <ScanGrid opacity={opacity * 0.45} />
-      {scene.packIds.slice(0, 24).map((packId, index) => {
-        const seed = stringSeed(packId)
-        const column = index % 6
-        const row = Math.floor(index / 6)
-        const height = ((seed % 7) - 3) * 0.16
-        const focused = packId === scene.focusedPackId
-
-        return (
-          <mesh
-            key={packId}
-            position={[
-              (column - 2.5) * 1.35,
-              height,
-              (row - 1.5) * 1.35,
-            ]}
-            rotation={[0, (seed % 11) * 0.07, 0]}
-            scale={focused ? 1.35 : 1}
-            castShadow
-          >
-            <boxGeometry args={[0.82, 0.48, 0.82]} />
-            <meshStandardMaterial
-              color={focused ? '#ff6b2c' : '#26313a'}
-              emissive={focused ? '#ff6b2c' : '#2be4d0'}
-              emissiveIntensity={focused ? 0.42 : 0.08}
-              metalness={0.55}
-              roughness={0.32}
-              transparent={opacity < 1}
-              opacity={opacity}
-            />
-          </mesh>
-        )
-      })}
-    </group>
-  )
 }
 
 function PackDetailComposition({ opacity }: { readonly opacity: number }) {
@@ -138,7 +91,7 @@ function SceneComposition({
   readonly opacity: number
 }) {
   if (input.scene === 'registry') {
-    return <RegistryComposition scene={input} opacity={opacity} />
+    return <RegistryScene scene={input} opacity={opacity} />
   }
 
   if (input.scene === 'pack-detail') {
