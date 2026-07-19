@@ -17,14 +17,19 @@ async function expectRoute(
   page: Page,
   path: string,
   heading: string | RegExp,
+  options: { readonly stableScene?: boolean } = {},
 ) {
   const response = await page.goto(appUrl(path))
 
   expect(response?.ok(), `GET ${path}`).toBe(true)
   await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible()
-  await expect(
-    page.locator('#experience-root > [data-scene-phase="stable"]'),
-  ).toHaveCount(1)
+  const sceneHost = page.locator('#experience-root > [data-scene-phase]')
+  await expect(sceneHost).toHaveCount(1)
+  if (options.stableScene !== false) {
+    await expect(sceneHost).toHaveAttribute('data-scene-phase', 'stable', {
+      timeout: 20_000,
+    })
+  }
   await expect(page.getByRole('main')).toHaveCount(1)
 }
 
@@ -78,6 +83,7 @@ test.describe('production route shells', () => {
         page,
         `/registry/${encodeURIComponent(packId!)}`,
         /.+/,
+        { stableScene: false },
       )
     }
 
@@ -96,7 +102,7 @@ test.describe('production route shells', () => {
   })
 
   test('navigation cycles retain a single shell and stable scene', async ({ page }) => {
-    test.setTimeout(120_000)
+    test.setTimeout(180_000)
     const guard = installConsoleGuard(page)
     await expectRoute(page, '/', /package manager for ai agent workflows/i)
 

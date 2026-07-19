@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { RotateCcw, Search } from 'lucide-react'
 
 import { repositoryData } from '../../data/repositoryData'
@@ -21,6 +22,8 @@ export function RegistryControls({
 }) {
   const { siteLocale } = useLanguage()
   const copy = registryCopy[siteLocale]
+  const [query, setQuery] = useState(filters.q)
+
   const isDefault =
     !filters.q &&
     !filters.category &&
@@ -40,14 +43,15 @@ export function RegistryControls({
           <Search aria-hidden="true" size={18} />
           <input
             type="search"
-            value={filters.q}
+            value={query}
             placeholder={copy.searchPlaceholder}
-            onChange={(event) =>
+            onChange={(event) => {
+              setQuery(event.target.value)
               onChange(
                 { q: event.target.value },
                 { replace: true },
               )
-            }
+            }}
           />
         </div>
       </label>

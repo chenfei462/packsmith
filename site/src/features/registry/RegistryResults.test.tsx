@@ -55,6 +55,9 @@ describe('Registry result synchronization', () => {
       undefined,
       { timeout: 3000 },
     )
+    await waitFor(() => {
+      expect(sceneStore.getState().active.scene).toBe('registry')
+    })
     const focusedRow = rows[4]
     const activeBeforeFocus = sceneStore.getState().active
     const packIdsBeforeFocus =

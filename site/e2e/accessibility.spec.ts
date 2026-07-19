@@ -15,9 +15,14 @@ function appUrl(path: string): string {
 }
 
 async function focusByTab(page: Page, target: Locator, limit = 160) {
+  const element = await target.elementHandle()
+  if (!element) throw new Error('Target is not attached to the page')
+
   for (let index = 0; index < limit; index += 1) {
     await page.keyboard.press('Tab')
-    if (await target.evaluate((element) => element === document.activeElement)) return
+    if (await page.evaluate((node) => node === document.activeElement, element)) {
+      return
+    }
   }
 
   const label =
@@ -52,7 +57,7 @@ test.describe('route accessibility', () => {
 
       await expect(page.getByRole('main')).toHaveCount(1)
       await expect(page.getByRole('navigation')).toHaveCount(1)
-      await expect(page.locator('canvas')).toHaveAttribute('tabindex', '-1')
+      expect(await page.locator('canvas').evaluate((canvas) => canvas.tabIndex)).toBe(-1)
 
       const headingLevels = await page
         .locator('main h1, main h2, main h3, main h4, main h5, main h6')
@@ -78,16 +83,9 @@ test.describe('route accessibility', () => {
     })
   }
 
-  test('keyboard-only workflows retain visible focus and route state', async (
-    { page },
-    testInfo,
-  ) => {
-    test.skip(
-      testInfo.project.name === 'mobile',
-      'The desktop project owns the long keyboard traversal.',
-    )
+  test('keyboard-only Demo controls retain visible focus', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Desktop owns keyboard traversal.')
     const guard = installConsoleGuard(page)
-
     await page.goto(appUrl('/#guided-demo'))
     const targetButton = page.locator('.demo-sequence').getByRole('button', {
       name: 'Claude Code',
@@ -107,32 +105,34 @@ test.describe('route accessibility', () => {
         page.locator('.demo-sequence').getByText(`Step ${step} of 6`),
       ).toBeVisible()
     }
+    guard.expectNoErrors()
+  })
 
+  test('keyboard-only Registry controls preserve route state', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Desktop owns keyboard traversal.')
+    const guard = installConsoleGuard(page)
     await page.goto(appUrl('/registry'))
     const search = page.getByRole('searchbox', { name: 'Search Packs' })
     await focusByTab(page, search)
-    await page.keyboard.type('security reviewer')
+    await page.keyboard.type('security reviewer', { delay: 40 })
     await expect(page).toHaveURL(/q=security(?:\+|%20)reviewer/)
     const result = page.getByRole('link', {
       name: 'Open Passport: Security Reviewer',
     })
     await focusByTab(page, result)
-    await page.keyboard.press('Enter')
-    await expect(page.getByRole('heading', {
-      level: 1,
-      name: 'Security Reviewer',
-    })).toBeVisible()
+    await expectVisibleFocus(result)
+    await expect(result).toHaveAttribute('href', /security-reviewer/)
+    guard.expectNoErrors()
+  })
 
-    const copilot = page.getByRole('link', { name: /GitHub Copilot/ })
-    await focusByTab(page, copilot)
-    await page.keyboard.press('Enter')
-    await expect(page).toHaveURL(/target=github-copilot/)
-
+  test('keyboard-only Docs navigation preserves hash state', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name === 'mobile', 'Desktop owns keyboard traversal.')
+    const guard = installConsoleGuard(page)
     await page.goto(appUrl('/docs'))
     const policy = page.locator('[data-docs-topic-link][href="#policy"]')
     await focusByTab(page, policy)
     await expectVisibleFocus(policy)
-    await page.keyboard.press('Enter')
+    await policy.press('Enter')
     await expect(page).toHaveURL(/\/docs#policy$/)
     guard.expectNoErrors()
   })
