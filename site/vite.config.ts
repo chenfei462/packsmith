@@ -13,7 +13,11 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.ts',
     fileParallelism: false,
-    exclude: [...configDefaults.exclude, 'scripts/**/*.test.mjs'],
+    exclude: [
+      ...configDefaults.exclude,
+      'scripts/**/*.test.mjs',
+      'e2e/**/*.spec.ts',
+    ],
     clearMocks: true,
     restoreMocks: true,
     coverage: {

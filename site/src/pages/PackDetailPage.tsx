@@ -94,6 +94,9 @@ export function PackDetailPage() {
             <ArrowLeft aria-hidden="true" />
             {copy.back}
           </Link>
+          <Link className="text-link" to="/docs">
+            {copy.readDocumentation}
+          </Link>
         </section>
       </article>
     )
