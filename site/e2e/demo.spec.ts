@@ -10,7 +10,9 @@ test.describe('guided install workflow', () => {
   test('completes all six demo steps and resets', async ({ page }) => {
     const guard = installConsoleGuard(page)
     await page.goto(appUrl('/#guided-demo'))
-    await expect(page.locator('[data-scene-phase="stable"]')).toHaveCount(1)
+    await expect(
+      page.locator('#experience-root > [data-scene-phase="stable"]'),
+    ).toHaveCount(1)
 
     const demo = page.locator('.demo-sequence')
     await demo.scrollIntoViewIfNeeded()
@@ -52,7 +54,9 @@ test.describe('guided install workflow', () => {
     await page.goto(
       appUrl('/registry/senior-code-reviewer?target=codex#install-verification'),
     )
-    await expect(page.locator('[data-scene-phase="stable"]')).toHaveCount(1)
+    await expect(
+      page.locator('#experience-root > [data-scene-phase="stable"]'),
+    ).toHaveCount(1)
 
     const install = page.locator('[data-install-section]')
     await install.scrollIntoViewIfNeeded()

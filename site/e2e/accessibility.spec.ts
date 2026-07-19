@@ -46,7 +46,9 @@ test.describe('route accessibility', () => {
         level: 1,
         name: route.heading,
       })).toBeVisible()
-      await expect(page.locator('[data-scene-phase="stable"]')).toHaveCount(1)
+      await expect(
+        page.locator('#experience-root > [data-scene-phase="stable"]'),
+      ).toHaveCount(1)
 
       await expect(page.getByRole('main')).toHaveCount(1)
       await expect(page.getByRole('navigation')).toHaveCount(1)

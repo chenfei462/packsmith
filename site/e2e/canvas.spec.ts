@@ -35,7 +35,9 @@ async function openCanvasRoute(
     level: 1,
     name: route.heading,
   })).toBeVisible()
-  await expect(page.locator('[data-scene-phase="stable"]')).toHaveCount(1)
+  await expect(
+    page.locator('#experience-root > [data-scene-phase="stable"]'),
+  ).toHaveCount(1)
   await expect(page.locator('canvas')).toHaveCount(1)
 }
 
@@ -145,7 +147,9 @@ test.describe('3D route rendering', () => {
       const before = await expectCanvasComposition(page, canvas)
 
       await interactWithRoute(page, route.interaction)
-      await expect(page.locator('[data-scene-phase="stable"]')).toHaveCount(1)
+      await expect(
+        page.locator('#experience-root > [data-scene-phase="stable"]'),
+      ).toHaveCount(1)
       await expect
         .poll(
           async () => {

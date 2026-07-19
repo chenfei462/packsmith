@@ -286,6 +286,8 @@
   border-top: 1px solid var(--line);
   background: transparent;
   transition: background-color 180ms ease, transform 180ms ease;
+  animation: registry-result-enter 620ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(var(--row-index) * 24ms);
 }
 
 .registry-result-row::before {
@@ -452,6 +454,17 @@
 @keyframes registry-count {
   from { opacity: 0; transform: translateY(0.5rem); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes registry-result-enter {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 75rem) {
@@ -630,7 +643,8 @@
 @media (prefers-reduced-motion: reduce) {
   .registry-hero__jump svg,
   .registry-controls-wrap,
-  .registry-results__count strong {
+  .registry-results__count strong,
+  .registry-result-row {
     animation: none;
   }
 }

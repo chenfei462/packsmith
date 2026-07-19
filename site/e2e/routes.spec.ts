@@ -22,7 +22,9 @@ async function expectRoute(
 
   expect(response?.ok(), `GET ${path}`).toBe(true)
   await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible()
-  await expect(page.locator('[data-scene-phase="stable"]')).toHaveCount(1)
+  await expect(
+    page.locator('#experience-root > [data-scene-phase="stable"]'),
+  ).toHaveCount(1)
   await expect(page.getByRole('main')).toHaveCount(1)
 }
 
@@ -132,7 +134,9 @@ test.describe('production route shells', () => {
         level: 1,
         name: /package manager for ai agent workflows/i,
       })).toBeVisible({ timeout: 20_000 })
-      await expect(page.locator('[data-scene-phase="stable"]')).toHaveCount(1)
+      await expect(
+        page.locator('#experience-root > [data-scene-phase="stable"]'),
+      ).toHaveCount(1)
       await expect(page.locator('#experience-root')).toHaveCount(1)
     }
 

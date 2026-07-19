@@ -27,7 +27,7 @@ export function RegistryResultRow({
       className="registry-result-row"
       data-testid="registry-result"
       data-pack-id={pack.id}
-      data-reveal-item
+      style={{ '--row-index': index } as React.CSSProperties}
       onFocus={() => onActive(pack.id)}
       onPointerEnter={() => onActive(pack.id)}
       onPointerLeave={(event) => onPointerLeave(pack.id, event.currentTarget)}

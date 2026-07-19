@@ -160,7 +160,9 @@ test.describe('WebGL fallback', () => {
       await expect(page.locator('[data-experience-scene="home"]')).toHaveCount(1)
 
       await expect(page.locator('#experience-root')).toHaveCount(1)
-      await expect(page.locator('[data-scene-phase="stable"]')).toHaveCount(1)
+      await expect(
+        page.locator('#experience-root > [data-scene-phase="stable"]'),
+      ).toHaveCount(1)
       const snapshot = await listenerSnapshot(page)
       if (baseline) expect(snapshot).toEqual(baseline)
       baseline = snapshot
