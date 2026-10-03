@@ -1,0 +1,7 @@
+{
+  "requireVerified": true,
+  "allowedPublishers": ["packsmith"],
+  "blockedPacks": [],
+  "allowedRequiredPermissions": ["filesystem"],
+  "maxContextSize": 24000
+}

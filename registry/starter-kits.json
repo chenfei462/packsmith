@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-05-25T00:00:00.000Z",
+  "kits": [
+    {
+      "id": "fullstack-developer",
+      "name": "Full-Stack Developer Kit",
+      "description": "Essential packs for full-stack web developers — code quality, testing, documentation, and deployment.",
+      "audience": "Full-stack developers working on web applications",
+      "packs": [
+        "senior-code-reviewer",
+        "test-writer",
+        "bug-hunter",
+        "docs-maintainer",
+        "api-docs-writer",
+        "performance-profiler"
+      ],
+      "packCount": 6
+    },
+    {
+      "id": "security-engineer",
+      "name": "Security Engineer Kit",
+      "description": "Security-focused packs for auditing code, dependencies, and infrastructure.",
+      "audience": "Security engineers, DevSecOps, and security-conscious developers",
+      "packs": [
+        "security-reviewer",
+        "dependency-auditor",
+        "senior-code-reviewer"
+      ],
+      "packCount": 3
+    },
+    {
+      "id": "open-source-maintainer",
+      "name": "Open Source Maintainer Kit",
+      "description": "Everything you need to maintain a healthy open source project — docs, changelogs, contributor guides, and issue management.",
+      "audience": "Open source project maintainers and core contributors",
+      "packs": [
+        "docs-maintainer",
+        "changelog-writer",
+        "contributing-guide-writer",
+        "release-checklist",
+        "issue-triage",
+        "readme-converter"
+      ],
+      "packCount": 6
+    },
+    {
+      "id": "new-team-member",
+      "name": "New Team Member Kit",
+      "description": "Quickly understand any codebase — architecture maps, onboarding guides, and legacy code translation.",
+      "audience": "Developers joining a new team or inheriting an unfamiliar codebase",
+      "packs": [
+        "repo-cartographer",
+        "onboarding-guide",
+        "legacy-code-translator",
+        "database-schema-reader",
+        "api-surface-mapper"
+      ],
+      "packCount": 5
+    },
+    {
+      "id": "product-launcher",
+      "name": "Product Launch Kit",
+      "description": "From market research to launch execution — positioning, competitive analysis, and go-to-market workflows.",
+      "audience": "Indie hackers, startup founders, and product managers shipping new tools",
+      "packs": [
+        "launch-researcher",
+        "competitor-breakdown",
+        "github-trending-analyst",
+        "readme-converter",
+        "roadmap-writer",
+        "issue-triage"
+      ],
+      "packCount": 6
+    },
+    {
+      "id": "ai-agent-builder",
+      "name": "AI Agent Builder Kit",
+      "description": "Build and optimize AI agent workflows — prompt engineering, skill authoring, context management, and multi-agent routing.",
+      "audience": "Developers building AI agents, prompt engineers, and AI tool creators",
+      "packs": [
+        "prompt-debugger",
+        "skill-author",
+        "context-budgeter",
+        "multi-agent-router",
+        "workflow-packager",
+        "agent-memory-curator"
+      ],
+      "packCount": 6
+    },
+    {
+      "id": "code-quality-purist",
+      "name": "Code Quality Purist Kit",
+      "description": "Maximum code quality — reviews, tests, refactoring plans, and performance profiling.",
+      "audience": "Senior developers and tech leads who prioritize code quality",
+      "packs": [
+        "senior-code-reviewer",
+        "test-writer",
+        "refactor-planner",
+        "performance-profiler",
+        "bug-hunter",
+        "security-reviewer"
+      ],
+      "packCount": 6
+    },
+    {
+      "id": "documentation-champion",
+      "name": "Documentation Champion Kit",
+      "description": "Keep documentation excellent — API docs, tutorials, changelogs, and contributor guides.",
+      "audience": "Technical writers, developer advocates, and documentation-focused engineers",
+      "packs": [
+        "api-docs-writer",
+        "tutorial-writer",
+        "changelog-writer",
+        "contributing-guide-writer",
+        "docs-maintainer",
+        "release-checklist"
+      ],
+      "packCount": 6
+    }
+  ]
+}

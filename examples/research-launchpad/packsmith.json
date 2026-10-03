@@ -3,6 +3,12 @@
   "description": "GitHub demand research pack for coding agents.",
   "version": "0.1.0",
   "targets": ["claude-code", "codex"],
+  "permissions": {
+    "shell": "optional",
+    "filesystem": "required",
+    "network": "optional",
+    "browser": "none"
+  },
   "skills": [
     {
       "id": "github-demand",

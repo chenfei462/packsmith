@@ -1,0 +1,2466 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-05-25T00:00:00.000Z",
+  "packs": [
+    {
+      "id": "accessibility-auditor",
+      "name": "Accessibility Auditor",
+      "description": "Reviews UI changes for keyboard flow, labels, contrast, focus, and assistive technology basics.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "accessibility",
+        "ui",
+        "testing",
+        "review"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/accessibility-auditor",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1678,
+      "usageExample": "packsmith install accessibility-auditor",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/accessibility-auditor",
+      "homepage": "https://github.com/chenfei462/packsmith#accessibility-auditor",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 21,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "optional"
+      }
+    },
+    {
+      "id": "agent-memory-curator",
+      "name": "Agent Memory Curator",
+      "description": "Summarizes durable project context for reuse across agent sessions without preserving noisy history.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "agent-workflow",
+      "tags": [
+        "packsmith",
+        "memory",
+        "context",
+        "agents",
+        "handoff"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/agent-memory-curator",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3800,
+      "usageExample": "packsmith install agent-memory-curator",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/agent-memory-curator",
+      "homepage": "https://github.com/chenfei462/packsmith#agent-memory-curator",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 28,
+      "installCount": 147,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "api-contract-reviewer",
+      "name": "Api Contract Reviewer",
+      "description": "Reviews API changes for compatibility, validation, errors, and migration risk.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "api",
+        "contracts",
+        "compatibility",
+        "review"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/api-contract-reviewer",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1727,
+      "usageExample": "packsmith install api-contract-reviewer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/api-contract-reviewer",
+      "homepage": "https://github.com/chenfei462/packsmith#api-contract-reviewer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 20,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "api-docs-writer",
+      "name": "API Docs Writer",
+      "description": "Produces API reference docs from source, tests, command behavior, and examples.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "api",
+        "docs",
+        "reference",
+        "examples"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/api-docs-writer",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4000,
+      "usageExample": "packsmith install api-docs-writer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/api-docs-writer",
+      "homepage": "https://github.com/chenfei462/packsmith#api-docs-writer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 44,
+      "installCount": 283,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "api-surface-mapper",
+      "name": "API Surface Mapper",
+      "description": "Documents public APIs, internal APIs, contracts, and compatibility risks.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "repository-understanding",
+      "tags": [
+        "packsmith",
+        "api",
+        "contracts",
+        "compatibility",
+        "docs"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/api-surface-mapper",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4050,
+      "usageExample": "packsmith install api-surface-mapper",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/api-surface-mapper",
+      "homepage": "https://github.com/chenfei462/packsmith#api-surface-mapper",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 68,
+      "installCount": 487,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "architecture-decision-recorder",
+      "name": "Architecture Decision Recorder",
+      "description": "Drafts ADRs that capture context, decision, alternatives, and consequences.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "architecture",
+        "adr",
+        "documentation",
+        "decisions"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/architecture-decision-recorder",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 1543,
+      "usageExample": "packsmith install architecture-decision-recorder",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/architecture-decision-recorder",
+      "homepage": "https://github.com/chenfei462/packsmith#architecture-decision-recorder",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 19,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "none",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "bug-hunter",
+      "name": "Bug Hunter",
+      "description": "Reproduces, isolates, and explains bugs before proposing fixes.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "debugging",
+        "bugs",
+        "reproduction",
+        "tests"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/bug-hunter",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4000,
+      "usageExample": "packsmith install bug-hunter",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/bug-hunter",
+      "homepage": "https://github.com/chenfei462/packsmith#bug-hunter",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 78,
+      "installCount": 572,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "bug-reproducer",
+      "name": "Bug Reproducer",
+      "description": "Converts vague bug reports into minimal reproduction cases and regression tests.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "debugging",
+        "bugs",
+        "reproduction",
+        "tests"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/bug-reproducer",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1773,
+      "usageExample": "packsmith install bug-reproducer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/bug-reproducer",
+      "homepage": "https://github.com/chenfei462/packsmith#bug-reproducer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 18,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "changelog-curator",
+      "name": "Changelog Curator",
+      "description": "Maintains changelogs by grouping changes into useful release categories.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "changelog",
+        "release",
+        "docs",
+        "maintenance"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/changelog-curator",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1618,
+      "usageExample": "packsmith install changelog-curator",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/changelog-curator",
+      "homepage": "https://github.com/chenfei462/packsmith#changelog-curator",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 17,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "changelog-writer",
+      "name": "Changelog Writer",
+      "description": "Turns commits, diffs, or release notes into clear user-facing changelog entries.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "changelog",
+        "release",
+        "docs",
+        "versioning"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/changelog-writer",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3600,
+      "usageExample": "packsmith install changelog-writer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/changelog-writer",
+      "homepage": "https://github.com/chenfei462/packsmith#changelog-writer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 48,
+      "installCount": 317,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "ci-failure-triage",
+      "name": "Ci Failure Triage",
+      "description": "Turns failing CI logs into root-cause hypotheses and next verification steps.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "ci",
+        "debugging",
+        "automation",
+        "logs"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/ci-failure-triage",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1726,
+      "usageExample": "packsmith install ci-failure-triage",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/ci-failure-triage",
+      "homepage": "https://github.com/chenfei462/packsmith#ci-failure-triage",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 16,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "codebase-modernizer",
+      "name": "Codebase Modernizer",
+      "description": "Plans incremental modernization work without turning it into a rewrite.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "modernization",
+        "refactor",
+        "planning",
+        "maintenance"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/codebase-modernizer",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1635,
+      "usageExample": "packsmith install codebase-modernizer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/codebase-modernizer",
+      "homepage": "https://github.com/chenfei462/packsmith#codebase-modernizer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 15,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "competitor-breakdown",
+      "name": "Competitor Breakdown",
+      "description": "Compares a project against competitors and identifies practical differentiation.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "product-launch",
+      "tags": [
+        "packsmith",
+        "competitors",
+        "positioning",
+        "strategy",
+        "product"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/competitor-breakdown",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4000,
+      "usageExample": "packsmith install competitor-breakdown",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/competitor-breakdown",
+      "homepage": "https://github.com/chenfei462/packsmith#competitor-breakdown",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 58,
+      "installCount": 402,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "context-budgeter",
+      "name": "Context Budgeter",
+      "description": "Reduces long agent instructions while preserving important behavior and output contracts.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "agent-workflow",
+      "tags": [
+        "packsmith",
+        "context",
+        "tokens",
+        "prompts",
+        "agents"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/context-budgeter",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3700,
+      "usageExample": "packsmith install context-budgeter",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/context-budgeter",
+      "homepage": "https://github.com/chenfei462/packsmith#context-budgeter",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 34,
+      "installCount": 198,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "contributing-guide-writer",
+      "name": "Contributing Guide Writer",
+      "description": "Creates contributor instructions for setup, tests, style, pull requests, and review expectations.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "contributing",
+        "docs",
+        "contributors",
+        "workflow"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/contributing-guide-writer",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3700,
+      "usageExample": "packsmith install contributing-guide-writer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/contributing-guide-writer",
+      "homepage": "https://github.com/chenfei462/packsmith#contributing-guide-writer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 42,
+      "installCount": 266,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "data-pipeline-checker",
+      "name": "Data Pipeline Checker",
+      "description": "Reviews data pipeline changes for schema drift, idempotency, backfills, and observability.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "repository-understanding",
+      "tags": [
+        "packsmith",
+        "data",
+        "pipeline",
+        "schema",
+        "observability"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/data-pipeline-checker",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1660,
+      "usageExample": "packsmith install data-pipeline-checker",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/data-pipeline-checker",
+      "homepage": "https://github.com/chenfei462/packsmith#data-pipeline-checker",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 14,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "database-index-advisor",
+      "name": "Database Index Advisor",
+      "description": "Reviews query patterns and suggests cautious index changes with measurement plans.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "repository-understanding",
+      "tags": [
+        "packsmith",
+        "database",
+        "indexes",
+        "queries",
+        "performance"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/database-index-advisor",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1704,
+      "usageExample": "packsmith install database-index-advisor",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/database-index-advisor",
+      "homepage": "https://github.com/chenfei462/packsmith#database-index-advisor",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 13,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "database-schema-reader",
+      "name": "Database Schema Reader",
+      "description": "Explains schema structure, migrations, relationships, indexes, and risky data changes.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "repository-understanding",
+      "tags": [
+        "packsmith",
+        "database",
+        "schema",
+        "migrations",
+        "data"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/database-schema-reader",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 4300,
+      "usageExample": "packsmith install database-schema-reader",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/database-schema-reader",
+      "homepage": "https://github.com/chenfei462/packsmith#database-schema-reader",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 66,
+      "installCount": 470,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "dependency-auditor",
+      "name": "Dependency Auditor",
+      "description": "Reviews dependency usage, risk, update pressure, and unnecessary packages.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "repository-understanding",
+      "tags": [
+        "packsmith",
+        "dependencies",
+        "audit",
+        "security",
+        "maintenance"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/dependency-auditor",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 4100,
+      "usageExample": "packsmith install dependency-auditor",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/dependency-auditor",
+      "homepage": "https://github.com/chenfei462/packsmith#dependency-auditor",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 70,
+      "installCount": 504,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "dependency-risk-auditor",
+      "name": "Dependency Risk Auditor",
+      "description": "Reviews dependency additions for maintenance, licensing, security, and bundle risk.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "repository-understanding",
+      "tags": [
+        "packsmith",
+        "dependencies",
+        "security",
+        "licenses",
+        "risk"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/dependency-risk-auditor",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1732,
+      "usageExample": "packsmith install dependency-risk-auditor",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/dependency-risk-auditor",
+      "homepage": "https://github.com/chenfei462/packsmith#dependency-risk-auditor",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 12,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "dependency-upgrader",
+      "name": "Dependency Upgrader",
+      "description": "Plans safe dependency upgrade batches, risk checks, and verification commands.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "repository-understanding",
+      "tags": [
+        "packsmith",
+        "dependencies",
+        "upgrades",
+        "maintenance",
+        "testing"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/dependency-upgrader",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1737,
+      "usageExample": "packsmith install dependency-upgrader",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/dependency-upgrader",
+      "homepage": "https://github.com/chenfei462/packsmith#dependency-upgrader",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 11,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "docs-maintainer",
+      "name": "Docs Maintainer",
+      "description": "Keeps README, changelog, examples, and command docs aligned with implementation.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "docs",
+        "maintenance",
+        "readme",
+        "release"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/docs-maintainer",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4100,
+      "usageExample": "packsmith install docs-maintainer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/docs-maintainer",
+      "homepage": "https://github.com/chenfei462/packsmith#docs-maintainer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 50,
+      "installCount": 334,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "frontend-state-debugger",
+      "name": "Frontend State Debugger",
+      "description": "Debugs UI state issues by tracing events, derived state, rendering, and persistence.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "frontend",
+        "state",
+        "debugging",
+        "ui"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/frontend-state-debugger",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1646,
+      "usageExample": "packsmith install frontend-state-debugger",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/frontend-state-debugger",
+      "homepage": "https://github.com/chenfei462/packsmith#frontend-state-debugger",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 10,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "optional"
+      }
+    },
+    {
+      "id": "github-trending-analyst",
+      "name": "GitHub Trending Analyst",
+      "description": "Studies GitHub trends and converts repository momentum into product opportunities.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "product-launch",
+      "tags": [
+        "packsmith",
+        "github",
+        "trends",
+        "research",
+        "product"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/github-trending-analyst",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4100,
+      "usageExample": "packsmith install github-trending-analyst",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/github-trending-analyst",
+      "homepage": "https://github.com/chenfei462/packsmith#github-trending-analyst",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 60,
+      "installCount": 419,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "incident-postmortem",
+      "name": "Incident Postmortem",
+      "description": "Drafts blameless incident timelines, impact summaries, causes, and follow-up actions.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "incident",
+        "postmortem",
+        "reliability",
+        "operations"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/incident-postmortem",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 1568,
+      "usageExample": "packsmith install incident-postmortem",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/incident-postmortem",
+      "homepage": "https://github.com/chenfei462/packsmith#incident-postmortem",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 9,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "none",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "issue-triage",
+      "name": "Issue Triage",
+      "description": "Groups issues by severity, effort, product value, and release relevance.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "product-launch",
+      "tags": [
+        "packsmith",
+        "issues",
+        "triage",
+        "release",
+        "planning"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/issue-triage",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3800,
+      "usageExample": "packsmith install issue-triage",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/issue-triage",
+      "homepage": "https://github.com/chenfei462/packsmith#issue-triage",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 52,
+      "installCount": 351,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "launch-researcher",
+      "name": "Launch Researcher",
+      "description": "Converts market signals into positioning, wedge, audience, and launch recommendations.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "product-launch",
+      "tags": [
+        "packsmith",
+        "launch",
+        "research",
+        "product",
+        "positioning"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/launch-researcher",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4400,
+      "usageExample": "packsmith install launch-researcher",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/launch-researcher",
+      "homepage": "https://github.com/chenfei462/packsmith#launch-researcher",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 62,
+      "installCount": 436,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "legacy-code-translator",
+      "name": "Legacy Code Translator",
+      "description": "Explains old or unclear code in modern actionable language without changing behavior.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "repository-understanding",
+      "tags": [
+        "packsmith",
+        "legacy",
+        "explanation",
+        "maintenance",
+        "repository"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/legacy-code-translator",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3900,
+      "usageExample": "packsmith install legacy-code-translator",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/legacy-code-translator",
+      "homepage": "https://github.com/chenfei462/packsmith#legacy-code-translator",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 64,
+      "installCount": 453,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "migration-planner",
+      "name": "Migration Planner",
+      "description": "Breaks risky code, data, or API migrations into reversible stages with checks.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "migration",
+        "planning",
+        "rollback",
+        "risk"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/migration-planner",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1680,
+      "usageExample": "packsmith install migration-planner",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/migration-planner",
+      "homepage": "https://github.com/chenfei462/packsmith#migration-planner",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 8,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "multi-agent-router",
+      "name": "Multi-Agent Router",
+      "description": "Chooses which local agent, skill, or workflow should handle a task based on context and risk.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "agent-workflow",
+      "tags": [
+        "packsmith",
+        "agents",
+        "routing",
+        "workflow",
+        "coordination"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/multi-agent-router",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 3900,
+      "usageExample": "packsmith install multi-agent-router",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/multi-agent-router",
+      "homepage": "https://github.com/chenfei462/packsmith#multi-agent-router",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 32,
+      "installCount": 181,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "onboarding-guide",
+      "name": "Onboarding Guide",
+      "description": "Explains a new repository for a first-time contributor with real commands and contribution landmarks.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "repository-understanding",
+      "tags": [
+        "packsmith",
+        "onboarding",
+        "contributors",
+        "docs",
+        "repository"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/onboarding-guide",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3800,
+      "usageExample": "packsmith install onboarding-guide",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/onboarding-guide",
+      "homepage": "https://github.com/chenfei462/packsmith#onboarding-guide",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 72,
+      "installCount": 521,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "onboarding-guide-writer",
+      "name": "Onboarding Guide Writer",
+      "description": "Creates fast-start contributor guides from real repository commands and structure.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "onboarding",
+        "contributors",
+        "docs",
+        "repository"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/onboarding-guide-writer",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1630,
+      "usageExample": "packsmith install onboarding-guide-writer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/onboarding-guide-writer",
+      "homepage": "https://github.com/chenfei462/packsmith#onboarding-guide-writer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 8,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "performance-profiler",
+      "name": "Performance Profiler",
+      "description": "Identifies obvious performance bottlenecks and suggests measurable improvements.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "performance",
+        "profiling",
+        "optimization",
+        "measurement"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/performance-profiler",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 4200,
+      "usageExample": "packsmith install performance-profiler",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/performance-profiler",
+      "homepage": "https://github.com/chenfei462/packsmith#performance-profiler",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 76,
+      "installCount": 555,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "pr-description-writer",
+      "name": "Pr Description Writer",
+      "description": "Writes concise pull request descriptions with test evidence and reviewer context.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "pull-request",
+        "review",
+        "docs",
+        "testing"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/pr-description-writer",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1517,
+      "usageExample": "packsmith install pr-description-writer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/pr-description-writer",
+      "homepage": "https://github.com/chenfei462/packsmith#pr-description-writer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 8,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "product-requirements-shaper",
+      "name": "Product Requirements Shaper",
+      "description": "Turns rough feature ideas into scoped requirements, decisions, and acceptance checks.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "product-launch",
+      "tags": [
+        "packsmith",
+        "requirements",
+        "product",
+        "scope",
+        "acceptance"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/product-requirements-shaper",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 1625,
+      "usageExample": "packsmith install product-requirements-shaper",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/product-requirements-shaper",
+      "homepage": "https://github.com/chenfei462/packsmith#product-requirements-shaper",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 8,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "none",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "prompt-debugger",
+      "name": "Prompt Debugger",
+      "description": "Diagnoses vague prompts, conflicting instructions, missing context, and weak output contracts.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "agent-workflow",
+      "tags": [
+        "packsmith",
+        "prompts",
+        "debugging",
+        "agents",
+        "quality"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/prompt-debugger",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3900,
+      "usageExample": "packsmith install prompt-debugger",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/prompt-debugger",
+      "homepage": "https://github.com/chenfei462/packsmith#prompt-debugger",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 38,
+      "installCount": 232,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "prompt-quality-auditor",
+      "name": "Prompt Quality Auditor",
+      "description": "Reviews agent prompts and skills for triggers, scope, output format, and contradiction risk.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "agent-workflow",
+      "tags": [
+        "packsmith",
+        "prompts",
+        "quality",
+        "skills",
+        "agents"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/prompt-quality-auditor",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 1747,
+      "usageExample": "packsmith install prompt-quality-auditor",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/prompt-quality-auditor",
+      "homepage": "https://github.com/chenfei462/packsmith#prompt-quality-auditor",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 8,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "none",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "readme-converter",
+      "name": "README Converter",
+      "description": "Turns technical READMEs into user-facing landing READMEs grounded in real commands.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "product-launch",
+      "tags": [
+        "packsmith",
+        "readme",
+        "docs",
+        "positioning",
+        "launch"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/readme-converter",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3900,
+      "usageExample": "packsmith install readme-converter",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/readme-converter",
+      "homepage": "https://github.com/chenfei462/packsmith#readme-converter",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 56,
+      "installCount": 385,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "refactor-guide",
+      "name": "Refactor Guide",
+      "description": "Plans small behavior-preserving refactors around boundaries, tests, and review risk.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "refactor",
+        "planning",
+        "tests",
+        "architecture"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/refactor-guide",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1540,
+      "usageExample": "packsmith install refactor-guide",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/refactor-guide",
+      "homepage": "https://github.com/chenfei462/packsmith#refactor-guide",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 8,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "refactor-planner",
+      "name": "Refactor Planner",
+      "description": "Turns messy code areas into safe staged refactor plans with boundaries, tests, and rollback points.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "refactor",
+        "architecture",
+        "planning",
+        "tests"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/refactor-planner",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4100,
+      "usageExample": "packsmith install refactor-planner",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/refactor-planner",
+      "homepage": "https://github.com/chenfei462/packsmith#refactor-planner",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 80,
+      "installCount": 589,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "release-checklist",
+      "name": "Release Checklist",
+      "description": "Produces release readiness checklists for npm, GitHub, docs, tests, and smoke checks.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "release",
+        "checklist",
+        "npm",
+        "docs"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/release-checklist",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3800,
+      "usageExample": "packsmith install release-checklist",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/release-checklist",
+      "homepage": "https://github.com/chenfei462/packsmith#release-checklist",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 40,
+      "installCount": 249,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "release-note-writer",
+      "name": "Release Note Writer",
+      "description": "Turns merged changes into readable release notes for users and maintainers.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "release",
+        "notes",
+        "changelog",
+        "docs"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/release-note-writer",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1583,
+      "usageExample": "packsmith install release-note-writer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/release-note-writer",
+      "homepage": "https://github.com/chenfei462/packsmith#release-note-writer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 8,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "repo-cartographer",
+      "name": "Repo Cartographer",
+      "description": "Maps architecture, entry points, module boundaries, data flow, and high-risk areas in unfamiliar repositories.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "repository-understanding",
+      "tags": [
+        "packsmith",
+        "repository",
+        "architecture",
+        "onboarding",
+        "mapping"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/repo-cartographer",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4300,
+      "usageExample": "packsmith install repo-cartographer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/repo-cartographer",
+      "homepage": "https://github.com/chenfei462/packsmith#repo-cartographer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 74,
+      "installCount": 538,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "risk-probe",
+      "name": "Risk Probe",
+      "description": "High-risk probe pack for verifying --allow-risk and --allow-scripts installation gates.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "agent-workflow",
+      "tags": [
+        "packsmith",
+        "risk",
+        "testing",
+        "security"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/risk-probe",
+      "license": "MIT",
+      "riskLevel": "high",
+      "estimatedContextSize": 800,
+      "usageExample": "packsmith install risk-probe",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/risk-probe",
+      "homepage": "https://github.com/chenfei462/packsmith#risk-probe",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 26,
+      "installCount": 130,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "required",
+        "filesystem": "required",
+        "network": "required",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "roadmap-writer",
+      "name": "Roadmap Writer",
+      "description": "Converts strategy notes into phased roadmap documents with shipped, next, and deferred work.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "product-launch",
+      "tags": [
+        "packsmith",
+        "roadmap",
+        "planning",
+        "strategy",
+        "release"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/roadmap-writer",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3700,
+      "usageExample": "packsmith install roadmap-writer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/roadmap-writer",
+      "homepage": "https://github.com/chenfei462/packsmith#roadmap-writer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 54,
+      "installCount": 368,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "security-pass",
+      "name": "Security Pass",
+      "description": "Checks for secrets, dangerous commands, unsafe scripts, dependency issues, and risky automation behavior.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "security",
+        "secrets",
+        "automation",
+        "review"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/security-pass",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1233,
+      "usageExample": "packsmith install security-pass",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/security-pass",
+      "homepage": "https://github.com/chenfei462/packsmith#security-pass",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 8,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "security-reviewer",
+      "name": "Security Reviewer",
+      "description": "Checks secrets, unsafe commands, injection risks, dependency exposure, and permission expansion.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "security",
+        "review",
+        "dependencies",
+        "permissions"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/security-reviewer",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 4600,
+      "usageExample": "packsmith install security-reviewer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/security-reviewer",
+      "homepage": "https://github.com/chenfei462/packsmith#security-reviewer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 84,
+      "installCount": 623,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "senior-code-reviewer",
+      "name": "Senior Code Reviewer",
+      "description": "Finds bugs, regressions, missing tests, risky changes, and unclear behavior before a change ships.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "review",
+        "quality",
+        "testing",
+        "risk"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/senior-code-reviewer",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4200,
+      "usageExample": "packsmith install senior-code-reviewer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/senior-code-reviewer",
+      "homepage": "https://github.com/chenfei462/packsmith#senior-code-reviewer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 86,
+      "installCount": 640,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "skill-author",
+      "name": "Skill Author",
+      "description": "Helps users turn repeated agent workflows into clear triggers, examples, and output formats.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "agent-workflow",
+      "tags": [
+        "packsmith",
+        "skills",
+        "authoring",
+        "agents",
+        "workflow"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/skill-author",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4000,
+      "usageExample": "packsmith install skill-author",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/skill-author",
+      "homepage": "https://github.com/chenfei462/packsmith#skill-author",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 36,
+      "installCount": 215,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "terraform-reviewer",
+      "name": "Terraform Reviewer",
+      "description": "Reviews Terraform changes for drift risk, permissions, state, and rollout safety.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "terraform",
+        "infrastructure",
+        "permissions",
+        "review"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/terraform-reviewer",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1614,
+      "usageExample": "packsmith install terraform-reviewer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/terraform-reviewer",
+      "homepage": "https://github.com/chenfei462/packsmith#terraform-reviewer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 8,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "test-fixture-designer",
+      "name": "Test Fixture Designer",
+      "description": "Designs small durable fixtures that make tests clearer without overfitting.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "testing",
+        "fixtures",
+        "quality",
+        "design"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/test-fixture-designer",
+      "license": "MIT",
+      "riskLevel": "medium",
+      "estimatedContextSize": 1686,
+      "usageExample": "packsmith install test-fixture-designer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/test-fixture-designer",
+      "homepage": "https://github.com/chenfei462/packsmith#test-fixture-designer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 8,
+      "installCount": 40,
+      "compatibilityNotes": "Installable into Claude Code, Codex, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "none",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "test-writer",
+      "name": "Test Writer",
+      "description": "Adds focused tests for recent code changes, edge cases, and regressions without bloating the suite.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "code-quality",
+      "tags": [
+        "packsmith",
+        "testing",
+        "regression",
+        "quality",
+        "automation"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/test-writer",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3900,
+      "usageExample": "packsmith install test-writer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/test-writer",
+      "homepage": "https://github.com/chenfei462/packsmith#test-writer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 82,
+      "installCount": 606,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "tutorial-writer",
+      "name": "Tutorial Writer",
+      "description": "Creates beginner-friendly tutorials from existing examples and verified commands.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "documentation",
+      "tags": [
+        "packsmith",
+        "tutorial",
+        "docs",
+        "examples",
+        "onboarding"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/tutorial-writer",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 3900,
+      "usageExample": "packsmith install tutorial-writer",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/tutorial-writer",
+      "homepage": "https://github.com/chenfei462/packsmith#tutorial-writer",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 46,
+      "installCount": 300,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    },
+    {
+      "id": "workflow-packager",
+      "name": "Workflow Packager",
+      "description": "Converts repeated manual workflows into reusable Packsmith packs.",
+      "version": "0.1.0",
+      "author": "packsmith",
+      "category": "agent-workflow",
+      "tags": [
+        "packsmith",
+        "packaging",
+        "workflow",
+        "skills",
+        "packsmith"
+      ],
+      "targets": [
+        "claude-code",
+        "codex",
+        "github-copilot",
+        "opencode",
+        "cursor",
+        "trae"
+      ],
+      "source": "../official-packs/workflow-packager",
+      "license": "MIT",
+      "riskLevel": "low",
+      "estimatedContextSize": 4100,
+      "usageExample": "packsmith install workflow-packager",
+      "verified": true,
+      "publisher": {
+        "id": "packsmith",
+        "verified": true
+      },
+      "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/workflow-packager",
+      "homepage": "https://github.com/chenfei462/packsmith#workflow-packager",
+      "createdAt": "2026-05-25T00:00:00.000Z",
+      "updatedAt": "2026-05-25T00:00:00.000Z",
+      "stars": 30,
+      "installCount": 164,
+      "compatibilityNotes": "Installable into Claude Code, Codex, GitHub Copilot, OpenCode, Cursor, and TRAE local Skill directories through Packsmith's copy-and-bridge adapters.",
+      "permissions": {
+        "shell": "optional",
+        "filesystem": "required",
+        "network": "optional",
+        "browser": "none"
+      }
+    }
+  ]
+}
