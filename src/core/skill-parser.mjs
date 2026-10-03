@@ -159,6 +159,7 @@ async function collectFileMetadata(root) {
  *   parse: { status, error|null },
  *   frontmatter: { name, description, ...extra } | null,
  *   body,
+ *   rawContent,
  *   files, references, scripts, assets,
  *   stats: { lines, chars, estimatedTokens, fileCount }
  * }
@@ -167,6 +168,10 @@ async function collectFileMetadata(root) {
  * (missing-skill-file / missing-frontmatter / invalid-yaml). Supporting-file
  * metadata and stats are still collected for every existing directory so the
  * diagnostics engine always gets the full picture.
+ *
+ * `rawContent` (v0.2 Milestone 4) is the untouched SKILL.md text, or null when
+ * the file is missing. checks/ need it to report deterministic file:line
+ * locations (plan §8) and to scan content patterns without re-reading files.
  *
  * Throws only when `root` itself does not exist — a caller bug, not a skill
  * fact. All skill-level problems are reported via `parse.status`.
@@ -190,6 +195,7 @@ export async function parseSkill(rootDir) {
       parse: { status: "missing-skill-file", error: null },
       frontmatter: null,
       body: null,
+      rawContent: null,
       ...fileMetadata,
       stats: {
         lines: 0,
@@ -218,6 +224,7 @@ export async function parseSkill(rootDir) {
       parse: { status: "missing-frontmatter", error: null },
       frontmatter: null,
       body,
+      rawContent,
       ...fileMetadata,
       stats
     };
@@ -233,6 +240,7 @@ export async function parseSkill(rootDir) {
       parse: { status: "invalid-yaml", error },
       frontmatter: null,
       body,
+      rawContent,
       ...fileMetadata,
       stats
     };
@@ -246,6 +254,7 @@ export async function parseSkill(rootDir) {
       parse: { status: "empty-frontmatter", error: null },
       frontmatter: {},
       body,
+      rawContent,
       ...fileMetadata,
       stats
     };
@@ -259,6 +268,7 @@ export async function parseSkill(rootDir) {
       parse: { status: "frontmatter-not-mapping", error: null },
       frontmatter: {},
       body,
+      rawContent,
       ...fileMetadata,
       stats
     };
@@ -271,6 +281,7 @@ export async function parseSkill(rootDir) {
     parse: { status: "ok", error: null },
     frontmatter: normalizeFrontmatter(value),
     body,
+    rawContent,
     ...fileMetadata,
     stats
   };

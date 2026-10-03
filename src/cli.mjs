@@ -36,6 +36,10 @@ import {
 
 import { defaultInstallRoot, defaultStateDir, TARGET_ADAPTERS } from "./lib/targets.mjs";
 
+import { runDoctor } from "./doctor.mjs";
+import { renderDoctorTerminal } from "./reporters/terminal.mjs";
+import { renderDoctorJson } from "./reporters/json.mjs";
+
 /**
  * Exit-code taxonomy (docs/specification.md#退出码):
  *   0  success
@@ -60,7 +64,7 @@ const COMMAND_FLAGS = {
   init:      ["dryRun", "json", "quiet", "yes", "pin", "allowRisk", "stateDir"],
   validate:  ["json", "quiet", "allowRisk"],
   inspect:   ["json", "quiet"],
-  doctor:    ["json", "quiet"],
+  doctor:    ["json", "quiet", "format", "target"],
   score:     ["json", "quiet", "registry", "scope", "stateDir"],
   passport:  ["json", "quiet", "registry", "scope", "stateDir"],
   targets:   ["json", "quiet"],
@@ -125,7 +129,7 @@ Authoring:
   packsmith init <pack-dir>
   packsmith validate <pack-dir>
   packsmith inspect <pack-dir>
-  packsmith doctor <pack-dir>
+  packsmith doctor <path> [--target <runtime>] [--format json]
   packsmith build <pack-dir> [--out dist]
   packsmith install <pack-or-built-dir> [--target <name>] [--dest <dir>] [--dry-run]
   packsmith publish <pack-dir> --dry-run
@@ -530,48 +534,6 @@ function printShowResult(result, options = {}) {
   console.log(`Updated: ${pack.updatedAt ?? "unknown"}`);
   console.log(`Stars: ${pack.stars ?? 0}`);
   console.log(`Installs: ${pack.installCount ?? 0}`);
-}
-
-function printDoctorResult(result) {
-  console.log(`Packsmith Doctor: ${result.name}`);
-  console.log(`Overall: ${result.score.overall}/100`);
-  console.log("");
-  console.log("Quality Score");
-
-  for (const [name, dimension] of Object.entries(result.score.dimensions)) {
-    const label = name.replace(/[A-Z]/g, (letter) => ` ${letter.toLowerCase()}`);
-    console.log(`- ${label}: ${dimension.score}/100`);
-  }
-
-  console.log("");
-  console.log("Context Budget");
-  console.log(`- Total: ${result.context.totalChars} chars`);
-  console.log(`- Token pressure: ${result.context.tokenPressure}`);
-  console.log("");
-  console.log("Quality");
-
-  if (result.quality.warnings.length === 0) {
-    console.log("- No warnings found");
-  } else {
-    for (const warning of result.quality.warnings) {
-      console.log(`- warning: ${warning}`);
-    }
-  }
-
-  console.log("");
-  console.log("Portability");
-  console.log(`- Score: ${result.portability.score}/100`);
-
-  for (const target of result.portability.targets) {
-    console.log(`- ${target.message}`);
-  }
-
-  console.log("");
-  console.log("Recommendation");
-
-  for (const recommendation of result.recommendations) {
-    console.log(`- ${recommendation}`);
-  }
 }
 
 function printAuditResult(result) {
@@ -1205,15 +1167,54 @@ async function main() {
 
   if (command === "doctor") {
     if (!primary) {
-      throw new UsageError("Missing <pack-dir> argument for doctor.");
+      throw new UsageError("Missing <path> argument for doctor.");
     }
 
-    const result = await doctorPack(primary);
+    // v0.2 reliability gate (plan §12): doctor <path> [--target <runtime>]
+    // [--format json] over a whole workspace or a single skill directory.
+    // Exit codes (plan §8): 0 = PASS, 1 = Skill validation failure,
+    // 2 = usage / infrastructure failure (never a Skill finding).
+    if (options.format !== undefined && options.format !== "json") {
+      throw new UsageError(`Unsupported --format value for doctor: ${options.format}. Use --format json.`);
+    }
 
-    if (options.json) {
-      printJson(result);
-    } else {
-      writeOutput(options, () => printDoctorResult(result));
+    const jsonOutput = options.format === "json" || options.json;
+
+    try {
+      const report = await runDoctor({ targetPath: primary, target: options.target ?? null });
+
+      if (jsonOutput) {
+        printJson(JSON.parse(renderDoctorJson(report)));
+      } else if (!options.quiet) {
+        console.log(renderDoctorTerminal(report));
+      }
+
+      process.exitCode = report.exitCode;
+    } catch (error) {
+      // Usage mistakes (bad path, unknown --target) stay usage errors: exit 2
+      // via the standard usage path.
+      if (error.isUsageError) {
+        throw new UsageError(error.message);
+      }
+
+      // Infrastructure failures (broken knowledge base, unreadable target)
+      // are Packsmith faults, never Skill failures (plan §4.4): exit 2 with
+      // the canonical error envelope when JSON output was requested.
+      console.error(`Error: ${error.message}`);
+
+      if (jsonOutput) {
+        printJson({
+          schemaVersion: 1,
+          ok: false,
+          error: {
+            code: "infrastructure_error",
+            message: error.message,
+            exitCode: 2
+          }
+        });
+      }
+
+      process.exitCode = 2;
     }
 
     return;

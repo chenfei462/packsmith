@@ -83,11 +83,14 @@ function formatPermissions(stdout) {
     .join(", ");
 }
 
-function printPassport({ previews, doctor, audit, receipt }) {
+function printPassport({ previews, score, doctor, audit, receipt }) {
   const codexPreview = previews.codex;
   const risk = firstMatch(codexPreview.stdout, /- Risk: (.+)/, "shown");
   const permissions = formatPermissions(codexPreview.stdout);
-  const qualityScore = firstMatch(doctor.stdout, /Overall: (\d+\/100)/, "shown");
+  // v0.2 doctor prints the reliability gate (plan §12); the quality score
+  // comes from the score command's "Overall: N/100" line.
+  const qualityScore = firstMatch(score.stdout, /Overall: (\d+\/100)/, "shown");
+  void doctor;
   const verified = firstMatch(codexPreview.stdout, /- Verified: (yes|no)/, "shown");
   const receiptChecksum = receipt?.checksum?.startsWith("sha256-") ? receipt.checksum : "missing";
   const auditStatus = /checksum mismatch/i.test(`${audit.stdout}\n${audit.stderr}`) ? "tamper caught" : "not proven";
@@ -189,7 +192,7 @@ async function runHackathonDemo() {
     trae: await runCli(["preview", "senior-code-reviewer", "--target", "trae"], context)
   };
 
-  await runCli(["score", "senior-code-reviewer"], context);
+  const score = await runCli(["score", "senior-code-reviewer"], context);
   const doctor = await runCli(["doctor", path.join("official-packs", "senior-code-reviewer")], context);
   await runCli(["install", "senior-code-reviewer", "--target", "codex", "--yes"], context);
 
@@ -217,7 +220,7 @@ async function runHackathonDemo() {
   console.log("I changed one installed workflow file. Packsmith caught it.");
   console.log("That is why agent workflows need a package manager.");
   console.log("Use this as the final demo beat: Packsmith is not just an installer; it is a trust gate for agent workflows.");
-  printPassport({ previews, doctor, audit, receipt });
+  printPassport({ previews, score, doctor, audit, receipt });
 
   console.log(`Temporary demo files remain for inspection: ${demoRoot}`);
   console.log(`Remove them later with: ${cleanupCommand(demoRoot)}`);

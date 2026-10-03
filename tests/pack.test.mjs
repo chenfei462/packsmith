@@ -595,7 +595,7 @@ test("help presents package-manager commands", async () => {
   assert.match(stdout, /packsmith preview <pack>/);
   assert.match(stdout, /packsmith install <pack-or-built-dir>/);
   assert.match(stdout, /packsmith search <query>/);
-  assert.match(stdout, /packsmith doctor <pack-dir>/);
+  assert.match(stdout, /packsmith doctor <path>/);
   assert.match(stdout, /packsmith score <pack>/);
   assert.match(stdout, /packsmith sync \[--policy <file>\]/);
   assert.match(stdout, /packsmith audit/);
@@ -2990,7 +2990,7 @@ test("sync --policy exits non-zero when the synchronized install violates policy
   );
 });
 
-test("doctor reports quality, portability, and manifest warnings", async () => {
+test("doctor runs the v0.2 reliability gate over a pack workspace", async () => {
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-doctor-"));
   const packDir = path.join(tempRoot, "doctor-pack");
 
@@ -3002,14 +3002,13 @@ test("doctor reports quality, portability, and manifest warnings", async () => {
 
   const { stdout } = await runCli(["doctor", packDir]);
 
-  assert.match(stdout, /Packsmith Doctor: doctor-pack/);
-  assert.match(stdout, /Overall: \d+\/100/);
-  assert.match(stdout, /discoverability/i);
-  assert.match(stdout, /instruction safety/i);
-  assert.match(stdout, /Context Budget/);
-  assert.match(stdout, /Portability/);
-  assert.match(stdout, /Gemini CLI: adapter planned/);
-  assert.match(stdout, /warning/i);
+  assert.match(stdout, /^Packsmith Doctor\n/);
+  assert.match(stdout, /review\n/);
+  assert.match(stdout, /✓ Agent Skills specification/);
+  assert.match(stdout, /✓ Claude Code/);
+  assert.match(stdout, /✓ Codex/);
+  assert.match(stdout, /0 warnings · 0 errors/);
+  assert.match(stdout, /\nPASS\n?$/);
 });
 
 test("score reports registry pack quality as JSON", async () => {

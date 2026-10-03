@@ -113,9 +113,10 @@
     "packsmith": "src/cli.mjs"
   },
   "scripts": {
-    "test": "node --test tests/pack.test.mjs tests/hackathon-demo.test.mjs tests/contract.test.mjs tests/core/skill-parser.test.mjs tests/core/diagnostics.test.mjs tests/knowledge/loader.test.mjs",
+    "test": "node --test tests/pack.test.mjs tests/hackathon-demo.test.mjs tests/contract.test.mjs tests/core/skill-parser.test.mjs tests/core/diagnostics.test.mjs tests/knowledge/loader.test.mjs tests/checks/spec.test.mjs tests/checks/activation.test.mjs tests/checks/context.test.mjs tests/checks/compatibility.test.mjs tests/checks/security.test.mjs tests/checks/doctor.test.mjs",
     "prepublishOnly": "npm test && npm run verify:hackathon:ci && node scripts/i18n-check.mjs --ci && npm run pack:dry-run",
     "validate:example": "node src/cli.mjs validate examples/research-launchpad",
+    "doctor:example": "node src/cli.mjs doctor examples/research-launchpad",
     "build:example": "node src/cli.mjs build examples/research-launchpad",
     "inspect:example": "node src/cli.mjs inspect examples/research-launchpad",
     "pack:dry-run": "npm pack --dry-run",
