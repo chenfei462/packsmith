@@ -504,6 +504,32 @@ test("init command scaffolds a new pack that validates", async () => {
   assert.equal(validated.promptCount, 1);
 });
 
+test("v0.1 command chain init, validate, inspect, build, install works through the CLI", async () => {
+  const { tempRoot, env } = await createIsolatedEnv("packsmith-v01-chain-");
+  const packDir = path.join(tempRoot, "chain-pack");
+  const distDir = path.join(tempRoot, "dist");
+  const installRoot = path.join(tempRoot, "installed");
+
+  await runCli(["init", packDir], { env });
+
+  const validated = await runCli(["validate", packDir], { env });
+  assert.match(validated.stdout, /Validated pack "chain-pack" with 1 skill\(s\) and 1 prompt\(s\)\./);
+
+  const inspected = JSON.parse((await runCli(["inspect", packDir], { env })).stdout);
+  assert.equal(inspected.name, "chain-pack");
+  assert.equal(inspected.skillCount, 1);
+  assert.equal(inspected.promptCount, 1);
+
+  const built = await runCli(["build", packDir, "--out", distDir], { env });
+  assert.match(built.stdout, /Built "chain-pack" for claude-code, codex in /);
+  await stat(path.join(distDir, "chain-pack", "claude-code", "skills", "starter-skill", "SKILL.md"));
+  await stat(path.join(distDir, "chain-pack", "codex", "AGENTS.md"));
+
+  await runCli(["install", path.join(distDir, "chain-pack"), "--target", "claude-code", "--dest", installRoot], { env });
+  await stat(path.join(installRoot, "chain-pack", "skills", "starter-skill", "SKILL.md"));
+  await stat(path.join(installRoot, "chain-pack", "manifest.json"));
+});
+
 test("install command copies a built target bundle into a destination", async () => {
   const { tempRoot, env } = await createIsolatedEnv("packsmith-install-");
   const installRoot = path.join(tempRoot, "installed");

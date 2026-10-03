@@ -126,6 +126,7 @@
     "verify:hackathon:quick": "node scripts/verify-hackathon.mjs --quick --skip-network",
     "verify:hackathon:ci": "node scripts/verify-hackathon.mjs",
     "verify:postpublish": "node scripts/post-publish-verify.mjs",
-    "smoke:example": "node src/cli.mjs init temp-smoke-pack && node src/cli.mjs validate temp-smoke-pack && node src/cli.mjs build temp-smoke-pack && node src/cli.mjs install temp-smoke-pack/dist/temp-smoke-pack --target claude-code --dest temp-installed"
+    "smoke:example": "node src/cli.mjs init temp-smoke-pack && node src/cli.mjs validate temp-smoke-pack && node src/cli.mjs build temp-smoke-pack && node src/cli.mjs install temp-smoke-pack/dist/temp-smoke-pack --target claude-code --dest temp-installed",
+    "smoke:v01": "node scripts/smoke-v01.mjs"
   }
 }
