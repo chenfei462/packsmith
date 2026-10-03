@@ -1,0 +1,35 @@
+{
+  "id": "gemini-cli",
+  "name": "Gemini CLI",
+  "kind": "runtime",
+  "summary": "Google's open-source terminal agent; consumes Agent Skills with .gemini/skills locations and a .agents/skills alias.",
+  "v02Scope": {
+    "staticCompatibility": true,
+    "liveTriggerRunner": false
+  },
+  "skillDiscovery": {
+    "entryFile": "SKILL.md",
+    "skillFormat": "SKILL.md is the only required component; scripts/, references/, and assets/ are optional",
+    "documentedLocations": [
+      "~/.gemini/skills/ (user skills)",
+      "~/.agents/skills/ (user skills alias)",
+      ".gemini/skills/ (workspace skills)",
+      ".agents/skills/ (workspace skills alias)",
+      "built-in skills bundled with the CLI",
+      "skills inside extensions"
+    ],
+    "notes": "Discovery precedence is lowest to highest: built-in skills, extension skills, user skills, then workspace skills. .agents/skills is documented as a compatible alternative to .gemini/skills, aligned with the agentskills.io standard. The Packsmith v0.1 target adapter still marks this runtime as planned (src/lib/targets.mjs) pending install-convention confirmation."
+  },
+  "frontmatter": {
+    "required": ["name", "description"],
+    "notes": "The docs name two fields: name (a unique identifier that should match the directory name) and description ('CRITICAL. This is how Gemini decides when to use the skill.')."
+  },
+  "evidence": [
+    {
+      "source": "gemini-cli-docs",
+      "sourceType": "docs",
+      "normative": "MUST",
+      "verifiedOn": "2026-10-03"
+    }
+  ]
+}

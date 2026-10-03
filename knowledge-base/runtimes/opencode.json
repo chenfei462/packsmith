@@ -1,0 +1,44 @@
+{
+  "id": "opencode",
+  "name": "OpenCode",
+  "kind": "runtime",
+  "summary": "Open-source coding agent; consumes Agent Skills with strict frontmatter recognition (unknown fields ignored) and Claude/agent-compatible discovery paths.",
+  "v02Scope": {
+    "staticCompatibility": true,
+    "liveTriggerRunner": false
+  },
+  "skillDiscovery": {
+    "entryFile": "SKILL.md",
+    "skillFormat": "each skill lives in its own folder containing a SKILL.md file, loaded on demand via the native skill tool",
+    "documentedLocations": [
+      ".opencode/skills/<name>/SKILL.md (project)",
+      "~/.config/opencode/skills/<name>/SKILL.md (global)",
+      ".claude/skills/<name>/SKILL.md (Claude-compatible, project)",
+      "~/.claude/skills/<name>/SKILL.md (Claude-compatible, global)",
+      ".agents/skills/<name>/SKILL.md (agent-compatible, project)",
+      "~/.agents/skills/<name>/SKILL.md (agent-compatible, global)"
+    ],
+    "notes": "For project paths OpenCode walks up from the current working directory until it reaches the git worktree, loading matching skills along the way. The Packsmith v0.1 target adapter installs to .opencode/skills (src/lib/targets.mjs), which matches the documented project location."
+  },
+  "frontmatter": {
+    "required": ["name", "description"],
+    "optional": ["license", "compatibility", "metadata"],
+    "name": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "maxLength": 64,
+      "mustMatchDirectoryName": true
+    },
+    "description": {
+      "maxLength": 1024
+    },
+    "notes": "Each SKILL.md must start with YAML frontmatter; only name, description, license, compatibility, and metadata are recognized, and unknown fields are ignored."
+  },
+  "evidence": [
+    {
+      "source": "opencode-docs",
+      "sourceType": "docs",
+      "normative": "MUST",
+      "verifiedOn": "2026-10-03"
+    }
+  ]
+}

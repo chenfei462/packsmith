@@ -1,0 +1,36 @@
+{
+  "id": "cursor",
+  "name": "Cursor",
+  "kind": "runtime",
+  "summary": "Anysphere's AI code editor; consumes Agent Skills natively and layers runtime-specific frontmatter keys on top of the standard fields.",
+  "v02Scope": {
+    "staticCompatibility": true,
+    "liveTriggerRunner": false
+  },
+  "skillDiscovery": {
+    "entryFile": "SKILL.md",
+    "skillFormat": "folder containing a SKILL.md file with optional scripts/, references/, and assets/ directories",
+    "documentedLocations": [
+      ".agents/skills/ (project)",
+      ".cursor/skills/ (project)",
+      "~/.agents/skills/ (user)",
+      "~/.cursor/skills/ (user)",
+      ".claude/skills/ and ~/.claude/skills/ (Claude compatibility)",
+      ".codex/skills/ and ~/.codex/skills/ (Codex compatibility)"
+    ],
+    "notes": "Cursor also discovers skills inside nested project subdirectories, so monorepos can place skills in folders such as apps/web/.cursor/skills/. The Packsmith v0.1 target adapter installs a .cursor/rules/packsmith rule pack (src/lib/targets.mjs), which predates native skill discovery."
+  },
+  "frontmatter": {
+    "required": ["name", "description"],
+    "runtimeSpecific": ["paths", "globs", "disable-model-invocation", "icon", "color"],
+    "notes": "name is required (lowercase letters, numbers, and hyphens only; must match the parent folder name) and description is required (used by the agent to determine relevance). paths scopes activation to comma-separated or list glob patterns; the legacy globs field is still accepted as a fallback. disable-model-invocation includes the skill only via explicit /skill-name invocation. icon and color style badge presentation. metadata is an arbitrary string-to-string map."
+  },
+  "evidence": [
+    {
+      "source": "cursor-docs",
+      "sourceType": "docs",
+      "normative": "MUST",
+      "verifiedOn": "2026-10-03"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "id": "agent-skills",
+  "name": "Agent Skills (open specification)",
+  "kind": "spec",
+  "summary": "The cross-runtime SKILL.md format standard that every other runtime record and every spec rule is measured against.",
+  "skillEntry": {
+    "file": "SKILL.md",
+    "required": true,
+    "layout": "YAML frontmatter followed by Markdown content"
+  },
+  "frontmatterFields": {
+    "required": ["name", "description"],
+    "optional": ["license", "compatibility", "metadata", "allowed-tools"],
+    "name": {
+      "minLength": 1,
+      "maxLength": 64,
+      "charset": "lowercase letters, numbers, and hyphens only",
+      "forbidden": ["leading hyphen", "trailing hyphen", "consecutive hyphens"],
+      "mustMatchDirectoryName": true
+    },
+    "description": {
+      "minLength": 1,
+      "maxLength": 1024,
+      "purpose": "describes what the skill does and when to use it, with keywords that help agents identify relevant tasks"
+    },
+    "compatibility": {
+      "maxLength": 500
+    },
+    "metadata": {
+      "shape": "map from string keys to string values",
+      "purpose": "extension point for properties not defined by the specification"
+    },
+    "allowedTools": {
+      "experimental": true
+    }
+  },
+  "contextBudget": {
+    "loadingModel": "progressive disclosure: metadata (~100 tokens) at startup, SKILL.md body on activation, bundled resources on demand",
+    "recommendedInstructionTokens": 5000,
+    "recommendedBodyLines": 500
+  },
+  "conventions": {
+    "optionalDirectories": ["scripts", "references", "assets"],
+    "fileReferences": "relative paths from the skill root, kept one level deep from SKILL.md"
+  },
+  "evidence": [
+    {
+      "source": "agent-skills-spec",
+      "sourceType": "spec",
+      "normative": "MUST",
+      "verifiedOn": "2026-10-03"
+    }
+  ]
+}

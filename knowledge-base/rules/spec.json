@@ -1,0 +1,188 @@
+[
+  {
+    "id": "PS-SPEC-001",
+    "title": "SKILL.md missing",
+    "category": "spec",
+    "severity": "error",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": { "type": "skill-file-exists" },
+    "message": "Every skill directory must contain a SKILL.md file at its root; without it no runtime can discover or load the skill.",
+    "fix": { "available": true, "safe": true },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "MUST",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  },
+  {
+    "id": "PS-SPEC-002",
+    "title": "Frontmatter missing",
+    "category": "spec",
+    "severity": "error",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": { "type": "frontmatter-block-present" },
+    "message": "SKILL.md must open with a YAML frontmatter block (--- ... ---) followed by the Markdown body; without the block runtimes cannot read the skill metadata.",
+    "fix": { "available": true, "safe": true },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "MUST",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  },
+  {
+    "id": "PS-SPEC-003",
+    "title": "YAML parsing failure",
+    "category": "spec",
+    "severity": "error",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": { "type": "frontmatter-yaml-parses" },
+    "message": "The SKILL.md frontmatter must be valid YAML that parses to a key-value mapping; a parse error hides every metadata field from the runtime.",
+    "fix": { "available": false, "safe": false },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "MUST",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  },
+  {
+    "id": "PS-SPEC-004",
+    "title": "name missing",
+    "category": "spec",
+    "severity": "error",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": { "type": "frontmatter-name-present" },
+    "message": "SKILL.md frontmatter must define the required name field; every surveyed runtime requires it to identify and invoke the skill.",
+    "fix": { "available": true, "safe": true },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "MUST",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  },
+  {
+    "id": "PS-SPEC-005",
+    "title": "invalid name format",
+    "category": "spec",
+    "severity": "error",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": { "type": "frontmatter-name-format" },
+    "message": "The skill name may only contain lowercase letters, numbers, and hyphens, must not start or end with a hyphen, and must not contain consecutive hyphens.",
+    "fix": { "available": false, "safe": false },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "MUST",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  },
+  {
+    "id": "PS-SPEC-006",
+    "title": "name too long",
+    "category": "spec",
+    "severity": "error",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": {
+      "type": "frontmatter-name-length",
+      "limits": { "maxCharacters": 64 }
+    },
+    "message": "The skill name exceeds the specification limit of 64 characters; shorten the name and its directory.",
+    "fix": { "available": false, "safe": false },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "MUST",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  },
+  {
+    "id": "PS-SPEC-007",
+    "title": "name/directory mismatch",
+    "category": "spec",
+    "severity": "error",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": { "type": "frontmatter-name-directory-match" },
+    "message": "The skill name must match the name of the directory containing SKILL.md; a mismatch breaks skill discovery and invocation.",
+    "fix": { "available": true, "safe": true },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "MUST",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  },
+  {
+    "id": "PS-SPEC-008",
+    "title": "description missing",
+    "category": "spec",
+    "severity": "error",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": { "type": "frontmatter-description-present" },
+    "message": "SKILL.md frontmatter must define the required description field; it is the metadata every runtime loads to decide when to activate the skill.",
+    "fix": { "available": false, "safe": false },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "MUST",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  },
+  {
+    "id": "PS-SPEC-009",
+    "title": "description too long",
+    "category": "spec",
+    "severity": "error",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": {
+      "type": "frontmatter-description-length",
+      "limits": { "maxCharacters": 1024 }
+    },
+    "message": "The description exceeds the specification limit of 1024 characters; trim it to the information that helps an agent decide when to activate the skill.",
+    "fix": { "available": false, "safe": false },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "MUST",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  },
+  {
+    "id": "PS-SPEC-010",
+    "title": "referenced file missing",
+    "category": "spec",
+    "severity": "error",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": { "type": "referenced-file-exists" },
+    "message": "SKILL.md references a file that does not exist inside the skill directory; file references must resolve to relative paths from the skill root so the runtime can load them on demand.",
+    "fix": { "available": false, "safe": false },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "SHOULD",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  }
+]

@@ -1,0 +1,65 @@
+[
+  {
+    "id": "PS-SEC-001",
+    "title": "sensitive file access pattern",
+    "category": "security",
+    "severity": "warning",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": {
+      "type": "sensitive-file-access-pattern",
+      "indicators": [".env", "credentials", "private key", "~/.ssh"]
+    },
+    "message": "Skill content reads or references sensitive files such as .env, credentials, private keys, or ~/.ssh; a human should confirm the access is intentional and scoped before trusting this skill.",
+    "fix": { "available": false, "safe": false },
+    "evidence": [
+      {
+        "source": "packsmith-security-baseline",
+        "sourceType": "docs",
+        "normative": "SHOULD",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  },
+  {
+    "id": "PS-SEC-002",
+    "title": "remote shell execution pattern",
+    "category": "security",
+    "severity": "warning",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": {
+      "type": "remote-shell-execution-pattern",
+      "indicators": ["curl ... | sh", "wget ... | sh", "remote executable scripts"]
+    },
+    "message": "Skill content pipes remote downloads straight into a shell (for example curl | sh) or fetches remote executable scripts; this executes unreviewed code and should be replaced by verified, pinned installs.",
+    "fix": { "available": false, "safe": false },
+    "evidence": [
+      {
+        "source": "packsmith-security-baseline",
+        "sourceType": "docs",
+        "normative": "SHOULD",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  },
+  {
+    "id": "PS-SEC-003",
+    "title": "dangerous destructive shell pattern",
+    "category": "security",
+    "severity": "warning",
+    "appliesTo": { "runtimes": ["all"] },
+    "check": {
+      "type": "destructive-shell-pattern",
+      "indicators": ["rm -rf", "sudo"]
+    },
+    "message": "Skill content contains destructive or privilege-escalating shell patterns such as rm -rf or sudo; a human should confirm the targets are intentional and safely scoped.",
+    "fix": { "available": false, "safe": false },
+    "evidence": [
+      {
+        "source": "packsmith-security-baseline",
+        "sourceType": "docs",
+        "normative": "SHOULD",
+        "verifiedOn": "2026-10-03"
+      }
+    ]
+  }
+]

@@ -113,7 +113,7 @@
     "packsmith": "src/cli.mjs"
   },
   "scripts": {
-    "test": "node --test tests/pack.test.mjs tests/hackathon-demo.test.mjs tests/contract.test.mjs tests/core/skill-parser.test.mjs tests/core/diagnostics.test.mjs",
+    "test": "node --test tests/pack.test.mjs tests/hackathon-demo.test.mjs tests/contract.test.mjs tests/core/skill-parser.test.mjs tests/core/diagnostics.test.mjs tests/knowledge/loader.test.mjs",
     "prepublishOnly": "npm test && npm run verify:hackathon:ci && node scripts/i18n-check.mjs --ci && npm run pack:dry-run",
     "validate:example": "node src/cli.mjs validate examples/research-launchpad",
     "build:example": "node src/cli.mjs build examples/research-launchpad",
