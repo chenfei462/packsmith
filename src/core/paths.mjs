@@ -1,5 +1,9 @@
 import path from "node:path";
-import { stat } from "node:fs/promises";
+// Default import so tests can inject fs faults through the module object
+// (same pattern as src/lib/pack.mjs and tests/fixtures/fault-injection-loader.mjs).
+import fsPromises from "node:fs/promises";
+
+import { InfrastructureError } from "./diagnostics.mjs";
 
 /**
  * Path helpers for the v0.2 core (Milestone 1).
@@ -41,12 +45,20 @@ export function resolveWithinRoot(root, relativePath) {
   return absolute;
 }
 
-/** True when `<root>/SKILL.md` exists as an entry on disk. */
+/**
+ * True when `<root>/SKILL.md` exists as an entry on disk. A missing file is
+ * a fact (false); any other stat failure (EACCES, EIO, …) is an
+ * infrastructure fault and is thrown, never converted into "missing".
+ */
 export async function skillFileExists(root) {
+  const skillFile = path.join(root, SKILL_FILE_NAME);
   try {
-    const info = await stat(path.join(root, SKILL_FILE_NAME));
+    const info = await fsPromises.stat(skillFile);
     return info.isFile();
-  } catch {
-    return false;
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return false;
+    }
+    throw new InfrastructureError(`Cannot probe ${skillFile}: ${error.message}`, { cause: error });
   }
 }

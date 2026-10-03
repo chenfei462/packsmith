@@ -29,6 +29,7 @@
     "check": {
       "type": "frontmatter-runtime-specific-keys",
       "knownRuntimeKeys": {
+        "claude-code": ["disable-model-invocation"],
         "cursor": ["paths", "globs", "disable-model-invocation", "icon", "color"]
       }
     },
@@ -40,6 +41,12 @@
         "sourceType": "spec",
         "normative": "SHOULD",
         "verifiedOn": "2026-10-03"
+      },
+      {
+        "source": "claude-code-docs",
+        "sourceType": "docs",
+        "normative": "MAY",
+        "verifiedOn": "2026-10-04"
       },
       {
         "source": "cursor-docs",

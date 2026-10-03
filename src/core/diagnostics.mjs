@@ -65,6 +65,25 @@ export const EXIT_CODES = Object.freeze({
   INFRASTRUCTURE_FAILURE: 2
 });
 
+/**
+ * Raised when Packsmith itself cannot perform its work — filesystem
+ * permission faults (EACCES/EIO), an unreadable knowledge base, and similar
+ * operational failures. Hard requirement (plan §4.4/§8): infrastructure
+ * failures map to exit code 2 and must NEVER be swallowed into a Skill
+ * finding (exit 1) or a silent PASS. Check and core modules throw this
+ * instead of converting unexpected I/O errors into facts about the Skill.
+ */
+export class InfrastructureError extends Error {
+  constructor(message, { cause } = {}) {
+    super(message);
+    this.name = "InfrastructureError";
+    this.isInfrastructureError = true;
+    if (cause) {
+      this.cause = cause;
+    }
+  }
+}
+
 function isNonEmptyString(value) {
   return typeof value === "string" && value.length > 0;
 }

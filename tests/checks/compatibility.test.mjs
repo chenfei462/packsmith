@@ -107,3 +107,60 @@ test("compatibility checks are skipped without a usable frontmatter mapping", as
     []
   );
 });
+
+// ---------------------------------------------------------------------------
+// Codex round-2 acceptance regressions: runtime-key ownership is a SUPPORT
+// question relative to the requested target, not just "not this runtime".
+// `disable-model-invocation` is documented by BOTH Claude Code and Cursor
+// (knowledge-base PS-COMP-002 knownRuntimeKeys).
+// ---------------------------------------------------------------------------
+
+const SHARED_KEY_FIELDS = `${BASE_FIELDS}\ndisable-model-invocation: true`;
+
+test("a key the target runtime supports is not reported for that target (PS-COMP-002)", async (t) => {
+  const skill = await createSkill(t, SHARED_KEY_FIELDS);
+
+  assert.deepEqual(
+    ids(await checkCompatibility(skill, { rules, displayDir: ".", targetRuntime: "claude-code" })),
+    []
+  );
+  assert.deepEqual(
+    ids(await checkCompatibility(skill, { rules, displayDir: ".", targetRuntime: "cursor" })),
+    []
+  );
+});
+
+test("a key the target supports is exempt from PS-COMP-001 for that target", async (t) => {
+  const skill = await createSkill(t, SHARED_KEY_FIELDS);
+
+  // claude-code documents disable-model-invocation, so it is intentional
+  // there rather than non-standard noise; codex does not.
+  assert.deepEqual(
+    ids(await checkCompatibility(skill, { rules, displayDir: ".", targetRuntime: "claude-code" })),
+    []
+  );
+  assert.deepEqual(
+    ids(await checkCompatibility(skill, { rules, displayDir: ".", targetRuntime: "codex" })).filter((id) => id === "PS-COMP-001"),
+    ["PS-COMP-001"]
+  );
+});
+
+test("a target that does not support the key keeps an understandable warning (PS-COMP-002)", async (t) => {
+  const skill = await createSkill(t, SHARED_KEY_FIELDS);
+  const diagnostics = await checkCompatibility(skill, { rules, displayDir: ".", targetRuntime: "codex" });
+
+  const comp2 = diagnostics.filter((diagnostic) => diagnostic.id === "PS-COMP-002");
+  assert.deepEqual(
+    comp2.map((diagnostic) => diagnostic.runtime).sort(),
+    ["claude-code", "cursor"],
+    "codex does not document the key, so both owning runtimes warn"
+  );
+});
+
+test("without a target, shared runtime keys are reported for every owning runtime", async (t) => {
+  const skill = await createSkill(t, SHARED_KEY_FIELDS);
+  const comp2 = (await checkCompatibility(skill, { rules, displayDir: ".", targetRuntime: null }))
+    .filter((diagnostic) => diagnostic.id === "PS-COMP-002");
+
+  assert.deepEqual(comp2.map((diagnostic) => diagnostic.runtime).sort(), ["claude-code", "cursor"]);
+});

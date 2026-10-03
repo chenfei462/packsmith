@@ -3,7 +3,7 @@
   "name": "packsmith-knowledge-base",
   "description": "Version-controlled runtime and specification knowledge behind the Packsmith reliability gate. Plain JSON files only: no database, no SQLite, no vector store, no embeddings, no RAG.",
   "version": "0.1.0",
-  "updatedAt": "2026-10-03",
+  "updatedAt": "2026-10-04",
   "runtimes": [
     "agent-skills",
     "claude-code",

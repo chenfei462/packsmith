@@ -31,6 +31,10 @@ export function checkCompatibility(skill, context) {
   const knownRuntimeKeys = compRule2.check?.knownRuntimeKeys ?? {};
 
   // Keys documented by the requested target runtime are intentional there.
+  // Ownership is a SUPPORT question relative to the target: a key documented
+  // by several runtimes is not "cursor-specific" noise when the target is
+  // Claude Code and both document it — only runtimes that do NOT document
+  // it keep the portability warning (PS-COMP-002).
   const targetOwnedKeys =
     targetRuntime !== null && Array.isArray(knownRuntimeKeys[targetRuntime])
       ? knownRuntimeKeys[targetRuntime]
@@ -62,16 +66,13 @@ export function checkCompatibility(skill, context) {
 
   // PS-COMP-002 — runtime-specific metadata reduces portability. The mapping
   // of runtime id → that runtime's documented frontmatter keys comes from the
-  // knowledge-base rule (check.knownRuntimeKeys).
+  // knowledge-base rule (check.knownRuntimeKeys). Keys the requested target
+  // runtime supports are intentional there and are not reported for it.
   for (const runtimeId of Object.keys(knownRuntimeKeys).sort()) {
-    // The requested target runtime owns its keys; portability concerns are
-    // about the OTHER runtimes.
-    if (targetRuntime !== null && runtimeId === targetRuntime) {
-      continue;
-    }
-
     const runtimeKeys = Array.isArray(knownRuntimeKeys[runtimeId]) ? knownRuntimeKeys[runtimeId] : [];
-    const offendingKeys = frontmatterKeys.filter((key) => runtimeKeys.includes(key)).sort();
+    const offendingKeys = frontmatterKeys
+      .filter((key) => runtimeKeys.includes(key) && !targetOwnedKeys.includes(key))
+      .sort();
 
     if (offendingKeys.length === 0) {
       continue;

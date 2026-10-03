@@ -14,15 +14,28 @@
     "notes": "The personal install directory matches the Packsmith v0.1 target adapter (src/lib/targets.mjs: .claude/skills)."
   },
   "frontmatter": {
-    "required": ["name", "description"],
-    "notes": "Claude Code follows the agent-skills spec fields; allowed-tools is documented by the spec as experimental, so support may vary."
+    "name": {
+      "required": false,
+      "fallsBackTo": "directory name"
+    },
+    "description": {
+      "required": false,
+      "recommended": true
+    },
+    "notes": "Per the official frontmatter reference, name may be omitted (the directory name is used) and description is recommended, not required. The agent-skills specification's stricter MUST requirements are enforced separately as spec diagnostics (PS-SPEC-004/PS-SPEC-008) and must not be conflated with this runtime's tolerant loading behavior."
   },
   "evidence": [
     {
       "source": "claude-code-docs",
       "sourceType": "docs",
-      "normative": "MUST",
-      "verifiedOn": "2026-10-03"
+      "normative": "MAY",
+      "verifiedOn": "2026-10-04"
+    },
+    {
+      "source": "claude-code-docs",
+      "sourceType": "docs",
+      "normative": "RECOMMENDED",
+      "verifiedOn": "2026-10-04"
     }
   ]
 }

@@ -1166,21 +1166,23 @@ async function main() {
   }
 
   if (command === "doctor") {
-    if (!primary) {
-      throw new UsageError("Missing <path> argument for doctor.");
-    }
-
     // v0.2 reliability gate (plan §12): doctor <path> [--target <runtime>]
     // [--format json] over a whole workspace or a single skill directory.
     // Exit codes (plan §8): 0 = PASS, 1 = Skill validation failure,
     // 2 = usage / infrastructure failure (never a Skill finding).
-    if (options.format !== undefined && options.format !== "json") {
-      throw new UsageError(`Unsupported --format value for doctor: ${options.format}. Use --format json.`);
-    }
-
+    // Under --format json EVERY failure path — usage mistakes included —
+    // prints one stable, parseable JSON envelope on stdout with exit 2.
     const jsonOutput = options.format === "json" || options.json;
 
     try {
+      if (!primary) {
+        throw new UsageError("Missing <path> argument for doctor.");
+      }
+
+      if (options.format !== undefined && options.format !== "json") {
+        throw new UsageError(`Unsupported --format value for doctor: ${options.format}. Use --format json.`);
+      }
+
       const report = await runDoctor({ targetPath: primary, target: options.target ?? null });
 
       if (jsonOutput) {
@@ -1191,30 +1193,25 @@ async function main() {
 
       process.exitCode = report.exitCode;
     } catch (error) {
-      // Usage mistakes (bad path, unknown --target) stay usage errors: exit 2
-      // via the standard usage path.
-      if (error.isUsageError) {
-        throw new UsageError(error.message);
-      }
-
-      // Infrastructure failures (broken knowledge base, unreadable target)
-      // are Packsmith faults, never Skill failures (plan §4.4): exit 2 with
-      // the canonical error envelope when JSON output was requested.
-      console.error(`Error: ${error.message}`);
+      const isUsage = error.isUsageError === true || error instanceof UsageError;
 
       if (jsonOutput) {
         printJson({
           schemaVersion: 1,
           ok: false,
           error: {
-            code: "infrastructure_error",
+            code: isUsage ? "usage_error" : "infrastructure_error",
             message: error.message,
             exitCode: 2
           }
         });
+        process.exitCode = 2;
+      } else if (isUsage) {
+        throw new UsageError(error.message);
+      } else {
+        console.error(`Error: ${error.message}`);
+        process.exitCode = 2;
       }
-
-      process.exitCode = 2;
     }
 
     return;

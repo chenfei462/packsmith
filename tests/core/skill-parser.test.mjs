@@ -246,13 +246,18 @@ test("splitFrontmatter is a pure splitter with documented rules", () => {
   assert.deepEqual(splitFrontmatter("---\nname: a\n---\nBody\n"), {
     frontmatterText: "name: a",
     body: "Body\n",
-    hasBlock: true
+    hasBlock: true,
+    bodyStartLine: 4
   });
   assert.deepEqual(splitFrontmatter("no fences at all"), {
     frontmatterText: null,
     body: "no fences at all",
-    hasBlock: false
+    hasBlock: false,
+    bodyStartLine: null
   });
+  // The body start is derived from the closing fence, so identical text
+  // inside the frontmatter cannot drag the offset to the wrong line.
+  assert.equal(splitFrontmatter('---\nname: hi\ndescription: "hi"\n---\nhi').bodyStartLine, 5);
 });
 
 test("estimateTokens uses the documented chars/4 ceiling", () => {

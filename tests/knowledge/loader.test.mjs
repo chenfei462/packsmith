@@ -218,7 +218,12 @@ test("all 20 plan §11 rules are present with exactly the planned ids", async ()
   assert.equal(new Set(kb.rules.map((rule) => rule.id)).size, total, "rule ids must be unique");
 });
 
-test("every rule passes structural validation and carries traceable evidence verified on 2026-10-03", async () => {
+// Verification dates present in the knowledge base. Re-verification adds a
+// new date rather than rewriting history — provenance means "valid ISO date
+// with a resolvable source", not one frozen day.
+const KNOWN_VERIFIED_DATES = new Set(["2026-10-03", "2026-10-04"]);
+
+test("every rule passes structural validation and carries traceable evidence with a known verification date", async () => {
   const kb = await loadKnowledgeBase();
   const sourceIds = new Set(kb.sources.map((source) => source.id));
 
@@ -227,7 +232,7 @@ test("every rule passes structural validation and carries traceable evidence ver
     assert.ok(rule.evidence.length >= 1, `rule ${rule.id} must cite at least one source`);
 
     for (const entry of rule.evidence) {
-      assert.equal(entry.verifiedOn, "2026-10-03", `rule ${rule.id} evidence must be verified on 2026-10-03`);
+      assert.ok(KNOWN_VERIFIED_DATES.has(entry.verifiedOn), `rule ${rule.id} evidence must carry a known verification date, got ${entry.verifiedOn}`);
       assert.ok(NORMATIVE_KEYWORDS.includes(entry.normative), `rule ${rule.id} normative keyword must be RFC 2119`);
       assert.ok(sourceIds.has(entry.source), `rule ${rule.id} evidence source must resolve in sources.json`);
     }
@@ -238,7 +243,7 @@ test("every rule passes structural validation and carries traceable evidence ver
     assert.deepEqual(validateRuntimeRecord(runtime, { sources: kb.sources }), [], `runtime ${runtime.id} must validate cleanly`);
 
     for (const entry of runtime.evidence) {
-      assert.equal(entry.verifiedOn, "2026-10-03", `runtime ${runtime.id} evidence must be verified on 2026-10-03`);
+      assert.ok(KNOWN_VERIFIED_DATES.has(entry.verifiedOn), `runtime ${runtime.id} evidence must carry a known verification date, got ${entry.verifiedOn}`);
     }
   }
 });
@@ -283,7 +288,7 @@ test("manifest counts match the loaded content", async () => {
   );
 
   assert.equal(kb.manifest.schemaVersion, 1);
-  assert.equal(kb.manifest.updatedAt, "2026-10-03");
+  assert.equal(kb.manifest.updatedAt, "2026-10-04");
   assert.equal(kb.manifest.counts.rules, 20);
   assert.deepEqual(kb.manifest.counts.rulesByCategory, { spec: 10, activation: 3, compatibility: 2, context: 2, security: 3 });
 });

@@ -83,14 +83,23 @@ function runtimeLabel(runtimeId) {
   return RUNTIME_LABELS[runtimeId] ?? runtimeId;
 }
 
-/** Resolve and validate the doctor target: an existing directory. */
+/** Resolve and validate the doctor target: an existing directory. A path
+ * that does not exist (or is not a directory) is the caller's mistake — a
+ * usage error. An ACCESS failure on an existing path (EACCES, EIO, …) is a
+ * Packsmith-side infrastructure fault and must surface as exit 2 (plan §8,
+ * plan §4.4), never as "target does not exist". */
 async function resolveTargetDirectory(targetPath) {
   let info;
 
   try {
     info = await stat(targetPath);
   } catch (error) {
-    throw new DoctorUsageError(`Doctor target does not exist: ${targetPath} (${error.message})`);
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+      throw new DoctorUsageError(`Doctor target does not exist: ${targetPath} (${error.message})`);
+    }
+    throw new DoctorInfrastructureError(`Doctor cannot access the target path ${targetPath}: ${error.message}`, {
+      cause: error
+    });
   }
 
   if (!info.isDirectory()) {
@@ -205,12 +214,30 @@ export async function runDoctor({
     const context = { rules: base.rules, displayDir, targetRuntime: target, siblings: parsedSkills };
 
     // The check order is the plan §8 category order; sortDiagnostics below
-    // applies the canonical engine ordering for output.
-    const specDiagnostics = await checkSpec(parsed, context);
-    const activationDiagnostics = checkActivation(parsed, context);
-    const compatibilityDiagnostics = checkCompatibility(parsed, context);
-    const contextDiagnostics = checkContext(parsed, context);
-    const securityDiagnostics = await checkSecurity(parsed, context);
+    // applies the canonical engine ordering for output. Check failures that
+    // carry infrastructure semantics (filesystem EACCES/EIO, …) are
+    // re-raised as doctor infrastructure errors — they must surface as
+    // exit 2, never as Skill findings or a silent PASS (plan §4.4).
+    let specDiagnostics;
+    let activationDiagnostics;
+    let compatibilityDiagnostics;
+    let contextDiagnostics;
+    let securityDiagnostics;
+
+    try {
+      specDiagnostics = await checkSpec(parsed, context);
+      activationDiagnostics = checkActivation(parsed, context);
+      compatibilityDiagnostics = checkCompatibility(parsed, context);
+      contextDiagnostics = checkContext(parsed, context);
+      securityDiagnostics = await checkSecurity(parsed, context);
+    } catch (error) {
+      if (error.isInfrastructureError) {
+        throw new DoctorInfrastructureError(`Doctor checks failed for skill at ${parsed.root}: ${error.message}`, {
+          cause: error
+        });
+      }
+      throw error;
+    }
 
     const skillDiagnostics = collectDiagnostics(
       specDiagnostics,

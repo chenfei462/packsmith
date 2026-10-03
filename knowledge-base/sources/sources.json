@@ -13,7 +13,7 @@
     "sourceType": "docs",
     "url": "https://code.claude.com/docs/en/skills",
     "publisher": "Anthropic",
-    "notes": "Official Claude Code skills documentation. A skill is a folder containing a SKILL.md file with YAML frontmatter (name, description) plus a Markdown instruction body. Verified 2026-10-03."
+    "notes": "Official Claude Code skills documentation (frontmatter reference). Verified 2026-10-04: name may be omitted and defaults to the skill directory's name; description is a recommended field, not a hard requirement; disable-model-invocation is a documented Claude Code frontmatter key (explicit invocation only, shared with Cursor which documents the same flag). Skill discovery: personal ~/.claude/skills and project .claude/skills directories, matching the Packsmith v0.1 target adapter."
   },
   {
     "id": "codex-docs",

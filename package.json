@@ -20,6 +20,7 @@
   "files": [
     "src",
     "registry",
+    "knowledge-base",
     "official-packs/senior-code-reviewer",
     "official-packs/security-reviewer",
     "official-packs/test-writer",
@@ -113,7 +114,7 @@
     "packsmith": "src/cli.mjs"
   },
   "scripts": {
-    "test": "node --test tests/pack.test.mjs tests/hackathon-demo.test.mjs tests/contract.test.mjs tests/core/skill-parser.test.mjs tests/core/diagnostics.test.mjs tests/knowledge/loader.test.mjs tests/checks/spec.test.mjs tests/checks/activation.test.mjs tests/checks/context.test.mjs tests/checks/compatibility.test.mjs tests/checks/security.test.mjs tests/checks/doctor.test.mjs",
+    "test": "node --test tests/pack.test.mjs tests/hackathon-demo.test.mjs tests/contract.test.mjs tests/core/skill-parser.test.mjs tests/core/diagnostics.test.mjs tests/core/workspace-missing.test.mjs tests/knowledge/loader.test.mjs tests/knowledge/runtime-facts.test.mjs tests/checks/spec.test.mjs tests/checks/spec-links.test.mjs tests/checks/activation.test.mjs tests/checks/context.test.mjs tests/checks/compatibility.test.mjs tests/checks/security.test.mjs tests/checks/doctor.test.mjs tests/checks/doctor-json-envelope.test.mjs tests/checks/doctor-faults.test.mjs",
     "prepublishOnly": "npm test && npm run verify:hackathon:ci && node scripts/i18n-check.mjs --ci && npm run pack:dry-run",
     "validate:example": "node src/cli.mjs validate examples/research-launchpad",
     "doctor:example": "node src/cli.mjs doctor examples/research-launchpad",
@@ -128,7 +129,8 @@
     "verify:hackathon:ci": "node scripts/verify-hackathon.mjs",
     "verify:postpublish": "node scripts/post-publish-verify.mjs",
     "smoke:example": "node src/cli.mjs init temp-smoke-pack && node src/cli.mjs validate temp-smoke-pack && node src/cli.mjs build temp-smoke-pack && node src/cli.mjs install temp-smoke-pack/dist/temp-smoke-pack --target claude-code --dest temp-installed",
-    "smoke:v01": "node scripts/smoke-v01.mjs"
+    "smoke:v01": "node scripts/smoke-v01.mjs",
+    "smoke:doctor:packaged": "node scripts/smoke-doctor-packaged.mjs"
   },
   "dependencies": {
     "yaml": "2.9.1"

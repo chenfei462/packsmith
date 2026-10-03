@@ -1,5 +1,7 @@
 import path from "node:path";
-import { readFile } from "node:fs/promises";
+// Default import so tests can inject fs faults through the module object
+// (same pattern as src/lib/pack.mjs and tests/fixtures/fault-injection-loader.mjs).
+import fsPromises from "node:fs/promises";
 
 import { parse as parseYaml } from "yaml";
 
@@ -46,14 +48,18 @@ const FENCE_OPEN = /^---\s*$/;
 const FENCE_CLOSE = /^---\s*$/;
 
 /**
- * Split raw SKILL.md content into `{ frontmatterText, body, hasBlock }`.
- * Pure function. Rules (documented, deterministic):
+ * Split raw SKILL.md content into `{ frontmatterText, body, hasBlock,
+ * bodyStartLine }`. Pure function. Rules (documented, deterministic):
  * - a leading UTF-8 BOM is stripped before fence detection;
  * - frontmatter opens with a `---` line on line 1 and closes at the next
  *   `---` line; an unterminated block means there is NO frontmatter block
  *   (the whole content is body), matching how runtimes treat such files;
  * - CRLF is tolerated; `body` keeps its original line endings, minus the
- *   single newline that directly follows the closing fence.
+ *   single newline that directly follows the closing fence;
+ * - `bodyStartLine` is the 1-based file line of the first body line,
+ *   derived structurally from the closing fence (never from searching for
+ *   the body text, which can also appear inside the frontmatter). null
+ *   when there is no block or the body is empty.
  */
 export function splitFrontmatter(rawContent) {
   const content = rawContent.charCodeAt(0) === 0xfeff ? rawContent.slice(1) : rawContent;
@@ -61,24 +67,38 @@ export function splitFrontmatter(rawContent) {
   const firstLine = (lineEnd === -1 ? content : content.slice(0, lineEnd)).replace(/\r$/, "");
 
   if (!FENCE_OPEN.test(firstLine)) {
-    return { frontmatterText: null, body: content, hasBlock: false };
+    return { frontmatterText: null, body: content, hasBlock: false, bodyStartLine: null };
   }
 
   const rest = lineEnd === -1 ? "" : content.slice(lineEnd + 1);
   const lines = rest.split("\n");
+  let lineOffset = 0;
 
   for (let index = 0; index < lines.length; index += 1) {
     if (FENCE_CLOSE.test(lines[index].replace(/\r$/, ""))) {
       const frontmatterText = lines.slice(0, index).join("\n");
       let body = lines.slice(index + 1).join("\n");
       // Drop exactly one leading newline right after the closing fence.
-      if (body.startsWith("\r")) body = body.slice(1);
-      if (body.startsWith("\n")) body = body.slice(1);
-      return { frontmatterText, body, hasBlock: true };
+      let stripped = 0;
+      if (body.startsWith("\r")) {
+        body = body.slice(1);
+        stripped += 1;
+      }
+      if (body.startsWith("\n")) {
+        body = body.slice(1);
+        stripped += 1;
+      }
+      // Character offset just past the closing fence line's terminator,
+      // then the stripped newline(s): the exact position of the body.
+      const afterFence = lineEnd + 1 + lineOffset + lines[index].length + 1;
+      const bodyStart = body === "" ? null : afterFence + stripped;
+      const bodyStartLine = bodyStart === null ? null : content.slice(0, bodyStart).split("\n").length;
+      return { frontmatterText, body, hasBlock: true, bodyStartLine };
     }
+    lineOffset += lines[index].length + 1;
   }
 
-  return { frontmatterText: null, body: content, hasBlock: false };
+  return { frontmatterText: null, body: content, hasBlock: false, bodyStartLine: null };
 }
 
 /**
@@ -206,7 +226,7 @@ export async function parseSkill(rootDir) {
     };
   }
 
-  const rawContent = await readFile(skillFile, "utf8");
+  const rawContent = await fsPromises.readFile(skillFile, "utf8");
   const { frontmatterText, body, hasBlock } = splitFrontmatter(rawContent);
 
   const stats = {

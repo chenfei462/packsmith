@@ -121,26 +121,21 @@ export function lineOfPattern(text, regex) {
 /**
  * Number of complete lines that precede the Markdown body inside the raw
  * SKILL.md text, so a 1-based body line `n` maps to file line `offset + n`.
- * The body is located verbatim in the raw text (the parser only strips a BOM
- * and at most one newline after the closing fence), which keeps the mapping
- * exact regardless of blank lines around the fences. 0 without a body.
+ * The offset is derived structurally from the closing frontmatter fence
+ * (skill-parser's bodyStartLine), never from searching for the body text —
+ * identical text inside the frontmatter would otherwise drag the offset to
+ * the wrong line. 0 without a frontmatter block or without a body.
  */
 export function bodyLineOffset(rawContent) {
   if (typeof rawContent !== "string") {
     return 0;
   }
 
-  const { body, hasBlock } = splitFrontmatter(rawContent);
+  const { hasBlock, bodyStartLine } = splitFrontmatter(rawContent);
 
-  if (!hasBlock || typeof body !== "string" || body === "") {
+  if (!hasBlock || bodyStartLine === null) {
     return 0;
   }
 
-  const bodyStart = rawContent.indexOf(body);
-
-  if (bodyStart <= 0) {
-    return 0;
-  }
-
-  return rawContent.slice(0, bodyStart).split("\n").length - 1;
+  return bodyStartLine - 1;
 }

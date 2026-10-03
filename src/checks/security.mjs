@@ -1,6 +1,9 @@
-import { readFile } from "node:fs/promises";
 import path from "node:path";
+// Default import so tests can inject fs faults through the module object
+// (same pattern as src/lib/pack.mjs and tests/fixtures/fault-injection-loader.mjs).
+import fsPromises from "node:fs/promises";
 
+import { InfrastructureError } from "../core/diagnostics.mjs";
 import { requireRule, diagnosticFromRule, joinDisplayPath } from "./support.mjs";
 
 /**
@@ -79,11 +82,17 @@ function scanText(text, patterns) {
 
 async function readTextFile(absolutePath) {
   try {
-    return await readFile(absolutePath, "utf8");
-  } catch {
-    // An unreadable supporting file is not a security finding; the content
-    // simply cannot be scanned.
-    return null;
+    return await fsPromises.readFile(absolutePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      // The file vanished between the directory listing and the read;
+      // there is simply nothing to scan.
+      return null;
+    }
+    // A permission or I/O fault is an infrastructure failure: skipping the
+    // scan would silently hide security findings (plan §4.4), so it is
+    // thrown and surfaces as exit code 2, never as a PASS.
+    throw new InfrastructureError(`Cannot read supporting file ${absolutePath}: ${error.message}`, { cause: error });
   }
 }
 
