@@ -91,6 +91,37 @@ function printJson(value) {
   console.log(JSON.stringify(value, null, 2));
 }
 
+/**
+ * Explicit JSON intent visible in the RAW argv, needed when argument
+ * PARSING itself fails (unknown flag, missing option value) and no parsed
+ * `options` object exists. Recognizes `--json`, `--format json` and
+ * `--format=json`; everything after a `--` terminator is positional and is
+ * not inspected. Doctor-scoped: only doctor promises a JSON contract.
+ */
+function hasExplicitJsonIntent(rawArgs) {
+  for (let index = 0; index < rawArgs.length; index += 1) {
+    const arg = rawArgs[index];
+
+    if (arg === "--") {
+      return false;
+    }
+
+    if (arg === "--json") {
+      return true;
+    }
+
+    if (arg === "--format=json") {
+      return true;
+    }
+
+    if (arg === "--format" && rawArgs[index + 1] === "json") {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 function writeOutput(options, printer) {
   if (options.quiet && !options.json) {
     return;
@@ -1121,7 +1152,35 @@ async function main() {
     return;
   }
 
-  const { positionals, options } = parseOptions(rawArgs, command);
+  let parsedOptions;
+
+  try {
+    parsedOptions = parseOptions(rawArgs, command);
+  } catch (error) {
+    // Argument PARSING failures happen before any command logic runs and
+    // before an `options` object exists. When the command is doctor and the
+    // raw argv carries an explicit JSON intent, honor the machine-readable
+    // contract even here: one stable usage_error envelope on stdout, empty
+    // stderr, exit 2. Text mode keeps the standard UsageError path and every
+    // other command is unchanged.
+    if (command === "doctor" && error instanceof UsageError && hasExplicitJsonIntent(rawArgs)) {
+      printJson({
+        schemaVersion: 1,
+        ok: false,
+        error: {
+          code: "usage_error",
+          message: error.message,
+          exitCode: 2
+        }
+      });
+      process.exitCode = 2;
+      return;
+    }
+
+    throw error;
+  }
+
+  const { positionals, options } = parsedOptions;
   currentOptions = options;
 
   const logger = new Logger({ stateDir: options.stateDir, verbose: options.verbose, trace: options.trace });

@@ -129,3 +129,68 @@ test("runDoctor throws an infrastructure error for a broken knowledge base", asy
     (error) => error instanceof DoctorInfrastructureError && error.isInfrastructureError === true
   );
 });
+
+// ---------------------------------------------------------------------------
+// Codex final contract review: argument-PARSING failures happen before the
+// doctor branch exists. With an explicit JSON intent in the raw argv they
+// must emit the same usage_error envelope (stdout, exit 2, empty stderr).
+// ---------------------------------------------------------------------------
+
+test("unknown flag with --json prints an error envelope and exits 2", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "packsmith-doctor-env-"));
+  const skillDir = path.join(root, "valid");
+  await mkdir(skillDir, { recursive: true });
+  await writeFile(path.join(skillDir, "SKILL.md"), VALID_SKILL, "utf8");
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  const result = runCli(["doctor", skillDir, "--json", "--bogus"]);
+
+  assert.equal(result.status, 2);
+  const envelope = parseEnvelope(result, "unknown flag (--json)");
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.code, "usage_error");
+  assert.equal(envelope.error.exitCode, 2);
+  assert.equal(result.stderr.trim(), "", "json intent must not leak usage text to stderr");
+});
+
+test("unknown flag with --format=json prints an error envelope and exits 2", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "packsmith-doctor-env-"));
+  const skillDir = path.join(root, "valid");
+  await mkdir(skillDir, { recursive: true });
+  await writeFile(path.join(skillDir, "SKILL.md"), VALID_SKILL, "utf8");
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  const result = runCli(["doctor", skillDir, "--format=json", "--bogus"]);
+
+  assert.equal(result.status, 2);
+  const envelope = parseEnvelope(result, "unknown flag (--format=json)");
+  assert.equal(envelope.error.code, "usage_error");
+  assert.equal(result.stderr.trim(), "");
+});
+
+test("missing option value with --format json prints an error envelope and exits 2", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "packsmith-doctor-env-"));
+  const skillDir = path.join(root, "valid");
+  await mkdir(skillDir, { recursive: true });
+  await writeFile(path.join(skillDir, "SKILL.md"), VALID_SKILL, "utf8");
+  t.after(() => rm(root, { recursive: true, force: true }));
+
+  const result = runCli(["doctor", skillDir, "--target", "--format", "json"]);
+
+  assert.equal(result.status, 2);
+  const envelope = parseEnvelope(result, "missing option value");
+  assert.equal(envelope.error.code, "usage_error");
+  assert.equal(envelope.error.exitCode, 2);
+  assert.equal(result.stderr.trim(), "");
+});
+
+test("a JSON intent after the -- terminator is ignored: text usage path is kept", async () => {
+  // The parse error comes from --bogus (before the terminator); the --json
+  // AFTER the -- terminator is a positional and must NOT turn this into a
+  // JSON-envelope path — it goes through the standard text usage failure.
+  const result = runCli(["doctor", "some-target", "--bogus", "--", "--json"]);
+
+  assert.equal(result.status, 2);
+  assert.equal(result.stdout.trim(), "", "no envelope when the intent flag sits behind --");
+  assert.match(result.stderr, /Usage error/);
+});
