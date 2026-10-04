@@ -257,10 +257,14 @@ export function parseClaudeTrace(streamText, { skillName }) {
 }
 
 /** Claude headless argv for one trigger case: stream-json + verbose, prompt
- * via stdin. Session persistence/permissions/isolation tuning belongs to
- * Milestone 7's explicit context. */
-function buildClaudeArgs() {
-  return ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk"];
+ * via stdin. Isolation flags (plan §17: session persistence off, strict
+ * settings sources, empty MCP config, minimal settings file, minimal tool
+ * set) come from the trigger context and are appended after the protocol
+ * arguments. */
+function buildClaudeArgs(isolationFlags = []) {
+  return ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk"].concat(
+    Array.isArray(isolationFlags) ? isolationFlags : []
+  );
 }
 
 export const claudeCodeAdapter = adapterContract({
@@ -294,7 +298,7 @@ export const claudeCodeAdapter = adapterContract({
       skill,
       prompt,
       context,
-      buildArgs: buildClaudeArgs,
+      buildArgs: () => buildClaudeArgs(context.isolationFlags),
       parseTrace: (streamText) => parseClaudeTrace(streamText, { skillName: skill })
     });
   },

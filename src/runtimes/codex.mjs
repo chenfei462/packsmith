@@ -556,9 +556,13 @@ export function parseCodexTrace(streamText, { installedSkillPath, workspaceDir }
 }
 
 /** codex exec argv for one trigger case: JSONL on stdout, read-only sandbox,
- * prompt via stdin (`-`). Isolation flags belong to Milestone 7's context. */
-function buildCodexArgs() {
-  return ["exec", "--json", "--sandbox", "read-only", "--skip-git-repo-check", "-"];
+ * prompt via stdin (`-`). Isolation flags (plan §17: --ephemeral,
+ * --ignore-user-config, --ignore-rules as defense-in-depth) come from the
+ * trigger context and are appended after the protocol arguments. */
+function buildCodexArgs(isolationFlags = []) {
+  return ["exec", "--json", "--sandbox", "read-only", "--skip-git-repo-check", "-"].concat(
+    Array.isArray(isolationFlags) ? isolationFlags : []
+  );
 }
 
 export const codexAdapter = adapterContract({
@@ -592,7 +596,7 @@ export const codexAdapter = adapterContract({
       skill,
       prompt,
       context,
-      buildArgs: buildCodexArgs,
+      buildArgs: () => buildCodexArgs(context.isolationFlags),
       parseTrace: (streamText) =>
         parseCodexTrace(streamText, {
           installedSkillPath: path.resolve(context.workspaceDir, ".agents", "skills", skill, "SKILL.md"),
