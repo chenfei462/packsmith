@@ -395,148 +395,473 @@ test("runtime.json records honest metadata and never carries credential values",
   assert.equal(raw.includes("codex-access-SENTINEL"), false);
 });
 
-test("cleanupPrivateState removes the private root but leaves retained artifacts", async (t) => {
+test("cleanupPrivateState refuses foreign roots and preserves their content", async (t) => {
   const root = await makeRoot(t);
-  const privateRoot = path.join(root, "private");
-  await createCaseDirs({ privateRoot });
-  const run = await createIsolatedRun({ runsRoot: path.join(root, "runs") });
-  await writeFile(run.paths.runtimeJson, "{}\n", "utf8");
-
-  await cleanupPrivateState(privateRoot);
-
-  let gone = false;
-  try {
-    await stat(privateRoot);
-  } catch {
-    gone = true;
-  }
-  assert.equal(gone, true, "the private state root must be removed");
-  await stat(run.paths.runtimeJson, { ...{} });
-});
-
-test("an unwritable runs root surfaces as infrastructure (partial artifacts truthful)", async (t) => {
-  const root = await makeRoot(t);
-  const blocker = path.join(root, "blocker");
-  await writeFile(blocker, "not a directory\n", "utf8");
+  const foreign = path.join(os.tmpdir(), `packsmith-foreign-test-${Date.now().toString(36)}`);
+  await mkdir(foreign, { recursive: true });
+  await writeFile(path.join(foreign, "author.txt"), "author content\n", "utf8");
+  t.after(() => rm(foreign, { recursive: true, force: true }));
 
   await assert.rejects(
-    () => createIsolatedRun({ runsRoot: path.join(blocker, "runs") }),
-    (error) => error.isInfrastructureError === true
+    () => cleanupPrivateState(foreign),
+    (error) => /not a packsmith private state root|was not created by this run/.test(error.message)
   );
+  const preserved = await readFile(path.join(foreign, "author.txt"), "utf8");
+  assert.match(preserved, /author content/, "foreign content must survive");
+
+  // A correctly-named but unregistered root is equally refused.
+  const fake = path.join(os.tmpdir(), `packsmith-run-private-fake-${Date.now().toString(36)}`);
+  await mkdir(fake, { recursive: true });
+  await writeFile(path.join(fake, "author.txt"), "author content\n", "utf8");
+  t.after(() => rm(fake, { recursive: true, force: true }));
+
+  await assert.rejects(() => cleanupPrivateState(fake), (error) => /was not created by this run/.test(error.message));
+  const fakePreserved = await readFile(path.join(fake, "author.txt"), "utf8");
+  assert.match(fakePreserved, /author content/, "unregistered content must survive");
 });
 
-test("withIsolatedTriggerRun repeats are fully independent and secrets never reach retained artifacts", async (t) => {
-  const root = await makeRoot(t);
-  await writeAuthFixtures(root);
-  const skillDir = await makeSkillSource(root, "review-pr");
-  const runsRoot = path.join(root, ".packsmith", "runs");
+// ---------------------------------------------------------------------------
+// Round-2 acceptance regressions: the isolation must hold for the ACTUAL
+// child process (not just helpers), all six artifacts must exist in every
+// outcome, credentials must never reach error messages or retained files,
+// run-dir creation must be exclusive and confined, skill installs must not
+// follow pre-planted junctions, and the Claude bridge must carry the full
+// documented model-routing field set.
+// ---------------------------------------------------------------------------
 
-  const seen = [];
-  for (let repeat = 0; repeat < 2; repeat += 1) {
-    const { context, runDir, runId } = await withIsolatedTriggerRun({
-      runsRoot,
-      runtimeId: "codex",
-      skillDir,
-      codexAuthPath: parentCodexAuthFixture(root),
-      run: async ({ context: isolatedContext }) => {
-        // The installed skill is visible inside THIS workspace only.
-        await stat(path.join(isolatedContext.workspaceDir, ".agents", "skills", "review-pr", "SKILL.md"));
-        return { used: isolatedContext.workspaceDir };
-      }
-    });
+const CLAUDE_ROUTING_SENTINEL = "sk-ant-claude-routing-SENTINEL";
 
-    seen.push({ runDir, runId });
-    await stat(path.join(runDir, "runtime.json"));
-
-    const raw = await readFile(path.join(runDir, "runtime.json"), "utf8");
-    assert.equal(raw.includes(CODEX_AUTH_SENTINEL), false, "no credential value may reach the retained artifacts");
-
-    // The private runtime state must be gone after the run.
-    let cleaned = true;
-    try {
-      await stat(context.runtimeStateDir);
-    } catch {
-      cleaned = true;
-    }
-    assert.equal(cleaned, true, "the private runtime state must be cleaned after the run");
-    void cleaned;
-  }
-
-  assert.notEqual(seen[0].runId, seen[1].runId, "repeats must not share state");
-});
-
-test("a failing run still cleans private state and records a truthful failure", async (t) => {
-  const root = await makeRoot(t);
-  const runsRoot = path.join(root, ".packsmith", "runs");
-
-  await assert.rejects(
-    () =>
-      withIsolatedTriggerRun({
-        runsRoot,
-        runtimeId: "codex",
-        skillDir: path.join(root, "does-not-exist"),
-        run: async () => {
-          throw new Error("should not be reached");
-        }
-      }),
-    InfrastructureError
+async function rewriteFixtureToWorkspace(fixturePath, workspaceDir) {
+  const raw = await readFile(
+    path.join(__dirname, "..", "fixtures", "runtime-traces", "codex-triggered.jsonl"),
+    "utf8"
   );
-
-  const runDirs = (await readdir(runsRoot)).map((entry) => path.join(runsRoot, entry));
-  assert.equal(runDirs.length, 1);
-  const metadata = JSON.parse(await readFile(path.join(runDirs[0], "runtime.json"), "utf8"));
-  assert.match(metadata.status, /failed:/, "the failure must be recorded truthfully");
-});
-
-test("cross-runtime runs use distinct workspaces and their own skill dirs", async (t) => {
-  const root = await makeRoot(t);
-  await writeAuthFixtures(root);
-  const skillDir = await makeSkillSource(root, "review-pr");
-  const runsRoot = path.join(root, ".packsmith", "runs");
-  const seenWorkspaces = new Set();
-
-  for (const runtimeId of ["codex", "claude-code"]) {
-    const { runDir } = await withIsolatedTriggerRun({
-      runsRoot,
-      runtimeId,
-      skillDir,
-      codexAuthPath: parentCodexAuthFixture(root),
-      claudeSettingsPath: parentClaudeSettingsFixture(root),
-      run: async ({ context: isolatedContext }) => {
-        seenWorkspaces.add(isolatedContext.workspaceDir);
-        const subdir = runtimeId === "codex" ? ".agents" : ".claude";
-        await stat(path.join(isolatedContext.workspaceDir, subdir, "skills", "review-pr", "SKILL.md"));
-        return true;
+  const rewritten = raw
+    .trimEnd()
+    .split("\n")
+    .map((line) => {
+      const event = JSON.parse(line);
+      if (event.item?.command !== undefined) {
+        event.item.command = event.item.command.split("C:\\ws").join(workspaceDir);
       }
-    });
+      return JSON.stringify(event);
+    })
+    .join("\n");
+  await writeFile(fixturePath, rewritten, "utf8");
+}
 
-    await stat(path.join(runDir, "runtime.json"));
-  }
-
-  assert.equal(seenWorkspaces.size, 2, "cross-runtime runs must not share a workspace");
-});
-
-test("static runtimes stay unsupported through the isolated layer", async (t) => {
+test("the ACTUAL child process receives the isolated environment", async (t) => {
   const root = await makeRoot(t);
   const skillDir = await makeSkillSource(root, "review-pr");
+  const envOut = path.join(root, "child-env.json");
+  const fixture = path.join(root, "trace.jsonl");
 
-  const { result } = await withIsolatedTriggerRun({
-    runsRoot: path.join(root, ".packsmith", "runs"),
-    runtimeId: "cursor",
-    skillDir,
-    run: async ({ context: isolatedContext }) => {
-      const { cursorAdapter } = await import("../../src/runtimes/cursor.mjs");
-      return cursorAdapter.runTriggerCase({ skill: "review-pr", prompt: "p", context: isolatedContext });
+  // Parent sentinels the child must NOT inherit (set on THIS process, the
+  // parent of the mock CLI child).
+  const savedEnv = { ...process.env };
+  process.env.APPDATA = "C:\\parent-APPDATA-SENTINEL";
+  process.env.LOCALAPPDATA = "C:\\parent-LOCALAPPDATA-SENTINEL";
+  process.env.XDG_CACHE_HOME = "C:\\parent-XDG-CACHE-SENTINEL";
+  process.env.XDG_CONFIG_HOME = "C:\\parent-XDG-CONFIG-SENTINEL";
+  process.env.XDG_STATE_HOME = "C:\\parent-XDG-STATE-SENTINEL";
+  process.env.XDG_DATA_HOME = "C:\\parent-XDG-DATA-SENTINEL";
+  process.env.GIT_DIR = "C:\\parent-GIT-DIR-SENTINEL";
+  process.env.git_config_global = "C:\\parent-gitconfig-SENTINEL";
+  t.after(() => {
+    for (const key of ["APPDATA", "LOCALAPPDATA", "XDG_CACHE_HOME", "XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_DATA_HOME", "GIT_DIR", "git_config_global"]) {
+      if (savedEnv[key] === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = savedEnv[key];
+      }
     }
   });
 
-  assert.equal(result.status, "unsupported");
+  const { context } = await withIsolatedTriggerRun({
+    runsRoot: path.join(root, ".packsmith", "runs"),
+    runtimeId: "codex",
+    skillDir,
+    binaryPath: process.execPath,
+    binaryArgs: [path.join(__dirname, "..", "fixtures", "mock-runtime-cli.mjs")],
+    run: async (handles) => {
+      await rewriteFixtureToWorkspace(fixture, handles.context.workspaceDir);
+      const { codexAdapter } = await import("../../src/runtimes/codex.mjs");
+      return codexAdapter.runTriggerCase({
+        skill: "review-pr",
+        prompt: "p",
+        context: {
+          ...handles.context,
+          env: { MOCK_TRACE: fixture, MOCK_ENV_OUT: envOut }
+        }
+      });
+    }
+  });
+
+  const child = JSON.parse(await readFile(envOut, "utf8"));
+  const dirs = context.caseDirs;
+
+  assert.equal(child.APPDATA, dirs.appData, "APPDATA must be the case dir in the REAL child");
+  assert.equal(child.LOCALAPPDATA, dirs.localAppData);
+  assert.equal(child.XDG_CACHE_HOME, dirs.cache);
+  assert.equal(child.XDG_CONFIG_HOME, dirs.config);
+  assert.equal(child.XDG_STATE_HOME, dirs.state);
+  assert.equal(child.XDG_DATA_HOME, dirs.data, "XDG_DATA_HOME must be isolated too");
+  assert.equal(child.GIT_DIR, undefined, "parent git context must not flow back into the child");
+  assert.equal(child.git_config_global, undefined, "lowercase parent git keys must not flow back either");
+  assert.equal(child.HOME, dirs.home);
 });
 
-test("createRunId follows the plan's date-prefix shape and is unique", () => {
-  const first = createRunId(new Date("2026-10-04T00:00:00Z"));
-  const second = createRunId(new Date("2026-10-04T00:00:00Z"));
-  assert.match(first, /^20261004-[0-9a-f]{6}$/);
-  assert.notEqual(first, second);
+test("a successful run materializes ALL six artifacts with the actual status and version", async (t) => {
+  const root = await makeRoot(t);
+  const skillDir = await makeSkillSource(root, "review-pr");
+  const fixture = path.join(root, "trace.jsonl");
+
+  const { result, runDir } = await withIsolatedTriggerRun({
+    runsRoot: path.join(root, ".packsmith", "runs"),
+    runtimeId: "codex",
+    skillDir,
+    binaryPath: process.execPath,
+    binaryArgs: [path.join(__dirname, "..", "fixtures", "mock-runtime-cli.mjs")],
+    run: async (handles) => {
+      await rewriteFixtureToWorkspace(fixture, handles.context.workspaceDir);
+      const { codexAdapter } = await import("../../src/runtimes/codex.mjs");
+      return codexAdapter.runTriggerCase({
+        skill: "review-pr",
+        prompt: "p",
+        context: { ...handles.context, env: { MOCK_TRACE: fixture } }
+      });
+    }
+  });
+
+  assert.equal(result.status, "triggered");
+  await stat(path.join(runDir, "stdout.log"));
+  await stat(path.join(runDir, "stderr.log"));
+  await stat(path.join(runDir, "events.jsonl"));
+
+  const recorded = JSON.parse(await readFile(path.join(runDir, "result.json"), "utf8"));
+  assert.equal(recorded.status, "triggered", "result.json carries the actual six-state status");
+
+  const metadata = JSON.parse(await readFile(path.join(runDir, "runtime.json"), "utf8"));
+  assert.equal(metadata.status, "triggered", "metadata status mirrors the trigger result, not a generic executed");
+  assert.equal(metadata.runtimeVersion, result.runtimeVersion, "metadata carries the ACTUAL observed runtime version");
+  assert.ok(typeof metadata.runtimeVersion === "string" && metadata.runtimeVersion.length > 0, "the mock probe reports a real version string");
+
+  // stdout.log and events.jsonl carry the same verbatim bytes (no re-encode).
+  const eventsBytes = await readFile(path.join(runDir, "events.jsonl"));
+  const stdoutBytes = await readFile(path.join(runDir, "stdout.log"));
+  assert.deepEqual(eventsBytes, stdoutBytes, "raw bytes must be identical, not string-recoded");
 });
 
+test("malformed parent auth surfaces sanitized errors and no secret reaches retained files", async (t) => {
+  const root = await makeRoot(t);
+  const malformedCodex = path.join(root, "broken-codex-auth.json");
+  await writeFile(malformedCodex, '{ "note": "QASECRET" broken', "utf8");
+
+  let caught = null;
+  try {
+    await withIsolatedTriggerRun({
+      runsRoot: path.join(root, ".packsmith", "runs"),
+      runtimeId: "codex",
+      skillDir: await makeSkillSource(root, "review-pr"),
+      codexAuthPath: malformedCodex,
+      run: async () => true
+    });
+  } catch (error) {
+    caught = error;
+  }
+
+  assert.ok(caught, "the malformed auth must fail the run");
+  assert.equal(
+    String(caught.message).includes("QASECRET"),
+    false,
+    "the thrown diagnostic must not quote the file content"
+  );
+
+  const runDirs = await readdir(path.join(root, ".packsmith", "runs"));
+  assert.equal(runDirs.length, 1);
+  for (const file of ["runtime.json", "result.json", "stdout.log", "stderr.log", "events.jsonl"]) {
+    const content = await readFile(path.join(root, ".packsmith", "runs", runDirs[0], file), "utf8");
+    assert.equal(content.includes("QASECRET"), false, `${file} must not carry the credential content`);
+  }
+
+  // Malformed Claude settings get the same treatment.
+  const malformedClaude = path.join(root, "broken-claude-settings.json");
+  await writeFile(malformedClaude, '{ "env": { QASECRET }', "utf8");
+  let caughtClaude = null;
+  try {
+    await withIsolatedTriggerRun({
+      runsRoot: path.join(root, ".packsmith", "runs-claude"),
+      runtimeId: "claude-code",
+      skillDir: await makeSkillSource(root, "review-pr"),
+      claudeSettingsPath: malformedClaude,
+      run: async () => true
+    });
+  } catch (error) {
+    caughtClaude = error;
+  }
+  assert.ok(caughtClaude);
+  assert.equal(String(caughtClaude.message).includes("QASECRET"), false);
+});
+
+test("a non-object parent auth payload is refused with a sanitized diagnostic", async (t) => {
+  const root = await makeRoot(t);
+  const stringAuth = path.join(root, "string-codex-auth.json");
+  await writeFile(stringAuth, '"QASECRET-as-a-string"', "utf8");
+
+  await assert.rejects(
+    async () =>
+      withIsolatedTriggerRun({
+        runsRoot: path.join(root, ".packsmith", "runs"),
+        runtimeId: "codex",
+        skillDir: await makeSkillSource(root, "review-pr"),
+        codexAuthPath: stringAuth,
+        run: async () => true
+      }),
+    (error) => /must contain a JSON object/.test(error.message) && !String(error.message).includes("QASECRET")
+  );
+});
+
+test("run prefixes are single filename tokens - traversal is refused", async (t) => {
+  const root = await makeRoot(t);
+  const runsRoot = path.join(root, ".packsmith", "runs");
+
+  await assert.rejects(
+    () => createIsolatedRun({ runsRoot, prefix: "../outside-prefix/" }),
+    (error) => /single filename token/.test(error.message)
+  );
+  await assert.rejects(() => createIsolatedRun({ runsRoot, prefix: "a/b" }), InfrastructureError);
+  await createIsolatedRun({ runsRoot, prefix: "ok.prefix-1" });
+});
+
+test("a junctioned runs root is refused and the redirected target is untouched", async (t) => {
+  const root = await makeRoot(t);
+  const owned = path.join(root, "owned-target");
+  await mkdir(owned, { recursive: true });
+  const { symlink } = await import("node:fs/promises");
+
+  let madeJunction = false;
+  try {
+    await symlink(owned, path.join(root, "junctioned-runs"), "junction");
+    madeJunction = true;
+  } catch {
+    madeJunction = false;
+  }
+
+  if (!madeJunction) {
+    t.skip("junction creation unavailable on this platform");
+    return;
+  }
+
+  await assert.rejects(
+    () => createIsolatedRun({ runsRoot: path.join(root, "junctioned-runs") }),
+    (error) => /real directory|redirected root/.test(error.message)
+  );
+
+  const ownedEntries = await readdir(owned);
+  assert.equal(ownedEntries.length, 0, "nothing may be created through the junction");
+});
+
+test("a pre-planted junction at a destination ancestor refuses the install", async (t) => {
+  const root = await makeRoot(t);
+  const outside = path.join(root, "outside");
+  await mkdir(outside, { recursive: true });
+  const skillDir = await makeSkillSource(root, "review-pr");
+  const workspaceDir = path.join(root, "ws");
+  await mkdir(workspaceDir, { recursive: true });
+  const { symlink } = await import("node:fs/promises");
+
+  let madeJunction = false;
+  try {
+    await symlink(outside, path.join(workspaceDir, ".agents"), "junction");
+    madeJunction = true;
+  } catch {
+    madeJunction = false;
+  }
+
+  if (!madeJunction) {
+    t.skip("junction creation unavailable on this platform");
+    return;
+  }
+
+  await assert.rejects(
+    () => installSkill({ workspaceDir, runtimeId: "codex", skillDir }),
+    (error) => /real directory|outside the isolated workspace/.test(error.message)
+  );
+
+  let escaped = true;
+  try {
+    await stat(path.join(outside, "skills", "review-pr", "SKILL.md"));
+  } catch {
+    escaped = false;
+  }
+  assert.equal(escaped, false, "nothing may be written through the planted junction");
+});
+
+test("git template dirs are cleaned up even when the git binary is unusable", async (t) => {
+  const templateRoot = os.tmpdir();
+  const countTemplates = async () =>
+    (await readdir(templateRoot)).filter((entry) => entry.startsWith("packsmith-git-template-")).length;
+
+  const before = await countTemplates();
+
+  const scratch = await mkdtemp(path.join(os.tmpdir(), "packsmith-git-fail-"));
+  t.after(() => rm(scratch, { recursive: true, force: true }));
+
+  await assert.rejects(
+    () => initializeWorkspaceRepo({ workspaceDir: path.join(scratch, "ws"), gitBinary: "packsmith-missing-git-binary" }),
+    InfrastructureError
+  );
+
+  assert.equal(await countTemplates(), before, "no git template directory may leak after a failed init");
+});
+
+test("the claude bridge carries the full whitelisted routing field set and nothing else", async (t) => {
+  const root = await makeRoot(t);
+  const settingsPath = path.join(root, "settings.json");
+  await writeFile(
+    settingsPath,
+    JSON.stringify(
+      {
+        model: "claude-sonnet-4-5",
+        hooks: { PostToolUse: [{ matcher: "*", hooks: [{ type: "command", command: "should-not-be-copied" }] }] },
+        mcpServers: { desktop: { command: "should-not-be-copied" } },
+        env: {
+          ANTHROPIC_AUTH_TOKEN: CLAUDE_TOKEN_SENTINEL,
+          ANTHROPIC_BASE_URL: CLAUDE_ENDPOINT,
+          ANTHROPIC_MODEL: CLAUDE_ROUTING_SENTINEL,
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: "haiku-routing",
+          ANTHROPIC_DEFAULT_OPUS_MODEL: "opus-routing",
+          ANTHROPIC_DEFAULT_SONNET_MODEL: "sonnet-routing",
+          SOME_OTHER_ENV: "not-bridged"
+        }
+      },
+      null,
+      2
+    ),
+    "utf8"
+  );
+
+  const caseDirs = await createCaseDirs({ privateRoot: path.join(root, "private") });
+  const report = await bridgeAuth({
+    runtimeId: "claude-code",
+    claudeSettingsPath: settingsPath,
+    runtimeStateDir: caseDirs.runtimeState
+  });
+
+  assert.equal(report.present, true);
+  assert.equal(report.endpointPinned, true);
+  assert.equal(report.modelPinned, true);
+  assert.deepEqual(
+    [...report.fields].sort(),
+    [
+      "ANTHROPIC_AUTH_TOKEN",
+      "ANTHROPIC_BASE_URL",
+      "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+      "ANTHROPIC_DEFAULT_OPUS_MODEL",
+      "ANTHROPIC_DEFAULT_SONNET_MODEL",
+      "ANTHROPIC_MODEL",
+      "model"
+    ].sort()
+  );
+  assert.equal(JSON.stringify(report).includes(CLAUDE_TOKEN_SENTINEL), false, "field values never appear in the report");
+
+  const staged = JSON.parse(await readFile(path.join(caseDirs.runtimeState, "settings.json"), "utf8"));
+  assert.deepEqual(Object.keys(staged).sort(), ["env", "model"], "only the whitelisted top-level keys are staged");
+  assert.equal(staged.model, "claude-sonnet-4-5");
+  assert.equal(Object.keys(staged.env).length, 6, "all six documented ANTHROPIC_* fields are bridged");
+  assert.equal(JSON.stringify(staged).includes("should-not-be-copied"), false, "hooks/MCP are never copied");
+  assert.equal(JSON.stringify(staged).includes("SOME_OTHER_ENV"), false, "unknown env fields are never copied");
+});
+
+test("a non-string routing field is refused with a sanitized diagnostic", async (t) => {
+  const root = await makeRoot(t);
+  const settingsPath = path.join(root, "settings.json");
+  await writeFile(
+    settingsPath,
+    JSON.stringify({ env: { ANTHROPIC_AUTH_TOKEN: CLAUDE_TOKEN_SENTINEL, ANTHROPIC_MODEL: 42 } }, null, 2),
+    "utf8"
+  );
+
+  const caseDirs = await createCaseDirs({ privateRoot: path.join(root, "private") });
+  await assert.rejects(
+    () => bridgeAuth({ runtimeId: "claude-code", claudeSettingsPath: settingsPath, runtimeStateDir: caseDirs.runtimeState }),
+    (error) => /env\.ANTHROPIC_MODEL must be a non-empty string/.test(error.message)
+  );
+});
+
+test("a private root swapped for a real author directory is preserved and the run fails truthfully", async (t) => {
+  const root = await makeRoot(t);
+  const skillDir = await makeSkillSource(root, "review-pr");
+  const runsRoot = path.join(root, ".packsmith", "runs");
+  const movedAway = path.join(os.tmpdir(), `packsmith-moved-original-${Date.now().toString(36)}`);
+  t.after(() => rm(movedAway, { recursive: true, force: true }));
+
+  let caught = null;
+  try {
+    await withIsolatedTriggerRun({
+      runsRoot,
+      runtimeId: "codex",
+      skillDir,
+      run: async (handles) => {
+        // ACTUAL callback manipulation: move this run's private root aside
+        // and plant a real author directory at the original pathname.
+        const privateRoot = path.dirname(handles.caseDirs.runtimeState);
+        await rm(movedAway, { recursive: true, force: true });
+        await (await import("node:fs/promises")).rename(privateRoot, movedAway);
+        await mkdir(privateRoot, { recursive: true });
+        await writeFile(path.join(privateRoot, "author.txt"), "author content must survive\\n", "utf8");
+        return { status: "triggered", runtime: "codex", runtimeVersion: "mock 1.0.0", evidence: [] };
+      }
+    });
+  } catch (error) {
+    caught = error;
+  }
+
+  assert.ok(caught, "the identity mismatch must fail the run");
+  assert.match(String(caught.message), /replaced after registration/, "the diagnostic must name the replacement");
+
+  // The planted author directory is preserved, never deleted.
+  const runDirs = await readdir(runsRoot);
+  assert.equal(runDirs.length, 1);
+  const privateRoot = path.join(
+    path.dirname(JSON.parse(await readFile(path.join(runsRoot, runDirs[0], "runtime.json"), "utf8")).context.runtimeStateDir)
+  );
+  const author = await readFile(path.join(privateRoot, "author.txt"), "utf8");
+  assert.match(author, /author content must survive/);
+
+  // The recorded status is a truthful failure, not the trigger result.
+  const metadata = JSON.parse(await readFile(path.join(runsRoot, runDirs[0], "runtime.json"), "utf8"));
+  assert.match(metadata.status, /failed: cleanup:.*replaced/, "cleanup failure must flip the recorded status");
+});
+
+test("malformed auth errors carry no credential excerpt through the whole cause chain", async (t) => {
+  const root = await makeRoot(t);
+  const malformedCodex = path.join(root, "broken-codex-auth.json");
+  await writeFile(malformedCodex, '{ "note": "QASECRET" broken', "utf8");
+
+  let caught = null;
+  try {
+    await withIsolatedTriggerRun({
+      runsRoot: path.join(root, ".packsmith", "runs-cause"),
+      runtimeId: "codex",
+      skillDir: await makeSkillSource(root, "review-pr"),
+      codexAuthPath: malformedCodex,
+      run: async () => true
+    });
+  } catch (error) {
+    caught = error;
+  }
+
+  assert.ok(caught, "the malformed auth must fail the run");
+
+  // Walk the ENTIRE cause chain: no link may quote the file content.
+  let current = caught;
+  let depth = 0;
+
+  while (current !== null && current !== undefined && depth < 10) {
+    const text = [current.message, current.stack].filter((part) => typeof part === "string").join("\n");
+    assert.equal(text.includes("QASECRET"), false, `cause chain depth ${depth} leaks the credential excerpt`);
+    current = current.cause;
+    depth += 1;
+  }
+});

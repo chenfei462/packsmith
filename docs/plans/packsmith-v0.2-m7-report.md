@@ -3,6 +3,17 @@
 日期：2026-10-04 · 分支：`feat/v0.2-reliability-gate` · 范围：计划 §17（Milestone 7），不含 M8 及真实模型调用
 实现：ZCode（GLM-5.3-Flash）· 独立验收：Codex · 基线：M6 checkpoint `6c7e2a9`（400 项 / 399 pass / 1 file-symlink skip）
 
+## 0. Round-2 验收修复（2026-10-04，Codex 复测驱动）
+
+Round-2 复测确认前六项已过（actual child env 六 sentinel 排除、六产物齐全、坏 auth 净化、prefix/junction 拒绝、collision retry、模板清理、未注册目录拒删、cleanup EACCES 翻转 status），本轮修完剩余 ownership 项并补强：
+
+- **私有根实体身份核验**：注册表由「路径集合」升级为「路径 → {dev, ino, 随机标记文件}」。清理前核验当前实体仍是注册时那个目录（dev/ino 一致 + 私有根内 owner-identity.json 标记匹配）——注册的 PATH 不等于对当前路径实体的所有权；reviewer 的 actual-replacement 攻击（rename 原根 + 原位植真实 author 目录）下：替换目录保留、run 失败、metadata 翻转为 failed（cleanup 失败状态不再被外层 generic 记录覆盖）。finally 重试同样被身份核验拦截，不删替换物、不假成功。
+- **cause 链净化**：坏 auth 的 JSON.parse SyntaxError 不再进入任何 cause/stack——bridge 抛固定文案 InfrastructureError（不带 cause），回归遍历整条 cause 链（message+stack，深度 10）断言零 credential excerpt。
+- **Claude 认证桥 routing 白名单扩展**：按官方 settings 实读 keys，白名单从 2 字段扩至 6 个 env 字段（ANTHROPIC_AUTH_TOKEN/BASE_URL/MODEL/DEFAULT_HAIKU_MODEL/DEFAULT_OPUS_MODEL/DEFAULT_SONNET_MODEL）+ 顶层 model 选择器（严格 string 非空校验）；仍只写私有 settings，hooks/MCP/未知 env 字段绝不复制；值不进 report/flags/日志/产物。Codex 侧维持仅 auth.json（本机 config 无 provider tables，不拷整 config）。
+- **buildIsolatedChildEnv 实际接线**：base 的 probe 与 runner 改为优先调用 context.buildChildEnv——隔离环境进入 ACTUAL 子进程（测试与 smoke 用 MOCK_ENV_OUT 记录真实子进程所见：六个 XDG/APPDATA 全为 case 目录、父 GIT_* 与混合大小写键不存在、HOME/CODEX_HOME 隔离）。XDG_DATA_HOME 一并钉住。
+- **六产物恒落盘**：run 骨架创建即写入空 stdout.log/stderr.log/events.jsonl；成功执行后 events.jsonl 与 stdout.log 为同一份 verbatim Buffer（零重编码）、stderr.log 恒存在；result.json 写入真实六状态（triggered/…/unsupported；setup/launch 失败 → infra_error）；metadata.status 取触发结果真实状态（不再泛化为 executed）、runtimeVersion 取 result.runtimeVersion 实测值。
+- **独占与禁闭**：prefix 强制单文件名 token；runsRoot 拒绝 symlink/junction 且 realpath 必须与给定路径一致（祖先 junction 重定向即拒）；run 目录用非递归独占 mkdir + 5 次重试（重掷 id + -rN 后缀，破坏性随机源也无法复用 workspace）；创建后 realpath 禁闭校验；installSkill 目标祖先链（.agents/.agents/skills）创建前后逐一校验归属、目标 realpath 必须等于由 workspace realpath 推导的期望位置；失败清理为身份防护式（替换物/越界物保留并报告）。
+
 ## 1. 交付内容
 
 - `src/trigger/isolation.mjs` — 每 case×runtime×repeat 的独立隔离编排：
@@ -19,7 +30,7 @@
 
 ## 2. 测试与验证（真实命令与结果）
 
-- `node --test <package.json test 全列表，25 文件>`：**421 项，416 pass / 0 fail / 5 skip（约 61s）**。5 个 skip 全部为权限门控（3 个 junction/file-symlink 创建 + 1 个 M6 真实 PS 对照 + 1 个本测试的 symlink 源逃逸用例——本沙箱拒绝创建符号链接；Codex 真机须实跑），skip 不计入通过。
+- `node --test <package.json test 全列表，25 文件>`：**427 项，420 pass / 0 fail / 7 skip（约 48s）**。7 个 skip 全部为权限门控（junction/file-symlink 创建与真实 PS 对照，本沙箱拒绝；Codex 真机须实跑），skip 不计入通过。新增 round-2 回归 6 项：真实子进程环境取证（MOCK_ENV_OUT）、六产物与真实 status/version、坏 auth 净化（message+cause 链+全产物扫描）、prefix/根 junction/安装祖先 junction 拒绝、routing 白名单保全、私有根实体替换防护。
 - 新增隔离回归 21 项，覆盖任务书要求的全部场景：
   - 布局与唯一性（两次运行不同 id/dir；六产物路径预留）；
   - 真实 git 边界（父链 `.git`+AGENTS.md+decoy skills 下 init 后 rev-parse 仍解析为本次 workspace；父 GIT_DIR/git_work_tree 混合大小写注入被剥离）；

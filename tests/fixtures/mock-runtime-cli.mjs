@@ -38,7 +38,26 @@ if (process.env.MOCK_STDIN_OUT) {
 
 if (process.env.MOCK_ENV_OUT) {
   const interesting = {};
-  for (const key of ["CODEX_THREAD_ID", "CODEX_SESSION_ID", "CODEX_APP_TOOLS_PIPE_PATH", "HOME", "USERPROFILE", "CODEX_HOME", "CLAUDE_CONFIG_DIR", "TMP", "TEMP"]) {
+  for (const key of [
+    "CODEX_THREAD_ID",
+    "CODEX_SESSION_ID",
+    "CODEX_APP_TOOLS_PIPE_PATH",
+    "HOME",
+    "USERPROFILE",
+    "CODEX_HOME",
+    "CLAUDE_CONFIG_DIR",
+    "TMP",
+    "TEMP",
+    "APPDATA",
+    "LOCALAPPDATA",
+    "XDG_CACHE_HOME",
+    "XDG_CONFIG_HOME",
+    "XDG_STATE_HOME",
+    "XDG_DATA_HOME",
+    "GIT_DIR",
+    "git_config_global",
+    "PATH"
+  ]) {
     if (process.env[key] !== undefined) {
       interesting[key] = process.env[key];
     }

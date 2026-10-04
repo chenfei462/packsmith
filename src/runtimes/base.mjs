@@ -331,9 +331,10 @@ export async function probeRuntimeVersion(context, versionArgs) {
   // The (already validated) workspace location must exist for the child cwd
   // to be valid on Windows; creating it is idempotent.
   await mkdir(context.workspaceDir, { recursive: true });
+  const envBuilder = typeof context.buildChildEnv === "function" ? context.buildChildEnv : buildChildEnv;
   const result = spawnSync(entry.command, [...entry.args, ...versionArgs], {
     cwd: context.workspaceDir,
-    env: buildChildEnv(process.env, context),
+    env: envBuilder(process.env, context),
     encoding: "utf8",
     shell: false,
     timeout: 15000,
@@ -431,7 +432,11 @@ export async function runLiveTriggerCase(adapter, { skill, prompt, context, buil
 
     function continueRun(resolved) {
       const argv = [...resolved.args, ...buildArgs()];
-      const env = buildChildEnv(process.env, context);
+      // The isolation layer (Milestone 7) supplies context.buildChildEnv so
+      // the ACTUAL child process receives the isolated environment; without
+      // it the standard reduction applies.
+      const envBuilder = typeof context.buildChildEnv === "function" ? context.buildChildEnv : buildChildEnv;
+      const env = envBuilder(process.env, context);
 
       // The workspace location is explicit and validated; it must EXIST for
       // the child cwd to be valid on Windows (Milestone 7 populates the real
@@ -515,15 +520,16 @@ export async function runLiveTriggerCase(adapter, { skill, prompt, context, buil
 
   // Raw evidence is always retained VERBATIM as captured bytes — invalid
   // UTF-8, CRLF, blank lines and trailing state are never re-encoded (plan
-  // verification record §7); the trace is the exact stream the CLI wrote.
-  // Parsers decode their own copy.
+  // verification record §7). The structured event stream (events.jsonl)
+  // and the raw stdout.log carry the SAME verbatim bytes; stderr.log is
+  // always present (empty when the CLI wrote nothing). Parsers decode
+  // their own copy.
   const stdoutText = captured.stdout.toString("utf8");
   try {
     await mkdir(context.traceDir, { recursive: true });
     await writeFile(tracePath, captured.stdout);
-    if (captured.stderr.length > 0) {
-      await writeFile(path.join(context.traceDir, "stderr.log"), captured.stderr);
-    }
+    await writeFile(path.join(context.traceDir, "stdout.log"), captured.stdout);
+    await writeFile(path.join(context.traceDir, "stderr.log"), captured.stderr);
   } catch (error) {
     return buildTriggerResult({
       status: "infra_error",

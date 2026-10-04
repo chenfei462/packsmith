@@ -2,6 +2,7 @@
 
 import { spawnSync } from "node:child_process";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,6 +42,9 @@ function fail(step, message) {
 function importSpecifier(target) {
   return JSON.stringify(`file://${target.split(path.sep).join("/")}`);
 }
+
+// Roots that already existed before this smoke: never ours to judge.
+const preExistingPrivateRoots = new Set((await readdir(os.tmpdir())).filter((entry) => entry.startsWith("packsmith-run-private-")));
 
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-smoke-isolation-"));
 
@@ -114,14 +118,17 @@ const first = await withIsolatedTriggerRun({
       throw new Error("workspace must be a real git repository");
     }
     const trace = await contextFixture("codex-triggered.jsonl", context.workspaceDir);
+    const childEnvOut = path.join(os.tmpdir(), "packsmith-smoke-isolation-env-" + Math.random().toString(36).slice(2) + ".json");
+    results.childEnvFile = childEnvOut;
     return codexAdapter.runTriggerCase({
       skill: "review-pr",
       prompt: "Review the PR.",
-      context: { ...context, env: { MOCK_TRACE: trace } }
+      context: { ...context, env: { MOCK_TRACE: trace, MOCK_ENV_OUT: childEnvOut } }
     });
   }
 });
 results.firstStatus = first.result.status;
+results.caseDirs = { appData: first.context.caseDirs.appData, data: first.context.caseDirs.data };
 results.firstRunDir = first.runDir;
 
 // Run 2: codex repeat 2 — must not share anything with run 1.
@@ -185,6 +192,15 @@ console.log(JSON.stringify(results));
     fail("mock run", `expected triggered, got ${JSON.stringify(results.firstStatus)}`);
   }
 
+  // Actual-child environment proof: the mock CLI recorded what it saw.
+  const childEnv = JSON.parse(await readFile(results.childEnvFile, "utf8"));
+  if (childEnv.APPDATA !== results.caseDirs.appData || childEnv.XDG_DATA_HOME !== results.caseDirs.data) {
+    fail("child env", );
+  }
+  if (childEnv.GIT_DIR !== undefined || childEnv.git_config_global !== undefined) {
+    fail("child env", "parent git context reached the child");
+  }
+
   // (a) distinct run dirs per run.
   const runDirs = [results.firstRunDir, results.secondRunDir, results.thirdRunDir];
   if (new Set(runDirs).size !== 3) {
@@ -208,10 +224,12 @@ console.log(JSON.stringify(results));
     }
   }
 
-  // (c) private state cleaned: no packsmith-run-private temp roots left.
+  // (c) private state cleaned: no NEW packsmith-run-private temp roots may
+  // remain (pre-existing leftovers from other processes are not ours).
   const tempEntries = (await readdir(os.tmpdir())).filter((entry) => entry.startsWith("packsmith-run-private-"));
-  if (tempEntries.length > 0) {
-    fail("cleanup", `private state roots remain: ${JSON.stringify(tempEntries)}`);
+  const leaked = tempEntries.filter((entry) => !preExistingPrivateRoots.has(entry));
+  if (leaked.length > 0) {
+    fail("cleanup", `private state roots remain: ${JSON.stringify(leaked)}`);
   }
 
   // (d) runtime.json honest metadata.
@@ -219,11 +237,18 @@ console.log(JSON.stringify(results));
   if (metadata.auth.source !== "codex-auth-json" || metadata.auth.present !== true) {
     fail("metadata", `auth metadata wrong: ${JSON.stringify(metadata.auth)}`);
   }
+  const resultJson = JSON.parse(await readFile(path.join(results.firstRunDir, "result.json"), "utf8"));
+  if (resultJson.status !== "triggered") {
+    fail("result artifact", );
+  }
+  if (!existsSync(path.join(results.firstRunDir, "stdout.log")) || !existsSync(path.join(results.firstRunDir, "stderr.log"))) {
+    fail("result artifact", "stdout.log/stderr.log must exist after a run");
+  }
   if (JSON.stringify(metadata).includes(CODEX_AUTH_SENTINEL)) {
     fail("metadata", "runtime.json must never carry values");
   }
-  if (metadata.status !== "executed") {
-    fail("metadata", `status ${JSON.stringify(metadata.status)}`);
+  if (metadata.status !== "triggered") {
+    fail("metadata", );
   }
 
   // (e) claude flags reached the context.
