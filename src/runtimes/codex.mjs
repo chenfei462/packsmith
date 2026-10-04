@@ -116,19 +116,21 @@ function tokenize(script) {
   };
 
   for (const character of script) {
-    if (character === "\n") {
-      flush();
-      tokens.push(";");
-      sawNewline = true;
-      continue;
-    }
-
     if (quote !== null) {
+      // Quoted characters — including newlines — stay inside the token;
+      // only UNQUOTED newlines are statement separators.
       if (character === quote) {
         quote = null;
       } else {
         current += character;
       }
+      continue;
+    }
+
+    if (character === "\n") {
+      flush();
+      tokens.push(";");
+      sawNewline = true;
       continue;
     }
 
@@ -175,6 +177,11 @@ function toolBaseName(token) {
  * "read" | "search" | "decoy" | "inconclusive" | "no-mention" — where
  * read/search/decoy mean the TARGET path was involved in that role.
  */
+/**
+ * Classify ONE simple statement (no compound operators) — tokens have
+ * quotes already removed, so a path operand is a single token. Returns
+ * "read" | "search" | "decoy" | "inconclusive" | "no-mention".
+ */
 function classifyStatementTokens(statementTokens, canonicalTarget, workspaceDir) {
   if (statementTokens.length === 0) {
     return "no-mention";
@@ -184,7 +191,10 @@ function classifyStatementTokens(statementTokens, canonicalTarget, workspaceDir)
   const rest = statementTokens.slice(1);
 
   if (PS_SHELL_TOKENS.has(tool)) {
-    return classifyPowerShellTokens(rest, canonicalTarget, workspaceDir);
+    // Handled at classifyCodexCommand level via raw -Command extraction
+    // (tokenization removes the quotes that protect inner paths with
+    // spaces); reaching here means a bare PS invocation without -Command.
+    return "inconclusive";
   }
 
   if (READ_TOOL_TOKENS.has(tool)) {
@@ -219,117 +229,142 @@ function classifyStatementTokens(statementTokens, canonicalTarget, workspaceDir)
   return mentions ? "inconclusive" : "no-mention";
 }
 
-function classifyPowerShellTokens(tokens, canonicalTarget, workspaceDir) {
-  // Locate -Command / -c; the INNER script is the next token (quoted).
-  const commandIndex = tokens.findIndex((token) => token.toLowerCase() === "-command" || token.toLowerCase() === "-c");
-
-  if (commandIndex === -1 || commandIndex + 1 >= tokens.length) {
-    return "inconclusive";
+/**
+ * Classify ONE PowerShell statement (inner -Command script, single
+ * statement, quotes intact in the token stream). Only the documented
+ * content-reading form is supported: Get-Content (gc) with at most -Raw,
+ * -LiteralPath/-Path plus the path operand. Everything else that mentions
+ * the target is search/inconclusive/decoy — never "read".
+ */
+function classifyPowerShellSingleStatement(tokens, canonicalTarget, workspaceDir) {
+  if (tokens.length === 0) {
+    return "no-mention";
   }
 
-  const innerToken = tokens[commandIndex + 1];
-  const inner = innerToken.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
-  // Strip PowerShell end-of-line comments (naive: a # outside the target
-  // path forms — the target path never contains #; pre-capture heuristic).
-  const withoutComment = inner.replace(/(?<![-\w])#.*$/, "").trim();
-  const { tokens: innerTokens, unterminated } = tokenize(withoutComment);
+  const cmdlet = tokens[0].toLowerCase();
+  const parameters = tokens.slice(1);
 
-  if (unterminated || innerTokens.length === 0) {
-    return "inconclusive";
+  if (cmdlet === "get-content" || cmdlet === "gc") {
+    const pathValues = [];
+    let sawUnknownParameter = false;
+
+    for (let index = 0; index < parameters.length; index += 1) {
+      const parameter = parameters[index].toLowerCase();
+
+      if (PS_READ_SWITCHES.has(parameter)) {
+        continue;
+      }
+
+      if (PS_PATH_PARAMETERS.has(parameter)) {
+        if (index + 1 >= parameters.length) {
+          return "inconclusive";
+        }
+        pathValues.push(parameters[index + 1]);
+        index += 1;
+        continue;
+      }
+
+      if (parameter.startsWith("-")) {
+        sawUnknownParameter = true;
+        continue;
+      }
+
+      pathValues.push(parameters[index]);
+    }
+
+    if (sawUnknownParameter) {
+      return "inconclusive";
+    }
+
+    const targetHits = pathValues.filter((value) => canonicalizePathValue(value, workspaceDir) === canonicalTarget).length;
+
+    if (targetHits === 1 && pathValues.length === 1) {
+      return "read";
+    }
+
+    if (targetHits > 0) {
+      return "inconclusive";
+    }
+
+    return "decoy";
   }
 
-  return classifySegments(innerTokens, canonicalTarget, workspaceDir);
+  if (SEARCH_TOOL_TOKENS.has(cmdlet)) {
+    const mentions = parameters.some((token) => canonicalizePathValue(token, workspaceDir) === canonicalTarget);
+    return mentions ? "inconclusive" : "no-mention";
+  }
+
+  if (PRODUCER_TOOL_TOKENS.has(cmdlet)) {
+    const mentions = parameters.some((token) => canonicalizePathValue(token, workspaceDir) === canonicalTarget);
+    return mentions ? "decoy" : "no-mention";
+  }
+
+  const mentions = parameters.some((token) => canonicalizePathValue(token, workspaceDir) === canonicalTarget);
+  return mentions ? "inconclusive" : "no-mention";
+}
+
+function hasCompoundOperatorTokens(tokens) {
+  return tokens.some((token) => token === ";" || token === "|" || token === "&" || token === "&&" || token === "||");
 }
 
 /**
- * Classify a token stream by splitting it into UNCONDITIONAL segments
- * (`;` and newlines both run their next statement unconditionally) and
- * CONDITIONAL/PIPE remainders (`&&`, `||`, `|` — whether the target
- * statement really ran, or what happened to the content, cannot be known
- * from the stream). A clean read in an unconditional segment is activation
- * evidence (verified with real local PowerShell: `Get-Content -LiteralPath
- * '<target>'; Write-Output 'after'` does read the body); a target mention
- * in a conditional segment is inconclusive; a pipe anywhere caps the
- * verdict at inconclusive because the body may have been transformed or
- * discarded. Unknown syntax mentioning the target stays inconclusive —
- * never triggered, never not_triggered.
+ * Split a token stream into segments on the unconditional separators
+ * (";" — emitted for both ";" and newlines). Used only to decide whether
+ * and WHERE the target is mentioned, never to assume any segment ran.
  */
-function classifySegments(tokens, canonicalTarget, workspaceDir) {
+function splitSegments(tokens) {
   const segments = [];
-  let current = { conditional: false, tokens: [] };
+  let current = [];
 
   for (const token of tokens) {
     if (token === ";") {
       segments.push(current);
-      current = { conditional: false, tokens: [] };
+      current = [];
       continue;
     }
-
-    if (token === "&&" || token === "||" || token === "|" || token === "&") {
-      segments.push(current);
-      current = { conditional: true, tokens: [] };
-      continue;
-    }
-
-    current.tokens.push(token);
+    current.push(token);
   }
-
   segments.push(current);
 
-  let verdict = "no-mention";
-  let sawPipe = false;
-  let sawConditionalChain = false;
-
-  for (const segment of segments) {
-    const statement = classifyStatementTokens(segment.tokens, canonicalTarget, workspaceDir);
-
-    if (statement === "no-mention") {
-      continue;
-    }
-
-    if (segment.conditional) {
-      if (verdict === "no-mention") {
-        verdict = "inconclusive";
-      }
-      continue;
-    }
-
-    if (statement === "read") {
-      verdict = "read";
-      continue;
-    }
-
-    if (statement === "search" || statement === "inconclusive") {
-      if (verdict === "no-mention" || verdict === "decoy") {
-        verdict = "inconclusive";
-      }
-      continue;
-    }
-
-    if (verdict === "no-mention") {
-      verdict = "decoy";
-    }
-  }
-
-  // A `&&`/`||` chain makes the success of every earlier statement
-  // unknowable from the stream (overall exit 0 may come from the fallback),
-  // and a pipe may transform or discard the body — either caps the verdict
-  // at inconclusive even when a clean read statement is present.
-  if (tokens.some((token) => token === "&&" || token === "||" || token === "&")) {
-    sawConditionalChain = true;
-  }
-  if (tokens.some((token) => token === "|")) {
-    sawPipe = true;
-  }
-  if (verdict === "read" && (sawPipe || sawConditionalChain)) {
-    verdict = "inconclusive";
-  }
-
-  return verdict;
+  return segments.filter((segment) => segment.length > 0);
 }
 
 /**
- * Classify one raw command string end to end.
+ * Verdict for a COMPOUND command (any ";" / newline / "|" / "&" / "&&" /
+ * "||"): statements after a separator are NOT assumed to execute —
+ * `Write-Output 'decoy'; exit 0; Get-Content target` never reads — and
+ * which parts actually ran is unknowable from the stream. The target
+ * appearing in any read/search/unknown position therefore caps the verdict
+ * at "inconclusive" (ambiguous, never triggered); only when every
+ * mentioning segment is a producer/metadata statement does the command
+ * stay a decoy.
+ */
+function classifyCompoundTokens(tokens, canonicalTarget, workspaceDir) {
+  const segments = splitSegments(tokens);
+  let sawProducerMention = false;
+
+  for (const segment of segments) {
+    const statement = classifyStatementTokens(segment, canonicalTarget, workspaceDir);
+
+    if (statement === "decoy") {
+      sawProducerMention = true;
+    } else if (statement !== "no-mention") {
+      // The target appears in a read/search/unknown position in some
+      // segment whose execution cannot be proven — conservative cap.
+      return "inconclusive";
+    }
+  }
+
+  return sawProducerMention ? "decoy" : "inconclusive";
+}
+
+/**
+ * Classify one raw codex command string. A "read" verdict is possible ONLY
+ * for a single statement: either a bare content-display command with the
+ * exact target operand, or a PowerShell wrapper whose inner -Command
+ * script is exactly one supported Get-Content form (see
+ * classifyPowerShellSingleStatement). The inner script is extracted from
+ * the RAW token stream before quote removal destroys paths with spaces.
  */
 function classifyCodexCommand(command, canonicalTarget, workspaceDir) {
   const { tokens, unterminated } = tokenize(command);
@@ -338,17 +373,80 @@ function classifyCodexCommand(command, canonicalTarget, workspaceDir) {
     return "inconclusive";
   }
 
-  return classifySegments(tokens, canonicalTarget, workspaceDir);
+  if (tokens.length === 0) {
+    return "no-mention";
+  }
+
+  const tool = toolBaseName(tokens[0]);
+
+  if (PS_SHELL_TOKENS.has(tool)) {
+    // Only a TRUSTED wrapper prefix is understood: the shell may carry
+    // explicit no-impact session options (-NoProfile/-NonInteractive/
+    // -NoLogo) and then exactly one -Command/-c whose script is the FINAL
+    // argument. Anything else — -File (a script file runs and the rest are
+    // ITS arguments, not commands), -EncodedCommand, unknown options,
+    // extra arguments — is not interpretable pre-capture and stays
+    // inconclusive. No -Command at all is equally inconclusive.
+    const trustedOptions = new Set(["-noprofile", "-noninteractive", "-nologo"]);
+    let commandIndex = -1;
+
+    for (let index = 1; index < tokens.length; index += 1) {
+      const token = tokens[index];
+
+      if (token.startsWith("-")) {
+        const normalized = token.toLowerCase();
+
+        if (normalized === "-command" || normalized === "-c") {
+          commandIndex = index;
+          break;
+        }
+
+        if (!trustedOptions.has(normalized)) {
+          return "inconclusive";
+        }
+
+        continue;
+      }
+
+      // A non-option argument before -Command: unknown invocation shape.
+      return "inconclusive";
+    }
+
+    if (commandIndex === -1 || commandIndex + 2 !== tokens.length) {
+      return "inconclusive";
+    }
+
+    // tokens[commandIndex + 1] is the inner script with its outer quotes
+    // removed but inner spaces preserved; strip a trailing PowerShell
+    // comment and re-tokenize with the inner quotes intact.
+    const inner = tokens[commandIndex + 1]
+      .replace(/(?<![-\w])#.*$/, "")
+      .trim();
+
+    if (inner.length === 0) {
+      return "inconclusive";
+    }
+
+    const innerTokenized = tokenize(inner);
+
+    if (innerTokenized.unterminated) {
+      return "inconclusive";
+    }
+
+    if (hasCompoundOperatorTokens(innerTokenized.tokens)) {
+      return classifyCompoundTokens(innerTokenized.tokens, canonicalTarget, workspaceDir);
+    }
+
+    return classifyPowerShellSingleStatement(innerTokenized.tokens, canonicalTarget, workspaceDir);
+  }
+
+  if (hasCompoundOperatorTokens(tokens)) {
+    return classifyCompoundTokens(tokens, canonicalTarget, workspaceDir);
+  }
+
+  return classifyStatementTokens(tokens, canonicalTarget, workspaceDir);
 }
 
-/**
- * Parse one codex exec JSONL stream (pure). See the module docblock for the
- * classification rules; the runner's spawn/nonzero/timeout outcomes take
- * precedence over anything computed here. Terminal state rules (round 2):
- * a binary verdict requires a COMPLETE stream — malformed → ambiguous,
- * error/turn.failed → infra_error, missing turn.completed → ambiguous,
- * all BEFORE any completed read counts.
- */
 export function parseCodexTrace(streamText, { installedSkillPath, workspaceDir }) {
   const workspace = workspaceDir ?? path.dirname(installedSkillPath);
   const canonicalTarget = canonicalizePathValue(installedSkillPath, workspace);
