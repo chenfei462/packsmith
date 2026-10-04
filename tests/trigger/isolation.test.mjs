@@ -702,17 +702,16 @@ test("a pre-planted junction at a destination ancestor refuses the install", asy
 });
 
 test("git template dirs are cleaned up even when the git binary is unusable", async (t) => {
-  const templateRoot = os.tmpdir();
+  const scratch = await mkdtemp(path.join(os.tmpdir(), "packsmith-git-fail-"));
+  t.after(() => rm(scratch, { recursive: true, force: true }));
+  const templateRoot = scratch;
   const countTemplates = async () =>
     (await readdir(templateRoot)).filter((entry) => entry.startsWith("packsmith-git-template-")).length;
 
   const before = await countTemplates();
 
-  const scratch = await mkdtemp(path.join(os.tmpdir(), "packsmith-git-fail-"));
-  t.after(() => rm(scratch, { recursive: true, force: true }));
-
   await assert.rejects(
-    () => initializeWorkspaceRepo({ workspaceDir: path.join(scratch, "ws"), gitBinary: "packsmith-missing-git-binary" }),
+    () => initializeWorkspaceRepo({ workspaceDir: path.join(scratch, "ws"), gitBinary: "packsmith-missing-git-binary", templateParentDir: templateRoot }),
     InfrastructureError
   );
 

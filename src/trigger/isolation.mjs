@@ -262,11 +262,11 @@ export async function createIsolatedRun({ runsRoot, prefix = "", now = new Date(
  * the run never pretends a plain directory is a repo. The template
  * directory is removed on every exit path.
  */
-export async function initializeWorkspaceRepo({ workspaceDir, gitBinary = "git" }) {
+export async function initializeWorkspaceRepo({ workspaceDir, gitBinary = "git", templateParentDir = os.tmpdir() }) {
   let emptyTemplate = null;
 
   try {
-    emptyTemplate = mkdtempSync(path.join(os.tmpdir(), "packsmith-git-template-"));
+    emptyTemplate = mkdtempSync(path.join(templateParentDir, "packsmith-git-template-"));
     await fsPromises.writeFile(path.join(emptyTemplate, "empty.gitconfig"), "", "utf8");
 
     const env = {};
