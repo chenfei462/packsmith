@@ -38,6 +38,7 @@ import { defaultInstallRoot, defaultStateDir, TARGET_ADAPTERS } from "./lib/targ
 
 import { runDoctor } from "./doctor.mjs";
 import { runTriggerInit } from "./trigger/init.mjs";
+import { runTriggerEvaluation } from "./trigger/runner.mjs";
 import { renderDoctorTerminal } from "./reporters/terminal.mjs";
 import { renderDoctorJson } from "./reporters/json.mjs";
 
@@ -66,7 +67,7 @@ const COMMAND_FLAGS = {
   validate:  ["json", "quiet", "allowRisk"],
   inspect:   ["json", "quiet"],
   doctor:    ["json", "quiet", "format", "target"],
-  trigger:   ["json", "quiet", "format"],
+  trigger:   ["json", "quiet", "format", "runtime", "runs"],
   score:     ["json", "quiet", "registry", "scope", "stateDir"],
   passport:  ["json", "quiet", "registry", "scope", "stateDir"],
   targets:   ["json", "quiet"],
@@ -131,6 +132,41 @@ function writeOutput(options, printer) {
   printer();
 }
 
+function renderTriggerEvaluation(report) {
+  const pct = (value) => value === null ? "n/a" : `${Math.round(value * 100)}%`;
+  const lines = ["Activation Reliability", `${report.skill} — ${report.runs} run(s) per case/runtime`, ""];
+  const first = report.score.runtimes[report.runtimeIds[0]];
+  for (const caseId of Object.keys(first.cases)) {
+    const parts = report.runtimeIds.map((runtimeId) => {
+      const item = report.score.runtimes[runtimeId].cases[caseId];
+      const unresolved = item.validRuns === report.runs ? "" : ` (${report.runs - item.validRuns} unresolved)`;
+      return `${runtimeId}: ${item.triggered}/${report.runs}${unresolved}`;
+    });
+    lines.push(`${caseId}  ${parts.join("  ")}`);
+  }
+  for (const runtimeId of report.runtimeIds) {
+    const item = report.score.runtimes[runtimeId];
+    lines.push("", runtimeId, `  Recall: ${pct(item.recall)}`, `  Precision: ${pct(item.precision)}`,
+      `  False-positive rate: ${pct(item.falsePositiveRate)}`,
+      `  Infrastructure-error rate: ${pct(item.infrastructureErrorRate)}`,
+      `  Successful runs: ${item.validRuns}/${item.totalRuns}`,
+      `  Infra errors: ${item.unresolved.infra_error}`,
+      `  Timeouts: ${item.unresolved.timeout}`,
+      `  Ambiguous: ${item.unresolved.ambiguous}`,
+      `  Unsupported: ${item.unresolved.unsupported}`);
+  }
+  if (report.score.divergence.length > 0) {
+    lines.push("", "DIVERGENCE");
+    for (const item of report.score.divergence) {
+      lines.push(`${item.caseId}: ${report.runtimeIds.map((id) => `${id} ${item.activationCounts[id]}/${item.runs}`).join(", ")}`);
+    }
+  }
+  if (report.score.incomparableCases.length > 0) {
+    lines.push("", `Not comparable: ${report.score.incomparableCases.join(", ")} (unresolved runtime results)`);
+  }
+  lines.push("", report.status.toUpperCase());
+  return lines.join("\n");
+}
 function printHelp() {
   console.log(`Packsmith
 
@@ -164,6 +200,7 @@ Authoring:
   packsmith inspect <pack-dir>
   packsmith doctor <path> [--target <runtime>] [--format json]
   packsmith trigger init <skill-dir> [--format json]
+  packsmith trigger <skill-dir> [--runtime claude-code,codex] [--runs 1] [--format json]
   packsmith build <pack-dir> [--out dist]
   packsmith install <pack-or-built-dir> [--target <name>] [--dest <dir>] [--dry-run]
   packsmith publish <pack-dir> --dry-run
@@ -1297,7 +1334,28 @@ async function main() {
       const target = positionals[1];
 
       if (subcommand !== "init") {
-        throw new UsageError("Unknown trigger subcommand. Usage: packsmith trigger init <skill-dir>");
+        if (!subcommand || positionals.length !== 1) {
+          throw new UsageError("Usage: packsmith trigger <skill-dir> [--runtime claude-code,codex] [--runs 1], or packsmith trigger init <skill-dir>");
+        }
+        if (options.format !== undefined && options.format !== "json") {
+          throw new UsageError(`Unsupported --format value for trigger: ${options.format}. Use --format json.`);
+        }
+        const runtimeIds = options.runtime === undefined ? ["claude-code", "codex"] : options.runtime.split(",").map((id) => id.trim());
+        if (options.runs !== undefined && !/^[1-9]\d*$/.test(options.runs)) {
+          throw new UsageError("--runs must be a decimal integer from 1 to 20.");
+        }
+        const runs = options.runs === undefined ? 1 : Number(options.runs);
+        const report = await runTriggerEvaluation({ targetPath: subcommand, runtimeIds, runs });
+        if (jsonOutput) {
+          printJson(report);
+        } else if (!options.quiet) {
+          console.log(renderTriggerEvaluation(report));
+        }
+        process.exitCode = report.exitCode;
+        return;
+      }
+      if (options.runtime !== undefined || options.runs !== undefined) {
+        throw new UsageError("--runtime and --runs apply to trigger execution, not trigger init.");
       }
 
       if (positionals.length > 2) {
@@ -1343,23 +1401,25 @@ async function main() {
       process.exitCode = result.ok ? 0 : 1;
     } catch (error) {
       const isUsage = error.isUsageError === true || error instanceof UsageError;
+      const isValidation = error.isValidationError === true;
+      const exitCode = isValidation ? 1 : 2;
 
       if (jsonOutput) {
         printJson({
           schemaVersion: 1,
           ok: false,
           error: {
-            code: isUsage ? "usage_error" : "infrastructure_error",
+            code: isUsage ? "usage_error" : isValidation ? "validation_error" : "infrastructure_error",
             message: error.message,
-            exitCode: 2
+            exitCode
           }
         });
-        process.exitCode = 2;
+        process.exitCode = exitCode;
       } else if (isUsage) {
         throw new UsageError(error.message);
       } else {
         console.error(`Error: ${error.message}`);
-        process.exitCode = 2;
+        process.exitCode = exitCode;
       }
     }
 
