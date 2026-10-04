@@ -1,6 +1,6 @@
 # Packsmith v0.2 Wave 2 — M5 实现报告（trigger suite schema 与 trigger init）
 
-日期：2026-10-05 · 分支：`feat/v0.2-reliability-gate` · 范围：计划 §13（Milestone 5），不含 M6–M8
+日期：2026-10-04 · 分支：`feat/v0.2-reliability-gate` · 范围：计划 §13（Milestone 5），不含 M6–M8
 实现：ZCode（GLM-5.3-Flash）· 独立验收：Codex（多轮对抗检查，结论由 Codex 维护）
 
 ## 1. 交付内容
