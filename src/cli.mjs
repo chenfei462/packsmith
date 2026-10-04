@@ -1321,11 +1321,15 @@ async function main() {
           skill: result.skill ?? null,
           path: result.path,
           ...(result.cases !== undefined ? { cases: result.cases } : {}),
-          ...(result.message !== undefined ? { message: result.message } : {})
+          ...(result.message !== undefined ? { message: result.message } : {}),
+          ...(result.warning !== undefined ? { warning: result.warning } : {})
         });
       } else if (!options.quiet) {
         if (result.status === "created") {
           console.log(`Created trigger suite ${result.path} (${result.cases} cases). Edit the TODO prompts, then verify them with packsmith trigger.`);
+          if (result.warning !== undefined) {
+            console.log(`Warning: ${result.warning}`);
+          }
         } else if (result.status === "exists") {
           console.log(`Trigger suite already exists at ${result.path}; refusing to overwrite it.`);
         } else {

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, stat, writeFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
@@ -270,4 +270,220 @@ test("skill directories with spaces and CJK names work", async (t) => {
   assert.equal(parsed.skill, "中文 技能");
   const suite = JSON.parse(await readFile(path.join(skillDir, "evals", "triggers.json"), "utf8"));
   assert.equal(suite.skill, "中文 技能");
+});
+
+// ---------------------------------------------------------------------------
+// Codex M5 adversarial findings: the evals/ directory must never be a
+// symlink/junction escaping the skill root, an author file appearing after
+// the existence probe must never be overwritten (atomic exclusive create),
+// and a failed partial write must leave no residue blocking later retries.
+// ---------------------------------------------------------------------------
+
+function runCliWithLoader(args, faultEnv) {
+  return spawnSync(
+    process.execPath,
+    ["--import", pathToFileURL(loaderPath).href, cliPath, ...args],
+    {
+      cwd: repoRoot,
+      encoding: "utf8",
+      env: { ...process.env, ...faultEnv }
+    }
+  );
+}
+
+async function makeJunction(target, linkPath) {
+  if (process.platform === "win32") {
+    // mklink /J needs no administrator or developer-mode privilege, unlike
+    // fs.symlink on locked-down Windows installs.
+    const result = spawnSync("cmd.exe", ["/d", "/c", "mklink", "/J", linkPath, target], { encoding: "utf8" });
+    if (result.status !== 0) {
+      throw Object.assign(new Error(result.stderr.trim() || result.stdout.trim() || "mklink failed"), { code: "EPERM" });
+    }
+    return;
+  }
+  await symlink(target, linkPath, "dir");
+}
+
+test("an evals junction pointing outside the skill is refused and nothing is written outside", async (t) => {
+  const { root, skillDir } = await makeSkill(t);
+  const outsideDir = path.join(root, "outside");
+  await mkdir(outsideDir, { recursive: true });
+  try {
+    await makeJunction(outsideDir, path.join(skillDir, "evals"));
+  } catch (error) {
+    t.skip(`junction creation unavailable on this platform (${error.code ?? error.message})`);
+    return;
+  }
+
+  const result = runCli(["trigger", "init", skillDir, "--format", "json"]);
+
+  assert.equal(result.status, 1, `expected refusal, stdout: ${result.stdout.slice(0, 200)}`);
+  const parsed = parseJsonOutput(result, "junction escape");
+  assert.equal(parsed.status, "invalid-target");
+  assert.match(parsed.message, /evals/i);
+  let escaped = true;
+  try {
+    await stat(path.join(outsideDir, "triggers.json"));
+  } catch {
+    escaped = false;
+  }
+  assert.equal(escaped, false, "triggers.json must not be written through the junction");
+});
+
+test("a dangling triggers.json symlink is refused, not followed", async (t) => {
+  const { skillDir } = await makeSkill(t);
+  const evalsDir = path.join(skillDir, "evals");
+  await mkdir(evalsDir, { recursive: true });
+  const suitePath = path.join(evalsDir, "triggers.json");
+  const danglingTarget = path.join(evalsDir, "does-not-exist-yet.md");
+
+  try {
+    await symlink(danglingTarget, suitePath, "file");
+  } catch (error) {
+    t.skip(`symbolic link privilege unavailable on this platform (${error.code ?? error.message})`);
+    return;
+  }
+
+  const result = runCli(["trigger", "init", skillDir, "--format", "json"]);
+
+  assert.equal(result.status, 1);
+  let parsed;
+  parsed = parseJsonOutput(result, "dangling symlink");
+  assert.ok(["exists", "invalid-target"].includes(parsed.status));
+  // The dangling link target must not have been created through the link.
+  let createdThroughLink = false;
+  try {
+    await stat(danglingTarget);
+    createdThroughLink = true;
+  } catch {
+    createdThroughLink = false;
+  }
+  assert.equal(createdThroughLink, false, "wx must not create through a dangling symlink");
+});
+
+test("a suite file appearing after the existence probe is never overwritten (TOCTOU)", async (t) => {
+  const { skillDir } = await makeSkill(t);
+  const evalsDir = path.join(skillDir, "evals");
+  await mkdir(evalsDir, { recursive: true });
+  const suitePath = path.join(evalsDir, "triggers.json");
+  const sentinel = "{\n  \"author\": \"sentinel that must survive\"\n}\n";
+  await writeFile(suitePath, sentinel, "utf8");
+
+  // lstat is forced to report ENOENT, so the implementation believes the
+  // path is free; only an atomic exclusive create can save the sentinel.
+  const result = runCliWithLoader(["trigger", "init", skillDir, "--format", "json"], {
+    PACKSMITH_DOCTOR_FAULT_LSTAT_MISSING: suitePath
+  });
+
+  assert.equal(result.status, 1, `expected refusal, stdout: ${result.stdout.slice(0, 300)}`);
+  const parsed = parseJsonOutput(result, "TOCTOU");
+  assert.equal(parsed.status, "exists");
+  assert.equal(await readFile(suitePath, "utf8"), sentinel, "author content must be byte-identical");
+});
+
+test("a partial write is cleaned up and a retry succeeds", async (t) => {
+  const { skillDir } = await makeSkill(t);
+  const suitePath = path.join(skillDir, "evals", "triggers.json");
+
+  const failed = runCliWithLoader(["trigger", "init", skillDir, "--format", "json"], {
+    PACKSMITH_DOCTOR_FAULT_WRITE_EIO: suitePath
+  });
+
+  assert.equal(failed.status, 2, `expected infrastructure exit 2, stdout: ${failed.stdout.slice(0, 300)}`);
+  const envelope = parseJsonOutput(failed, "partial write");
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.code, "infrastructure_error");
+  let residue = true;
+  try {
+    await stat(suitePath);
+  } catch {
+    residue = false;
+  }
+  assert.equal(residue, false, "the failed artifact must be removed, not left to block retries");
+
+  const retry = runCli(["trigger", "init", skillDir, "--format", "json"]);
+  assert.equal(retry.status, 0, `retry after cleanup failed: ${retry.stdout.slice(0, 200)}`);
+  const suite = JSON.parse(await readFile(suitePath, "utf8"));
+  assert.equal(suite.schemaVersion, 1);
+});
+
+// ---------------------------------------------------------------------------
+// Codex round-2 integrity review: the evals/ directory must be re-verified
+// AFTER mkdir (a junction can be planted inside the race window), the
+// publish must be an atomic exclusive link — never a covering rename and
+ // never an rm of the final path by ownership assumption — and temp-file
+// cleanup failures must surface instead of being swallowed.
+// ---------------------------------------------------------------------------
+
+async function junctionCreationAvailable(dir) {
+  try {
+    await makeJunction(path.join(dir, "probe-target"), path.join(dir, "probe-junction"));
+  } catch {
+    return false;
+  }
+  await rm(path.join(dir, "probe-junction"), { force: true });
+  return true;
+}
+
+test("a suite file really created inside the publish window wins the race", async (t) => {
+  const { skillDir } = await makeSkill(t);
+  const suitePath = path.join(skillDir, "evals", "triggers.json");
+
+  // The loader hook creates the author file at the moment of publish, so
+  // the implementation faces a genuine EEXIST backed by a real file. On the
+  // older write-overwrite implementation this test failed (sentinel lost).
+  const result = runCliWithLoader(["trigger", "init", skillDir, "--format", "json"], {
+    PACKSMITH_DOCTOR_FAULT_RACE_CREATE: suitePath
+  });
+
+  assert.equal(result.status, 1, `expected refusal, stdout: ${result.stdout.slice(0, 300)}`);
+  const parsed = parseJsonOutput(result, "publish race");
+  assert.equal(parsed.status, "exists");
+  const sentinel = await readFile(suitePath, "utf8");
+  assert.match(sentinel, /author/, "the author file created in the race window must survive");
+  const evalsEntries = await readdir(path.join(skillDir, "evals"));
+  assert.ok(evalsEntries.every((entry) => !entry.includes(".tmp-")), "no temp file residue may remain");
+});
+
+test("a junction planted inside the mkdir race window is rejected by the post-mkdir verification", async (t) => {
+  const { root, skillDir } = await makeSkill(t);
+  const outsideDir = path.join(root, "outside");
+  await mkdir(outsideDir, { recursive: true });
+
+  if (!(await junctionCreationAvailable(root))) {
+    t.skip("junction creation unavailable on this platform");
+    return;
+  }
+
+  const result = runCliWithLoader(["trigger", "init", skillDir, "--format", "json"], {
+    PACKSMITH_DOCTOR_FAULT_MKDIR_JUNCTION_SWAP: `${path.join(skillDir, "evals")}|${outsideDir}`
+  });
+
+  assert.equal(result.status, 1, `expected refusal, stdout: ${result.stdout.slice(0, 300)}`);
+  const parsed = parseJsonOutput(result, "mkdir race");
+  assert.equal(parsed.status, "invalid-target");
+  let escaped = true;
+  try {
+    await stat(path.join(outsideDir, "triggers.json"));
+  } catch {
+    escaped = false;
+  }
+  assert.equal(escaped, false, "triggers.json must not be written through the raced junction");
+});
+
+test("a temp cleanup failure surfaces as infrastructure instead of being swallowed", async (t) => {
+  const { skillDir } = await makeSkill(t);
+  const suitePath = path.join(skillDir, "evals", "triggers.json");
+
+  const result = runCliWithLoader(["trigger", "init", skillDir, "--format", "json"], {
+    PACKSMITH_DOCTOR_FAULT_WRITE_EIO: suitePath,
+    PACKSMITH_DOCTOR_FAULT_RM: suitePath
+  });
+
+  assert.equal(result.status, 2, `expected infrastructure exit 2, stdout: ${result.stdout.slice(0, 300)}`);
+  const envelope = parseJsonOutput(result, "cleanup failure");
+  assert.equal(envelope.ok, false);
+  assert.equal(envelope.error.code, "infrastructure_error");
+  assert.doesNotMatch(envelope.error.message, /was removed/i, "a failed cleanup must not claim the file was removed");
+  assert.match(envelope.error.message, /could not remove|remains/i, "the message must disclose the leftover temp file");
 });
