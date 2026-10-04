@@ -556,13 +556,34 @@ export function parseCodexTrace(streamText, { installedSkillPath, workspaceDir }
 }
 
 /** codex exec argv for one trigger case: JSONL on stdout, read-only sandbox,
- * prompt via stdin (`-`). Isolation flags (plan §17: --ephemeral,
- * --ignore-user-config, --ignore-rules as defense-in-depth) come from the
- * trigger context and are appended after the protocol arguments. */
+ * prompt via stdin (`-`). Isolation flags (plan §17) come from the trigger
+ * context. Global options such as `-c skills.config=…` MUST precede the
+ * `exec` subcommand (Codex parses `-c` at the top level), while `exec`'s own
+ * protocol flags follow it — so the flag list is split at the subcommand. */
 function buildCodexArgs(isolationFlags = []) {
-  return ["exec", "--json", "--sandbox", "read-only", "--skip-git-repo-check", "-"].concat(
-    Array.isArray(isolationFlags) ? isolationFlags : []
-  );
+  const flags = Array.isArray(isolationFlags) ? isolationFlags : [];
+  const globalFlags = [];
+  const execFlags = [];
+
+  for (let index = 0; index < flags.length; index += 1) {
+    if (flags[index] === "-c" && index + 1 < flags.length) {
+      globalFlags.push(flags[index], flags[index + 1]);
+      index += 1;
+      continue;
+    }
+    execFlags.push(flags[index]);
+  }
+
+  return [
+    ...globalFlags,
+    "exec",
+    "--json",
+    "--sandbox",
+    "read-only",
+    "--skip-git-repo-check",
+    ...execFlags,
+    "-"
+  ];
 }
 
 export const codexAdapter = adapterContract({

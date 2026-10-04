@@ -357,7 +357,9 @@ test("a symlinked skill source is refused before anything is installed", async (
 test("isolation flags are defense-in-depth per runtime and claude carries the minimal settings/tools", (t) => {
   const settingsPath = path.join("C:" + path.sep, "private", "runtime-state", "settings.json");
 
-  assert.deepEqual(isolationFlagsFor("codex"), ["--ephemeral", "--ignore-user-config", "--ignore-rules"]);
+  // --ignore-user-config is deliberately absent: it drops every skill
+  // (including the target), so skill scoping uses skills.config instead.
+  assert.deepEqual(isolationFlagsFor("codex"), ["--ephemeral", "--ignore-rules"]);
   const claudeFlags = isolationFlagsFor("claude-code", { claudeSettingsPath: settingsPath });
   assert.deepEqual(claudeFlags, [
     "--no-session-persistence",
@@ -483,6 +485,7 @@ test("the ACTUAL child process receives the isolated environment", async (t) => 
     skillDir,
     binaryPath: process.execPath,
     binaryArgs: [path.join(__dirname, "..", "fixtures", "mock-runtime-cli.mjs")],
+    env: { MOCK_AUDIT_SKILLS: "C:/Users/decoy/.agents/skills/global-decoy/SKILL.md", MOCK_AUDIT_SKILL_NAME: "review-pr" },
     run: async (handles) => {
       await rewriteFixtureToWorkspace(fixture, handles.context.workspaceDir);
       const { codexAdapter } = await import("../../src/runtimes/codex.mjs");
@@ -522,6 +525,7 @@ test("a successful run materializes ALL six artifacts with the actual status and
     skillDir,
     binaryPath: process.execPath,
     binaryArgs: [path.join(__dirname, "..", "fixtures", "mock-runtime-cli.mjs")],
+    env: { MOCK_AUDIT_SKILLS: "C:/Users/decoy/.agents/skills/global-decoy/SKILL.md", MOCK_AUDIT_SKILL_NAME: "review-pr" },
     run: async (handles) => {
       await rewriteFixtureToWorkspace(fixture, handles.context.workspaceDir);
       const { codexAdapter } = await import("../../src/runtimes/codex.mjs");
@@ -793,6 +797,7 @@ test("a private root swapped for a real author directory is preserved and the ru
   const root = await makeRoot(t);
   const skillDir = await makeSkillSource(root, "review-pr");
   const runsRoot = path.join(root, ".packsmith", "runs");
+  const mockBinary = path.join(__dirname, "..", "fixtures", "mock-runtime-cli.mjs");
   const movedAway = path.join(os.tmpdir(), `packsmith-moved-original-${Date.now().toString(36)}`);
   t.after(() => rm(movedAway, { recursive: true, force: true }));
 
@@ -802,6 +807,9 @@ test("a private root swapped for a real author directory is preserved and the ru
       runsRoot,
       runtimeId: "codex",
       skillDir,
+      binaryPath: process.execPath,
+      binaryArgs: [mockBinary],
+      env: { MOCK_AUDIT_SKILL_NAME: "review-pr" },
       run: async (handles) => {
         // ACTUAL callback manipulation: move this run's private root aside
         // and plant a real author directory at the original pathname.
@@ -864,4 +872,136 @@ test("malformed auth errors carry no credential excerpt through the whole cause 
     current = current.cause;
     depth += 1;
   }
+});
+
+// ---------------------------------------------------------------------------
+// Actual-discovery isolation (Codex): the user-level skill root is resolved
+// from the OS home directory (a Windows known folder) and is NOT governed by
+// HOME/USERPROFILE/CODEX_HOME, so the real user's global skills remain
+// discoverable regardless of the git boundary. Scoping is established by
+// auditing the available skills WITHOUT a model (codex debug prompt-input)
+// and disabling every non-target skill through the official skills.config
+// path selectors. These tests drive the mechanism through the mock CLI.
+// ---------------------------------------------------------------------------
+
+const mockCliPath = path.join(__dirname, "..", "fixtures", "mock-runtime-cli.mjs");
+
+test("parseAvailableSkillLocators extracts every canonical SKILL.md locator", async () => {
+  const { parseAvailableSkillLocators } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const render = JSON.stringify([
+    {
+      type: "message",
+      role: "developer",
+      content: [
+        {
+          type: "input_text",
+          text: "<skills_instructions>\n- a: x (file: C:/ws/.agents/skills/review-pr/SKILL.md)\n- b: y (file: C:\\\\Users\\\\me\\\\.agents\\\\skills\\\\superpowers\\\\using-superpowers\\\\SKILL.md)\n</skills_instructions>"
+        }
+      ]
+    }
+  ]);
+
+  const locators = parseAvailableSkillLocators(render);
+  assert.deepEqual(locators, [
+    "C:/Users/me/.agents/skills/superpowers/using-superpowers/SKILL.md",
+    "C:/ws/.agents/skills/review-pr/SKILL.md"
+  ]);
+});
+
+test("establishCodexSkillScope keeps the target and disables every global skill", async (t) => {
+  const { establishCodexSkillScope } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const root = await makeRoot(t);
+  const workspaceDir = path.join(root, "ws", "workspace");
+  await mkdir(path.join(workspaceDir, ".agents", "skills", "review-pr"), { recursive: true });
+
+  const scope = await establishCodexSkillScope({
+    workspaceDir,
+    skillName: "review-pr",
+    binaryPath: process.execPath,
+    binaryArgs: [mockCliPath],
+    env: {
+      MOCK_AUDIT_SKILL_NAME: "review-pr",
+      MOCK_AUDIT_SKILLS: "C:/Users/real/.agents/skills/superpowers/using-superpowers/SKILL.md,C:/Users/real/.agents/skills/godot/SKILL.md"
+    }
+  });
+
+  assert.equal(scope.ok, true);
+  assert.equal(scope.availableSkills, 3, "the audit sees the target plus two global skills");
+  assert.equal(scope.scopedSkills, 1, "scoping leaves only the target");
+  assert.match(scope.scopeConfigValue, /using-superpowers\/SKILL\.md',enabled=false/);
+  assert.match(scope.scopeConfigValue, /godot\/SKILL\.md',enabled=false/);
+  assert.equal(scope.scopeConfigValue.includes("review-pr"), false, "the target is never disabled");
+});
+
+test("establishCodexSkillScope refuses when the target skill is not discoverable", async (t) => {
+  const { establishCodexSkillScope } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const root = await makeRoot(t);
+  const workspaceDir = path.join(root, "ws", "workspace");
+  await mkdir(workspaceDir, { recursive: true });
+
+  await assert.rejects(
+    () =>
+      establishCodexSkillScope({
+        workspaceDir,
+        skillName: "review-pr",
+        binaryPath: process.execPath,
+        binaryArgs: [mockCliPath],
+        env: { MOCK_AUDIT_SKILL_NAME: "other-skill" }
+      }),
+    (error) => /not among the .* skills/.test(error.message)
+  );
+});
+
+test("withSkillScopeFlags places the -c override before the protocol flags", async () => {
+  const { withSkillScopeFlags } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const flags = withSkillScopeFlags(["--ephemeral", "--ignore-rules"], "[{path='x',enabled=false}]");
+  assert.deepEqual(flags, ["-c", "skills.config=[{path='x',enabled=false}]", "--ephemeral", "--ignore-rules"]);
+});
+
+test("the codex adapter puts global -c before exec and exec flags after", async (t) => {
+  const { codexAdapter } = await import("../../src/runtimes/codex.mjs");
+  const root = await makeRoot(t);
+  const context = {
+    workspaceDir: path.join(root, "ws"),
+    traceDir: path.join(root, "runs"),
+    homeDir: path.join(root, "home"),
+    runtimeStateDir: path.join(root, "state"),
+    tempDir: path.join(root, "tmp"),
+    timeoutMs: 30000,
+    binaryPath: process.execPath,
+    binaryArgs: [mockCliPath],
+    isolationFlags: ["-c", "skills.config=[{path='x',enabled=false}]", "--ephemeral", "--ignore-rules"],
+    env: { MOCK_TRACE: path.join(__dirname, "..", "fixtures", "runtime-traces", "codex-not-triggered.jsonl") }
+  };
+
+  // The mock records nothing about argv, so assert through the result: the
+  // run must succeed (the -c placement is valid) rather than erroring.
+  const result = await codexAdapter.runTriggerCase({ skill: "review-pr", prompt: "p", context });
+  assert.ok(["not_triggered", "ambiguous", "triggered"].includes(result.status), JSON.stringify(result));
+});
+
+test("a global skill leaking through is a hard failure, never a silent pass", async (t) => {
+  const { establishCodexSkillScope } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const root = await makeRoot(t);
+  const workspaceDir = path.join(root, "ws", "workspace");
+  await mkdir(path.join(workspaceDir, ".agents", "skills", "review-pr"), { recursive: true });
+
+  // The mock honors the disable list; to simulate a NON-isolatable runtime
+  // (one that ignores the scope override), point the audit at a mock that
+  // never disables: MOCK_AUDIT_IGNORE_SCOPE makes it list every skill.
+  await assert.rejects(
+    () =>
+      establishCodexSkillScope({
+        workspaceDir,
+        skillName: "review-pr",
+        binaryPath: process.execPath,
+        binaryArgs: [mockCliPath],
+        env: {
+          MOCK_AUDIT_SKILL_NAME: "review-pr",
+          MOCK_AUDIT_SKILLS: "C:/Users/real/.agents/skills/superpowers/using-superpowers/SKILL.md",
+          MOCK_AUDIT_IGNORE_SCOPE: "1"
+        }
+      }),
+    (error) => /non-target skill\(s\) available/.test(error.message)
+  );
 });

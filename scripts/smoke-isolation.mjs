@@ -43,9 +43,6 @@ function importSpecifier(target) {
   return JSON.stringify(`file://${target.split(path.sep).join("/")}`);
 }
 
-// Roots that already existed before this smoke: never ours to judge.
-const preExistingPrivateRoots = new Set((await readdir(os.tmpdir())).filter((entry) => entry.startsWith("packsmith-run-private-")));
-
 const tempRoot = await mkdtemp(path.join(os.tmpdir(), "packsmith-smoke-isolation-"));
 
 try {
@@ -89,6 +86,7 @@ const claudeSettingsPath = ${JSON.stringify(claudeSettingsPath)};
 const mockCli = ${JSON.stringify(mockCli)};
 const fixturesDir = ${JSON.stringify(fixturesDir)};
 const results = {};
+results.privateRoots = [];
 
 async function contextFixture(fixtureName, workspaceDir) {
   const raw = await readFile(fixturesDir + "/" + fixtureName, "utf8");
@@ -128,6 +126,7 @@ const first = await withIsolatedTriggerRun({
   }
 });
 results.firstStatus = first.result.status;
+results.privateRoots.push(path.dirname(first.context.caseDirs.home));
 results.caseDirs = { appData: first.context.caseDirs.appData, data: first.context.caseDirs.data };
 results.firstRunDir = first.runDir;
 
@@ -142,6 +141,7 @@ const second = await withIsolatedTriggerRun({
   run: async () => true
 });
 results.secondRunDir = second.runDir;
+results.privateRoots.push(path.dirname(second.context.caseDirs.home));
 
 // Run 3: claude-code — bridge + isolation flags in the context.
 const third = await withIsolatedTriggerRun({
@@ -157,6 +157,7 @@ const third = await withIsolatedTriggerRun({
   }
 });
 results.thirdRunDir = third.runDir;
+results.privateRoots.push(path.dirname(third.context.caseDirs.home));
 
 // Run 4: static runtime — unsupported, truthful artifacts.
 const fourth = await withIsolatedTriggerRun({
@@ -167,6 +168,7 @@ const fourth = await withIsolatedTriggerRun({
     cursorAdapter.runTriggerCase({ skill: "review-pr", prompt: "p", context })
 });
 results.staticStatus = fourth.result.status;
+results.privateRoots.push(path.dirname(fourth.context.caseDirs.home));
 
 console.log(JSON.stringify(results));
 `;
@@ -195,7 +197,7 @@ console.log(JSON.stringify(results));
   // Actual-child environment proof: the mock CLI recorded what it saw.
   const childEnv = JSON.parse(await readFile(results.childEnvFile, "utf8"));
   if (childEnv.APPDATA !== results.caseDirs.appData || childEnv.XDG_DATA_HOME !== results.caseDirs.data) {
-    fail("child env", );
+    fail("child env", "the actual child did not receive isolated APPDATA/XDG_DATA_HOME");
   }
   if (childEnv.GIT_DIR !== undefined || childEnv.git_config_global !== undefined) {
     fail("child env", "parent git context reached the child");
@@ -224,10 +226,9 @@ console.log(JSON.stringify(results));
     }
   }
 
-  // (c) private state cleaned: no NEW packsmith-run-private temp roots may
-  // remain (pre-existing leftovers from other processes are not ours).
-  const tempEntries = (await readdir(os.tmpdir())).filter((entry) => entry.startsWith("packsmith-run-private-"));
-  const leaked = tempEntries.filter((entry) => !preExistingPrivateRoots.has(entry));
+  // (c) Check only this smoke's own private roots. Other concurrent trigger
+  // runs may legitimately create temporary roots in the same OS directory.
+  const leaked = results.privateRoots.filter((entry) => existsSync(entry));
   if (leaked.length > 0) {
     fail("cleanup", `private state roots remain: ${JSON.stringify(leaked)}`);
   }
@@ -239,7 +240,7 @@ console.log(JSON.stringify(results));
   }
   const resultJson = JSON.parse(await readFile(path.join(results.firstRunDir, "result.json"), "utf8"));
   if (resultJson.status !== "triggered") {
-    fail("result artifact", );
+    fail("result artifact", "result.json did not retain the triggered status");
   }
   if (!existsSync(path.join(results.firstRunDir, "stdout.log")) || !existsSync(path.join(results.firstRunDir, "stderr.log"))) {
     fail("result artifact", "stdout.log/stderr.log must exist after a run");
@@ -248,7 +249,7 @@ console.log(JSON.stringify(results));
     fail("metadata", "runtime.json must never carry values");
   }
   if (metadata.status !== "triggered") {
-    fail("metadata", );
+    fail("metadata", "runtime.json did not retain the triggered status");
   }
 
   // (e) claude flags reached the context.

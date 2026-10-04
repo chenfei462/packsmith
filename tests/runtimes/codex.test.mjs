@@ -350,3 +350,31 @@ test("real local PowerShell control matches native evidence (Windows-gated)", as
   const wrapperParsed = parseFor(wrapperCommand);
   assert.notEqual(wrapperParsed.status, "triggered");
 });
+
+// ---------------------------------------------------------------------------
+// Real captured traces (sanitized; see
+// tests/fixtures/runtime-traces/captured/README.md). The Codex positive is a
+// real activation; the Codex negative is the real pre-scoping leak (it read
+// the user's global skill, which the skills.config scoping now prevents).
+// ---------------------------------------------------------------------------
+
+const CAPTURED_DIR = path.join(__dirname, "..", "fixtures", "runtime-traces", "captured");
+
+test("the captured Codex positive trace parses as triggered", async () => {
+  const raw = await readFile(path.join(CAPTURED_DIR, "codex-triggered-captured.jsonl"), "utf8");
+  const target = raw.match(/(C:\/packsmith-capture-root[^"]*?SKILL\.md)/)?.[1];
+  assert.ok(target, "the captured positive must name the target SKILL.md");
+
+  const parsed = parseCodexTrace(raw, { installedSkillPath: target, workspaceDir: path.dirname(path.dirname(path.dirname(target))) });
+  assert.equal(parsed.status, "triggered");
+});
+
+test("the captured Codex negative trace does not count the global-skill read as the target", async () => {
+  const raw = await readFile(path.join(CAPTURED_DIR, "codex-not-triggered-captured.jsonl"), "utf8");
+  // The negative reads the USER's global skill, not the isolated target.
+  const parsed = parseCodexTrace(raw, {
+    installedSkillPath: "C:/packsmith-capture-root/runs/RUNID/workspace/.agents/skills/wave2-capture-review/SKILL.md",
+    workspaceDir: "C:/packsmith-capture-root/runs/RUNID/workspace"
+  });
+  assert.notEqual(parsed.status, "triggered", "a global-skill read must never award triggered for the isolated target");
+});

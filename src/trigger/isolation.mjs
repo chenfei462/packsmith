@@ -9,6 +9,7 @@ import os from "node:os";
 
 import { InfrastructureError } from "../core/diagnostics.mjs";
 import { TRIGGER_STATUSES, buildChildEnv } from "../runtimes/base.mjs";
+import { establishCodexSkillScope, withSkillScopeFlags } from "./codex-skill-scope.mjs";
 
 /**
  * Trigger isolation layer (v0.2 Milestone 7, plan §17).
@@ -42,10 +43,15 @@ import { TRIGGER_STATUSES, buildChildEnv } from "../runtimes/base.mjs";
  * projects and every other configuration are never copied. Only the skill
  * under test is installed into the runtime's own discovery directory, with
  * symlink/junction escape validation on the source and the artifact.
- * `--ephemeral`, `--ignore-user-config`, `--ignore-rules` (Codex) and
+ * `--ephemeral`/`--ignore-rules` (Codex) and
  * Claude's session/setting flags are defense-in-depth only — they are
  * NEVER treated as isolation evidence; the git boundary, the private state
- * directories and the reduced environment are.
+ * directories and the reduced environment are. Codex skill scoping is
+ * established by auditing available skills (no model) and disabling every
+ * non-target one through the official `skills.config` selectors; the user's
+ * global `.agents/skills` is reachable through the OS home directory
+ * regardless of HOME/USERPROFILE/CODEX_HOME, so it cannot be excluded by
+ * environment or git boundaries alone.
  */
 
 /** Retained artifact names inside one run directory (plan §17 layout). */
@@ -802,12 +808,19 @@ async function assertNoEscapes(rootDir, realRoot, label) {
  * Defense-in-depth CLI flags per runtime. These are appended to the
  * adapter's protocol arguments and recorded in runtime.json, but they are
  * NEVER treated as isolation evidence on their own (plan verification
- * record §13): the git boundary, private state directories and the
- * minimal environment are the actual isolation.
+ * record §13): the git boundary, private state directories and the minimal
+ * environment are the actual isolation.
+ *
+ * Codex note (actual-discovery gate): `--ignore-user-config` is deliberately
+ * NOT included. Empirically it drops EVERY skill — including the
+ * workspace-local skill under test — so it neither isolates the user's
+ * global skills nor leaves the target usable. Skill scoping is done instead
+ * through the official `skills.config` path selectors (see
+ * codex-skill-scope.mjs), which `withSkillScopeFlags` prepends as `-c`.
  */
 export function isolationFlagsFor(runtimeId, { claudeSettingsPath } = {}) {
   if (runtimeId === "codex") {
-    return ["--ephemeral", "--ignore-user-config", "--ignore-rules"];
+    return ["--ephemeral", "--ignore-rules"];
   }
 
   if (runtimeId === "claude-code") {
@@ -856,6 +869,7 @@ export async function writeRuntimeMetadata(runJsonPath, metadata) {
     status: metadata.status ?? "prepared",
     skill: metadata.skill ?? null,
     repeat: metadata.repeat ?? null,
+    skillScope: metadata.skillScope ?? null,
     notes: metadata.notes ?? []
   };
 
@@ -987,6 +1001,7 @@ export async function withIsolatedTriggerRun({
   binaryArgs,
   codexAuthPath = path.join(os.homedir(), ".codex", "auth.json"),
   claudeSettingsPath = path.join(os.homedir(), ".claude", "settings.json"),
+  env: extraEnv,
   now,
   run: runCallback
 }) {
@@ -1022,9 +1037,38 @@ export async function withIsolatedTriggerRun({
       installed = await installSkill({ workspaceDir: run.paths.workspace, runtimeId, skillDir });
     }
 
-    const flags = isolationFlagsFor(runtimeId, {
+    const baseFlags = isolationFlagsFor(runtimeId, {
       claudeSettingsPath: path.join(caseDirs.runtimeState, "settings.json")
     });
+
+    // Codex actual-discovery isolation: the OS-home user root is not
+    // governed by HOME/USERPROFILE/CODEX_HOME, so the real user's global
+    // skills stay discoverable. Audit (no model) what the CLI would offer
+    // and disable every non-target skill through the official skills.config
+    // selectors, keeping the skill under test available. A failure here is
+    // infrastructure — the run never proceeds without proven scoping.
+    let skillScope = null;
+    let flags = baseFlags;
+
+    if (runtimeId === "codex" && installed !== null) {
+      skillScope = await establishCodexSkillScope({
+        workspaceDir: run.paths.workspace,
+        skillName: installed.skillName,
+        binaryPath: binaryPath ?? "codex",
+        binaryArgs,
+        env: buildIsolatedChildEnv(process.env, {
+          workspaceDir: run.paths.workspace,
+          traceDir: run.runDir,
+          homeDir: caseDirs.home,
+          runtimeStateDir: caseDirs.runtimeState,
+          tempDir: caseDirs.temp,
+          timeoutMs,
+          env: extraEnv
+        }, caseDirs),
+        timeoutMs: Math.min(timeoutMs, 120000)
+      });
+      flags = withSkillScopeFlags(baseFlags, skillScope.scopeConfigValue);
+    }
 
     const context = {
       workspaceDir: run.paths.workspace,
@@ -1037,6 +1081,7 @@ export async function withIsolatedTriggerRun({
       ...(binaryArgs !== undefined ? { binaryArgs } : {}),
       isolationFlags: flags,
       caseDirs,
+      ...(skillScope !== null ? { skillScope: { availableSkills: skillScope.availableSkills, scopedSkills: skillScope.scopedSkills, targetLocator: skillScope.targetLocator } } : {}),
       // The ACTUAL child process (probe and run) must receive the isolated
       // environment — the M6 runner consults this builder.
       buildChildEnv: (parentEnv, builderContext) => buildIsolatedChildEnv(parentEnv, builderContext, caseDirs)
@@ -1074,7 +1119,11 @@ export async function withIsolatedTriggerRun({
       auth: bridge,
       status: triggerStatus ?? "executed",
       skill: installed?.skillName ?? null,
-      notes: []
+      skillScope: skillScope !== null ? { availableSkills: skillScope.availableSkills, scopedSkills: skillScope.scopedSkills, targetLocator: skillScope.targetLocator } : null,
+      notes:
+        skillScope !== null
+          ? skillScope.notes
+          : []
     });
 
     // Cleanup belongs to the success path: a failure here must flip the
@@ -1148,6 +1197,7 @@ export async function withIsolatedTriggerRun({
       // runtime.json write is best-effort on the failure path; the thrown
       // error below is the truthful outcome.
     }
+    if (error !== null && typeof error === "object") error.runDir = run.runDir;
     throw error;
   } finally {
     if (privateRoot !== null && ownedPrivateRoots.has(path.resolve(privateRoot))) {
