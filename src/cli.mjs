@@ -37,6 +37,7 @@ import {
 import { defaultInstallRoot, defaultStateDir, TARGET_ADAPTERS } from "./lib/targets.mjs";
 
 import { runDoctor } from "./doctor.mjs";
+import { runTriggerInit } from "./trigger/init.mjs";
 import { renderDoctorTerminal } from "./reporters/terminal.mjs";
 import { renderDoctorJson } from "./reporters/json.mjs";
 
@@ -65,6 +66,7 @@ const COMMAND_FLAGS = {
   validate:  ["json", "quiet", "allowRisk"],
   inspect:   ["json", "quiet"],
   doctor:    ["json", "quiet", "format", "target"],
+  trigger:   ["json", "quiet", "format"],
   score:     ["json", "quiet", "registry", "scope", "stateDir"],
   passport:  ["json", "quiet", "registry", "scope", "stateDir"],
   targets:   ["json", "quiet"],
@@ -161,6 +163,7 @@ Authoring:
   packsmith validate <pack-dir>
   packsmith inspect <pack-dir>
   packsmith doctor <path> [--target <runtime>] [--format json]
+  packsmith trigger init <skill-dir> [--format json]
   packsmith build <pack-dir> [--out dist]
   packsmith install <pack-or-built-dir> [--target <name>] [--dest <dir>] [--dry-run]
   packsmith publish <pack-dir> --dry-run
@@ -1158,12 +1161,12 @@ async function main() {
     parsedOptions = parseOptions(rawArgs, command);
   } catch (error) {
     // Argument PARSING failures happen before any command logic runs and
-    // before an `options` object exists. When the command is doctor and the
-    // raw argv carries an explicit JSON intent, honor the machine-readable
-    // contract even here: one stable usage_error envelope on stdout, empty
-    // stderr, exit 2. Text mode keeps the standard UsageError path and every
-    // other command is unchanged.
-    if (command === "doctor" && error instanceof UsageError && hasExplicitJsonIntent(rawArgs)) {
+    // before an `options` object exists. When the command is doctor or
+    // trigger and the raw argv carries an explicit JSON intent, honor the
+    // machine-readable contract even here: one stable usage_error envelope
+    // on stdout, empty stderr, exit 2. Text mode keeps the standard
+    // UsageError path and every other command is unchanged.
+    if ((command === "doctor" || command === "trigger") && error instanceof UsageError && hasExplicitJsonIntent(rawArgs)) {
       printJson({
         schemaVersion: 1,
         ok: false,
@@ -1231,7 +1234,9 @@ async function main() {
     // 2 = usage / infrastructure failure (never a Skill finding).
     // Under --format json EVERY failure path — usage mistakes included —
     // prints one stable, parseable JSON envelope on stdout with exit 2.
-    const jsonOutput = options.format === "json" || options.json;
+    // The JSON intent is read from the raw argv so a later non-json
+    // --format value (--format=json --format=xml) cannot silently drop it.
+    const jsonOutput = options.json === true || hasExplicitJsonIntent(rawArgs);
 
     try {
       if (!primary) {
@@ -1251,6 +1256,84 @@ async function main() {
       }
 
       process.exitCode = report.exitCode;
+    } catch (error) {
+      const isUsage = error.isUsageError === true || error instanceof UsageError;
+
+      if (jsonOutput) {
+        printJson({
+          schemaVersion: 1,
+          ok: false,
+          error: {
+            code: isUsage ? "usage_error" : "infrastructure_error",
+            message: error.message,
+            exitCode: 2
+          }
+        });
+        process.exitCode = 2;
+      } else if (isUsage) {
+        throw new UsageError(error.message);
+      } else {
+        console.error(`Error: ${error.message}`);
+        process.exitCode = 2;
+      }
+    }
+
+    return;
+  }
+
+  if (command === "trigger") {
+    // v0.2 behavioral reliability (plan §13): trigger init <skill-dir>
+    // creates <skill-dir>/evals/triggers.json with a deterministic starter
+    // suite. Exit codes mirror the doctor contract: 0 = created, 1 =
+    // validation failure (existing suite refused — never overwritten; no
+    // SKILL.md at the target), 2 = usage / infrastructure failure.
+    const jsonOutput = options.json === true || hasExplicitJsonIntent(rawArgs);
+
+    try {
+      // Every trigger usage failure lives inside this try so an explicit
+      // JSON intent always resolves to the single JSON envelope (stdout,
+      // exit 2, empty stderr) instead of the text usage path.
+      const subcommand = positionals[0];
+      const target = positionals[1];
+
+      if (subcommand !== "init") {
+        throw new UsageError("Unknown trigger subcommand. Usage: packsmith trigger init <skill-dir>");
+      }
+
+      if (positionals.length > 2) {
+        throw new UsageError("trigger init accepts exactly one <skill-dir> argument.");
+      }
+
+      if (!target) {
+        throw new UsageError("Missing <skill-dir> argument for trigger init.");
+      }
+
+      if (options.format !== undefined && options.format !== "json") {
+        throw new UsageError(`Unsupported --format value for trigger init: ${options.format}. Use --format json.`);
+      }
+
+      const result = await runTriggerInit({ targetPath: target });
+
+      if (jsonOutput) {
+        printJson({
+          schemaVersion: 1,
+          status: result.status,
+          skill: result.skill ?? null,
+          path: result.path,
+          ...(result.cases !== undefined ? { cases: result.cases } : {}),
+          ...(result.message !== undefined ? { message: result.message } : {})
+        });
+      } else if (!options.quiet) {
+        if (result.status === "created") {
+          console.log(`Created trigger suite ${result.path} (${result.cases} cases). Edit the TODO prompts, then verify them with packsmith trigger.`);
+        } else if (result.status === "exists") {
+          console.log(`Trigger suite already exists at ${result.path}; refusing to overwrite it.`);
+        } else {
+          console.log(result.message);
+        }
+      }
+
+      process.exitCode = result.ok ? 0 : 1;
     } catch (error) {
       const isUsage = error.isUsageError === true || error instanceof UsageError;
 
