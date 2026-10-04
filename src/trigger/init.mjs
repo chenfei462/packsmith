@@ -1,4 +1,5 @@
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 // Default import so tests can inject fs faults through the module object
 // (same pattern as src/lib/pack.mjs and tests/fixtures/fault-injection-loader.mjs).
 import fsPromises from "node:fs/promises";
@@ -153,8 +154,39 @@ async function resolveVerifiedEvalsDir(resolvedTarget) {
   return { ok: true, realPath: post.realPath };
 }
 
-/** Monotonic counter making temp file names unique within this process. */
-let tempAttempt = 0;
+/**
+ * Close a file handle, returning the close error (if any) instead of
+ * throwing, so callers can attach it to their primary diagnostic.
+ */
+async function closeHandle(handle) {
+  try {
+    await handle.close();
+    return null;
+  } catch (error) {
+    return error;
+  }
+}
+
+/**
+ * Refuse to continue when an entry this run created is no longer the entry
+ * at its path (dev/ino identity): the replacement belongs to someone else —
+ * it is never removed, and the situation is infrastructure, not success.
+ */
+async function assertOwnedEntry(entryPath, owned, label) {
+  let entry = null;
+
+  try {
+    entry = await fsPromises.lstat(entryPath);
+  } catch (error) {
+    throw new InfrastructureError(`Trigger init cannot verify ${label} ${entryPath}: ${error.message}`, { cause: error });
+  }
+
+  if (entry.dev !== owned.dev || entry.ino !== owned.ino) {
+    throw new InfrastructureError(
+      `Trigger init detected that ${label} ${entryPath} was replaced by another file; refusing to continue and leaving that file untouched.`
+    );
+  }
+}
 
 /**
  * Remove a temp file ONLY while it is still the file this run created:
@@ -191,13 +223,18 @@ async function cleanupOwnedTemp(tempPath, owned) {
  * Create the suite content and publish it at `<evals>/triggers.json` without
  * EVER writing to or removing the final path by ownership assumption:
  *
- *   1. claim a private temp file in the verified evals directory
- *      (`open(tmp, "wx")` — exclusive create, unique per attempt);
- *   2. write the full content through that handle and close it — a failure
- *      here removes OUR temp file (identity-checked), never anything else;
- *   3. publish with `link(tmp, final)` — an atomic, non-covering operation
- *      that fails with EEXIST when an author file appeared at the final
- *      path in the race window (the author file wins, we clean our temp).
+ *   1. claim a private, unpredictable temp file in the verified evals
+ *      directory (`open(tmp, "wx")` — exclusive create);
+ *   2. verify the temp's identity via its handle (a stat failure here means
+ *      the identity is unknown: close the handle, disclose the leftover
+ *      location, never racy-delete an unverified file);
+ *   3. write the full content through that handle — a write failure removes
+ *      OUR temp file (identity-checked), never anything else;
+ *   4. close the handle — a close failure on this success path means the
+ *      content must not be published: remove our temp and fail;
+ *   5. re-verify the temp identity, publish with `link(tmp, final)` — an
+ *      atomic, non-covering operation whose EEXIST means an author file won
+ *      the race — and re-verify the published entry's identity afterwards.
  *
  * The final path is never renamed over and never removed.
  */
@@ -207,42 +244,84 @@ async function createSuiteExclusively(evalsRealDir, content) {
   let owned = null;
   let handle = null;
 
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    const candidate = path.join(evalsRealDir, `triggers.json.tmp-${process.pid}-${tempAttempt + attempt + 1}`);
+  try {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const candidate = path.join(evalsRealDir, `triggers.json.tmp-${randomUUID()}`);
+
+      try {
+        handle = await fsPromises.open(candidate, "wx");
+        tempPath = candidate;
+        break;
+      } catch (error) {
+        if (error.code === "EEXIST") {
+          continue;
+        }
+        throw new InfrastructureError(`Trigger init cannot create its temp file in ${evalsRealDir}: ${error.message}`, { cause: error });
+      }
+    }
+
+    if (handle === null) {
+      throw new InfrastructureError(`Trigger init could not claim a unique temp file in ${evalsRealDir}`);
+    }
 
     try {
-      handle = await fsPromises.open(candidate, "wx");
-      tempPath = candidate;
       owned = await handle.stat();
-      break;
     } catch (error) {
-      if (error.code === "EEXIST") {
-        continue;
-      }
-      throw new InfrastructureError(`Trigger init cannot create its temp file in ${evalsRealDir}: ${error.message}`, { cause: error });
+      const secondary = await closeHandle(handle);
+      handle = null;
+      const secondaryNote = secondary ? ` A secondary close also failed: ${secondary.message}.` : "";
+      throw new InfrastructureError(
+        `Trigger init could not verify its temp file ${tempPath} (${error.message}); the unverified temp file remains there and was not removed.${secondaryNote}`,
+        { cause: error }
+      );
     }
-  }
 
-  if (handle === null) {
-    throw new InfrastructureError(`Trigger init could not claim a unique temp file in ${evalsRealDir}`);
-  }
+    try {
+      await handle.writeFile(content, "utf8");
+    } catch (error) {
+      const secondary = await closeHandle(handle);
+      handle = null;
+      let cleanupNote;
 
-  tempAttempt += 5;
+      try {
+        const cleanup = await cleanupOwnedTemp(tempPath, owned);
+        cleanupNote = cleanup.removed ? "; the partial temp file was removed" : `; the partial temp file remains at ${tempPath}`;
+      } catch (cleanupError) {
+        throw new InfrastructureError(
+          `Trigger init failed while writing ${tempPath} (${error.message}); a secondary close ${secondary ? `also failed: ${secondary.message}` : "succeeded"}; the temp cleanup failed too: ${cleanupError.message}`,
+          { cause: cleanupError }
+        );
+      }
 
-  try {
-    await handle.writeFile(content, "utf8");
-    await handle.close();
+      throw new InfrastructureError(
+        `Trigger init failed while writing ${tempPath} (${error.message})${cleanupNote}${secondary ? `; a secondary close also failed: ${secondary.message}` : ""}`,
+        { cause: error }
+      );
+    }
+
+    // A close failure on the success path means the content must not be
+    // published: remove our temp file and fail with the diagnostic.
+    const closeError = await closeHandle(handle);
     handle = null;
-  } catch (error) {
+
+    if (closeError !== null) {
+      const cleanup = await cleanupOwnedTemp(tempPath, owned);
+      throw new InfrastructureError(
+        `Trigger init could not close its temp file ${tempPath} (${closeError.message})${cleanup.removed ? "; the temp file was removed and nothing was published" : `; the temp file remains at ${tempPath} and nothing was published`}`,
+        { cause: closeError }
+      );
+    }
+  } finally {
+    // Leak guard for unexpected throws between the explicit close points
+    // above; every expected failure path closes the handle itself and keeps
+    // its own diagnostics, so this only ever runs with nothing in flight.
     if (handle !== null) {
       await handle.close().catch(() => {});
+      handle = null;
     }
-    const cleanup = await cleanupOwnedTemp(tempPath, owned);
-    throw new InfrastructureError(
-      `Trigger init failed while writing ${tempPath} (${error.message})${cleanup.removed ? "; the partial temp file was removed" : `; the partial temp file remains at ${tempPath}`}`,
-      { cause: error }
-    );
   }
+
+  await assertOwnedEntry(tempPath, owned, "its temp file");
 
   try {
     await fsPromises.link(tempPath, finalPath);
@@ -260,6 +339,8 @@ async function createSuiteExclusively(evalsRealDir, content) {
       { cause: error }
     );
   }
+
+  await assertOwnedEntry(finalPath, owned, "the published suite");
 
   const cleanup = await cleanupOwnedTemp(tempPath, owned);
   return {
@@ -325,7 +406,13 @@ export async function runTriggerInit({ targetPath }) {
   const created = await createSuiteExclusively(evals.realPath, `${JSON.stringify(suite, null, 2)}\n`);
 
   if (!created.ok) {
-    return { ok: false, status: "exists", skill, path: displayPath };
+    return {
+      ok: false,
+      status: "exists",
+      skill,
+      path: displayPath,
+      ...(created.warning !== undefined ? { warning: created.warning } : {})
+    };
   }
 
   return {

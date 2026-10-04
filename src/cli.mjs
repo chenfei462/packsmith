@@ -1332,6 +1332,9 @@ async function main() {
           }
         } else if (result.status === "exists") {
           console.log(`Trigger suite already exists at ${result.path}; refusing to overwrite it.`);
+          if (result.warning !== undefined) {
+            console.log(`Warning: ${result.warning}`);
+          }
         } else {
           console.log(result.message);
         }

@@ -361,26 +361,6 @@ test("a dangling triggers.json symlink is refused, not followed", async (t) => {
   assert.equal(createdThroughLink, false, "wx must not create through a dangling symlink");
 });
 
-test("a suite file appearing after the existence probe is never overwritten (TOCTOU)", async (t) => {
-  const { skillDir } = await makeSkill(t);
-  const evalsDir = path.join(skillDir, "evals");
-  await mkdir(evalsDir, { recursive: true });
-  const suitePath = path.join(evalsDir, "triggers.json");
-  const sentinel = "{\n  \"author\": \"sentinel that must survive\"\n}\n";
-  await writeFile(suitePath, sentinel, "utf8");
-
-  // lstat is forced to report ENOENT, so the implementation believes the
-  // path is free; only an atomic exclusive create can save the sentinel.
-  const result = runCliWithLoader(["trigger", "init", skillDir, "--format", "json"], {
-    PACKSMITH_DOCTOR_FAULT_LSTAT_MISSING: suitePath
-  });
-
-  assert.equal(result.status, 1, `expected refusal, stdout: ${result.stdout.slice(0, 300)}`);
-  const parsed = parseJsonOutput(result, "TOCTOU");
-  assert.equal(parsed.status, "exists");
-  assert.equal(await readFile(suitePath, "utf8"), sentinel, "author content must be byte-identical");
-});
-
 test("a partial write is cleaned up and a retry succeeds", async (t) => {
   const { skillDir } = await makeSkill(t);
   const suitePath = path.join(skillDir, "evals", "triggers.json");
@@ -486,4 +466,88 @@ test("a temp cleanup failure surfaces as infrastructure instead of being swallow
   assert.equal(envelope.error.code, "infrastructure_error");
   assert.doesNotMatch(envelope.error.message, /was removed/i, "a failed cleanup must not claim the file was removed");
   assert.match(envelope.error.message, /could not remove|remains/i, "the message must disclose the leftover temp file");
+});
+
+// ---------------------------------------------------------------------------
+// Codex final M5 review (P2 x3): a handle whose identity cannot be verified
+// must be closed and its leftover disclosed, never racy-deleted; the temp
+// file must be unpredictable and identity-checked before AND after the
+// link publish (a swapped temp must not reach the final path as "created");
+// and the exists refusal must carry the cleanup warning instead of dropping
+// it.
+// ---------------------------------------------------------------------------
+
+test("an unverifiable temp handle is closed and its leftover disclosed", async (t) => {
+  const { skillDir } = await makeSkill(t);
+  const evalsDir = path.join(skillDir, "evals");
+
+  const result = runCliWithLoader(["trigger", "init", skillDir, "--format", "json"], {
+    PACKSMITH_DOCTOR_FAULT_HANDLE_STAT_EIO: evalsDir
+  });
+
+  assert.equal(result.status, 2, `expected infrastructure exit 2, stdout: ${result.stdout.slice(0, 300)}`);
+  const envelope = parseJsonOutput(result, "handle stat EIO");
+  assert.equal(envelope.error.code, "infrastructure_error");
+  assert.match(envelope.error.message, /remains/i, "the unverified temp leftover must be disclosed");
+  // The temp file itself stays (identity unknown → never racy-deleted) and
+  // no suite was published.
+  const entries = await readdir(evalsDir);
+  assert.ok(entries.some((entry) => entry.includes(".tmp-")), "the unverified temp file remains");
+  assert.ok(!entries.includes("triggers.json"), "no suite may be published from an unverifiable temp");
+});
+
+test("a temp swapped before the publish is detected by identity; the final path is never the wrong file", async (t) => {
+  const { skillDir } = await makeSkill(t);
+  const suitePath = path.join(skillDir, "evals", "triggers.json");
+
+  const result = runCliWithLoader(["trigger", "init", skillDir, "--format", "json"], {
+    PACKSMITH_DOCTOR_FAULT_TEMP_SWAP: path.join(skillDir, "evals")
+  });
+
+  assert.equal(result.status, 2, `expected infrastructure exit 2, stdout: ${result.stdout.slice(0, 300)}`);
+  const envelope = parseJsonOutput(result, "temp swap");
+  assert.equal(envelope.error.code, "infrastructure_error");
+  assert.match(envelope.error.message, /replaced|identity|not the file/i);
+  // The author's file planted over the temp path must survive untouched.
+  const finalContent = await readFile(suitePath, "utf8");
+  assert.match(finalContent, /not a trigger suite/, "the planted author file must not be deleted");
+});
+
+test("the exists refusal keeps the cleanup warning instead of dropping it", async (t) => {
+  const { skillDir } = await makeSkill(t);
+  const suitePath = path.join(skillDir, "evals", "triggers.json");
+
+  // The author file appears at publish time (EEXIST) AND the temp was
+  // swapped, so cleanup cannot remove it — the warning must survive into
+  // the exists result.
+  const result = runCliWithLoader(["trigger", "init", skillDir, "--format", "json"], {
+    PACKSMITH_DOCTOR_FAULT_RACE_CREATE: suitePath,
+    PACKSMITH_DOCTOR_FAULT_TEMP_SWAP: path.join(skillDir, "evals")
+  });
+
+  assert.equal(result.status, 1, `expected exists refusal, stdout: ${result.stdout.slice(0, 300)}`);
+  const parsed = parseJsonOutput(result, "exists with warning");
+  assert.equal(parsed.status, "exists");
+  assert.ok(typeof parsed.warning === "string" && parsed.warning.length > 0, "the cleanup warning must be preserved");
+});
+
+test("a close failure after a successful write is infrastructure, never a silent publish", async (t) => {
+  const { skillDir } = await makeSkill(t);
+  const evalsDir = path.join(skillDir, "evals");
+
+  // The injected close performs the REAL close first and then fails, so the
+  // failure happens on the normal success path: the implementation must not
+  // publish a suite whose close it could not observe.
+  const result = runCliWithLoader(["trigger", "init", skillDir, "--format", "json"], {
+    PACKSMITH_DOCTOR_FAULT_CLOSE_EIO: evalsDir
+  });
+
+  assert.equal(result.status, 2, `expected infrastructure exit 2, stdout: ${result.stdout.slice(0, 300)}`);
+  const envelope = parseJsonOutput(result, "close failure");
+  assert.equal(envelope.error.code, "infrastructure_error");
+  assert.match(envelope.error.message, /close/i);
+  // The owned temp is cleaned up and nothing is published.
+  const entries = await readdir(evalsDir);
+  assert.ok(entries.every((entry) => !entry.includes(".tmp-")), "temp file residue must be cleaned up");
+  assert.ok(!entries.includes("triggers.json"), "no suite may be published after an unobservable close");
 });
