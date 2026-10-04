@@ -1,0 +1,3 @@
+{"type":"system","subtype":"init","session_id":"s6","parent_tool_use_id":null,"cwd":"C:ws","tools":["Skill"]}
+{"type":"assistant","session_id":"s6","parent_tool_use_id":null,"message":{"role":"assistant","content":[{"type":"text","text":"Working..."}]}}
+{"type":"result","subtype":"error_during_execution","session_id":"s6","is_error":true,"result":"Session failed"}

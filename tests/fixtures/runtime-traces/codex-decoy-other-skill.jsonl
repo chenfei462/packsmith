@@ -1,0 +1,5 @@
+{"type":"thread.started","thread_id":"th_125"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"type \"C:\\ws\\.agents\\skills\\other-skill\\SKILL.md\"","aggregated_output":"---\nname: review-pr\n---\nRead the diff.","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"Used a different skill."}}
+{"type":"turn.completed","usage":{"input_tokens":9,"output_tokens":4}}

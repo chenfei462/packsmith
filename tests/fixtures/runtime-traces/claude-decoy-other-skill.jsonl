@@ -1,0 +1,4 @@
+{"type":"system","subtype":"init","session_id":"s3","parent_tool_use_id":null,"cwd":"C:ws","tools":["Skill"]}
+{"type":"assistant","session_id":"s3","parent_tool_use_id":null,"message":{"role":"assistant","content":[{"type":"tool_use","id":"t3","name":"Skill","input":{"skill":"other-skill"}}]}}
+{"type":"user","session_id":"s3","parent_tool_use_id":null,"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t3","is_error":false,"content":"Loaded skill"}]}}
+{"type":"result","subtype":"success","session_id":"s3","is_error":false,"result":"Done."}
