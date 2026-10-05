@@ -1081,3 +1081,139 @@ test("parseAvailableSkillLocators fail-closes on unparseable skill entries", asy
     (error) => error.isInfrastructureError === true && /unparseable skill entry/.test(error.message)
   );
 });
+
+// ---------------------------------------------------------------------------
+// Round-4: platform-specific case sensitivity, strict JSON developer
+// parsing, TOML control-byte escaping, and fail-closed bullet parsing.
+// ---------------------------------------------------------------------------
+
+test("isTargetSkillLocator is case-sensitive on Linux, case-insensitive on Windows", async (t) => {
+  const { isTargetSkillLocator } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const workspaceDir = "/home/user/project";
+  const skillName = "review-pr";
+  const target = `${workspaceDir}/.agents/skills/${skillName}/SKILL.md`;
+  const wrongCase = `${workspaceDir}/.agents/skills/Review-Pr/SKILL.md`;
+
+  if (process.platform === "win32") {
+    assert.equal(isTargetSkillLocator(wrongCase, { workspaceDir, skillName }), true, "Windows is case-insensitive");
+  } else {
+    assert.equal(isTargetSkillLocator(wrongCase, { workspaceDir, skillName }), false, "Linux is case-sensitive");
+    assert.equal(isTargetSkillLocator(target, { workspaceDir, skillName }), true);
+  }
+});
+
+test("parseAvailableSkillLocators only trusts developer-role input_text fields", async () => {
+  const { parseAvailableSkillLocators } = await import("../../src/trigger/codex-skill-scope.mjs");
+  // A user-role message carrying a skills block must be ignored.
+  const render = JSON.stringify([
+    { role: "developer", content: [{ type: "input_text", text: "<skills_instructions>\n(file: /real/dev/SKILL.md)\n</skills_instructions>" }] },
+    { role: "user", content: [{ type: "input_text", text: "<skills_instructions>\n(file: /fake/user/SKILL.md)\n</skills_instructions>" }] }
+  ]);
+
+  const locators = parseAvailableSkillLocators(render);
+  assert.deepEqual(locators, ["/real/dev/SKILL.md"], "user-role content must not contribute locators");
+});
+
+test("parseAvailableSkillLocators rejects non-input_text content types", async () => {
+  const { parseAvailableSkillLocators } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const render = JSON.stringify([
+    { role: "developer", content: [{ type: "other_type", text: "<skills_instructions>\n(file: /fake/SKILL.md)\n</skills_instructions>" }] }
+  ]);
+
+  assert.deepEqual(parseAvailableSkillLocators(render), [], "non-input_text fields must not contribute locators");
+});
+
+test("parseAvailableSkillLocators fail-closes on bullet with SKILL.md but no (file:", async () => {
+  const { parseAvailableSkillLocators } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const render = JSON.stringify([
+    { role: "developer", content: [{ type: "input_text", text: "<skills_instructions>\n- suspicious: no locator here SKILL.md\n- ok: real (file: /fixture/target/SKILL.md)\n</skills_instructions>" }] }
+  ]);
+
+  await assert.rejects(
+    async () => parseAvailableSkillLocators(render),
+    (error) => error.isInfrastructureError === true && /unparseable skill entry/.test(error.message)
+  );
+});
+
+test("tomlEscapeString encodes control characters as unicode escapes", async () => {
+  const { buildSkillScopeConfigValue } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const BS = String.fromCharCode(92);
+  const controlChar = String.fromCharCode(1); // SOH
+  const config = buildSkillScopeConfigValue(
+    [`/path${controlChar}with-control/SKILL.md`],
+    "/fixture/target/SKILL.md"
+  );
+  assert.ok(config.includes(`${BS}u0001`), "control byte U+0001 must use \u0001 form");
+});
+
+// ---------------------------------------------------------------------------
+// Round-4 scope structure: unclosed trailing skills block, non-bullet
+// unknown format with (file: marker, and bare locator without closing paren
+// must all fail closed — never silently accepted.
+// ---------------------------------------------------------------------------
+
+test("unclosed trailing skills_instructions block is fail-closed", async () => {
+  const { parseAvailableSkillLocators } = await import("../../src/trigger/codex-skill-scope.mjs");
+  // Complete target block followed by an unclosed foreign block.
+  const render = JSON.stringify([
+    { role: "developer", content: [{ type: "input_text", text: "<skills_instructions>\n(file: /fixture/target/SKILL.md)\n</skills_instructions>\n<skills_instructions>\n(file: /fixture/foreign/SKILL.md)" }] }
+  ]);
+
+  await assert.rejects(
+    async () => parseAvailableSkillLocators(render),
+    (error) => error.isInfrastructureError === true && /mismatched|unclosed/.test(error.message)
+  );
+});
+
+test("non-bullet unknown format with (file: marker is fail-closed", async () => {
+  const { parseAvailableSkillLocators } = await import("../../src/trigger/codex-skill-scope.mjs");
+  // Inside a complete block: a non-bullet line with an explicit (file: marker
+  // that cannot be parsed as a valid locator entry.
+  const render = JSON.stringify([
+    { role: "developer", content: [{ type: "input_text", text: "<skills_instructions>\n(file: /fixture/target/SKILL.md)\n[skill-entry] foreign description (file: /absolute/foreign/SKILL.md)\n</skills_instructions>" }] }
+  ]);
+
+  await assert.rejects(
+    async () => parseAvailableSkillLocators(render),
+    (error) => error.isInfrastructureError === true && /unparseable skill entry/.test(error.message)
+  );
+});
+
+test("bare (file: locator without closing paren is fail-closed", async () => {
+  const { parseAvailableSkillLocators } = await import("../../src/trigger/codex-skill-scope.mjs");
+  // A bare `(file: /path` without the closing `)` must not be silently skipped.
+  const render = JSON.stringify([
+    { role: "developer", content: [{ type: "input_text", text: "<skills_instructions>\n(file: /fixture/target/SKILL.md)\n(file: /absolute/foreign/SKILL.md\n</skills_instructions>" }] }
+  ]);
+
+  await assert.rejects(
+    async () => parseAvailableSkillLocators(render),
+    (error) => error.isInfrastructureError === true && /unparseable skill entry/.test(error.message)
+  );
+});
+
+test("valid bullet and bare entries still parse correctly (positive control)", async () => {
+  const { parseAvailableSkillLocators } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const render = JSON.stringify([
+    { role: "developer", content: [{ type: "input_text", text: "<skills_instructions>\n- target: desc (file: /fixture/target/SKILL.md)\n(file: /fixture/bare/SKILL.md)\n</skills_instructions>" }] }
+  ]);
+
+  const locators = parseAvailableSkillLocators(render);
+  assert.deepEqual(locators, ["/fixture/bare/SKILL.md", "/fixture/target/SKILL.md"]);
+});
+
+// Round-4 nested tags: the tag-pairing state machine must reject nesting
+// (open-target → open-inner → close-inner → close-foreign) even when
+// open/close counts are equal — the foreign block inside the inner tags
+// would be silently dropped by a naive count check.
+test("nested skills_instructions tags with equal counts are fail-closed", async () => {
+  const { parseAvailableSkillLocators } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const render = JSON.stringify([
+    { role: "developer", content: [{ type: "input_text", text: "<skills_instructions>\n(file: /fixture/target/SKILL.md)\n<skills_instructions>\n(file: /fixture/inner/SKILL.md)\n</skills_instructions>\n(file: /fixture/foreign/SKILL.md)\n</skills_instructions>" }] }
+  ]);
+
+  await assert.rejects(
+    async () => parseAvailableSkillLocators(render),
+    (error) => error.isInfrastructureError === true && /nested/.test(error.message)
+  );
+});

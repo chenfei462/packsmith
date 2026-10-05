@@ -158,7 +158,16 @@ function renderTriggerEvaluation(report) {
   if (report.score.divergence.length > 0) {
     lines.push("", "DIVERGENCE");
     for (const item of report.score.divergence) {
-      lines.push(`${item.caseId}: ${report.runtimeIds.map((id) => `${id} ${item.activationCounts[id]}/${item.runs}`).join(", ")}`);
+      lines.push(`${item.caseId}:`);
+      for (const pair of item.pairs) {
+        const label = pair.comparable
+          ? pair.divergent ? "DIVERGENT" : "match"
+          : "excluded (non-binary)";
+        const statuses = report.runtimeIds
+          .map((id, index) => `${id}=${pair.statuses[index]}`)
+          .join(", ");
+        lines.push(`  repeat ${pair.repeat}: ${label} [${statuses}]`);
+      }
     }
   }
   if (report.score.incomparableCases.length > 0) {

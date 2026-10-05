@@ -116,7 +116,9 @@ async function inspectSkillTarget(targetPath) {
   }
 
   if (skill.parse.status === "invalid-yaml") {
-    throw new TriggerRunValidationError(`SKILL.md contains invalid YAML: ${skill.parse.error?.message ?? "parse error"}`);
+    // Sanitized: never echo the YAML parse error message, which may quote
+    // user-authored content from the frontmatter.
+    throw new TriggerRunValidationError("SKILL.md contains invalid YAML; fix the frontmatter before running");
   }
 
   if (skill.parse.status === "missing-frontmatter" || skill.parse.status === "empty-frontmatter" || skill.parse.status === "frontmatter-not-mapping") {
@@ -126,14 +128,21 @@ async function inspectSkillTarget(targetPath) {
   const declaredName = skill.frontmatter?.name;
 
   if (typeof declaredName !== "string" || declaredName.trim().length === 0) {
-    throw new TriggerRunValidationError(`SKILL.md frontmatter is missing a usable name field`);
+    throw new TriggerRunValidationError("SKILL.md frontmatter is missing a usable name field");
+  }
+
+  const declaredDescription = skill.frontmatter?.description;
+
+  if (typeof declaredDescription !== "string" || declaredDescription.trim().length === 0) {
+    throw new TriggerRunValidationError("SKILL.md frontmatter is missing a usable description field");
   }
 
   const directoryName = path.basename(skillDir);
+  const suiteSkill = parsed.suite.skill;
 
-  if (declaredName !== suite.skill) {
+  if (declaredName !== suiteSkill) {
     throw new TriggerRunValidationError(
-      `SKILL.md frontmatter name "${declaredName}" does not match the trigger suite skill "${suite.skill}"; fix the suite or the skill frontmatter before running`
+      `SKILL.md frontmatter name "${declaredName}" does not match the trigger suite skill "${suiteSkill}"; fix the suite or the skill frontmatter before running`
     );
   }
 

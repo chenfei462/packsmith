@@ -103,6 +103,9 @@ test("divergence compares only complete binary samples for each runtime", () => 
     ]
   });
   assert.deepEqual(report.divergence.map((item) => item.caseId), ["review-security"]);
+  // Original activationCounts/runs contract retained.
+  assert.deepEqual(report.divergence[0].activationCounts, { "claude-code": 3, codex: 2 });
+  assert.equal(report.divergence[0].runs, 3);
   assert.equal(report.incomparableCases.length, 0);
   assert.equal(report.status, "fail");
   // Pair-level divergence: the third repeat is where the runtimes differ.

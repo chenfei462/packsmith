@@ -62,69 +62,121 @@ import { resolveLaunchEntry } from "../runtimes/base.mjs";
 export function parseAvailableSkillLocators(promptInputJson) {
   const raw = String(promptInputJson ?? "");
 
-  // The render is a JSON array whose text fields contain the
-  // `<skills_instructions>` block. Parse it to get the decoded text (real
-  // newlines, unescaped backslashes); if it is not valid JSON, fall back to
-  // the raw text so a plain-text render also works.
-  let text = raw;
-
+  // STRICT JSON parsing: the render MUST be a JSON array. A malformed
+  // render is an infrastructure error — falling back to raw-text scanning
+  // would let fabricated locators from non-developer content contaminate
+  // the scope.
+  let parsed;
   try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
-      const parts = [];
-      for (const message of parsed) {
-        const content = message?.content;
-        if (!Array.isArray(content)) continue;
-        for (const part of content) {
-          if (typeof part?.text === "string") parts.push(part.text);
-        }
-      }
-      if (parts.length > 0) text = parts.join("\n");
-    }
-  } catch {
-    // Not valid JSON: use raw text as-is (still searched for the block).
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new InfrastructureError("skill audit render is not valid JSON; refusing to scope");
   }
 
-  const blockMatch = text.match(/<skills_instructions>([\s\S]*?)<\/skills_instructions>/);
+  if (!Array.isArray(parsed)) {
+    throw new InfrastructureError("skill audit render must be a JSON array of messages");
+  }
 
-  if (!blockMatch) {
+  // Only developer-role input_text fields are trusted. Collect ALL
+  // skills_instructions blocks from every developer message — there may be
+  // multiple trusted blocks in one render.
+  const blocks = [];
+
+  for (const message of parsed) {
+    if (message?.role !== "developer") continue;
+    const content = message?.content;
+    if (!Array.isArray(content)) continue;
+    for (const part of content) {
+      if (part?.type !== "input_text" || typeof part?.text !== "string") continue;
+      // Strict tag-pairing state machine: walk the text and enforce that
+      // open/close tags strictly alternate with no nesting. This catches
+      // open-target → open-inner → close-inner → close-foreign sequences
+      // where a naive openCount === closeCount check would pass but the
+      // foreign block is inside the inner one and gets silently dropped.
+      const tagPattern = /<\/?skills_instructions>/g;
+      let inside = false;
+      let blockStart = -1;
+      let match;
+      while ((match = tagPattern.exec(part.text)) !== null) {
+        if (!inside && match[0] === "<skills_instructions>") {
+          inside = true;
+          blockStart = match.index + match[0].length;
+        } else if (inside && match[0] === "</skills_instructions>") {
+          blocks.push(part.text.slice(blockStart, match.index));
+          inside = false;
+        } else {
+          throw new InfrastructureError(
+            inside
+              ? "skill audit render contains a nested <skills_instructions> tag; nesting is not allowed"
+              : "skill audit render contains a stray </skills_instructions> close tag without a matching open tag"
+          );
+        }
+      }
+      if (inside) {
+        throw new InfrastructureError(
+          "skill audit render contains an unclosed <skills_instructions> tag; refusing to scope"
+        );
+      }
+    }
+  }
+
+  if (blocks.length === 0) {
     // No skills block at all: the runtime offered zero skills.
     return [];
   }
 
-  const block = blockMatch[1];
   const locators = [];
   const unparsedEntries = [];
 
-  for (const line of block.split(/\r?\n/)) {
-    const trimmed = line.trim();
+  for (const block of blocks) {
+    for (const line of block.split(/\r?\n/)) {
+      const trimmed = line.trim();
 
-    // Match two entry formats:
-    //   1. bullet:  `- name: description (file: <locator>)`
-    //   2. bare:    `(file: <locator>)` on its own line
-    const isBullet = trimmed.startsWith("- ") && trimmed.includes("(file:");
-    const isBare = trimmed.startsWith("(file: ") && trimmed.endsWith(")");
+      // A bullet mentioning SKILL.md without a `(file:` locator is
+      // suspicious and must fail closed — it could be a skill entry whose
+      // locator was stripped or corrupted.
+      if (trimmed.startsWith("- ") && trimmed.includes("SKILL.md") && !trimmed.includes("(file:")) {
+        unparsedEntries.push(trimmed);
+        continue;
+      }
 
-    if (!isBullet && !isBare) {
-      continue;
+      // ANY line containing a `(file:` marker is a skill entry candidate.
+      // Lines without the marker are not entries and are silently ignored.
+      // A candidate is only valid when it is either a bullet entry
+      // (`- name: … (file: …)`) or a bare `(file: …)` line. Any other
+      // format containing a `(file:` marker is fail-closed — it could be
+      // a skill entry in an unknown format that scoping then misses.
+      if (!trimmed.includes("(file:")) {
+        continue;
+      }
+
+      const isBullet = trimmed.startsWith("- ");
+      const isBare = trimmed.startsWith("(file: ") && trimmed.endsWith(")");
+
+      if (!isBullet && !isBare) {
+        unparsedEntries.push(trimmed);
+        continue;
+      }
+
+      // The locator is the LAST parenthesised `(file: …)` group on the line.
+      const locatorMatch = trimmed.match(/\(file: (.+)\)\s*$/);
+
+      if (!locatorMatch || locatorMatch[1].trim().length === 0) {
+        // Includes: bare `(file: /path` with no closing `)`, malformed
+        // non-bullet lines with `(file:` but no closing group, etc.
+        unparsedEntries.push(trimmed);
+        continue;
+      }
+
+      const locator = locatorMatch[1].trim().replace(/\\+/g, "/");
+
+      if (!locator.startsWith("/") && !/^[A-Za-z]:\//.test(locator)) {
+        unparsedEntries.push(trimmed);
+        continue;
+      }
+
+      locators.push(locator);
     }
-
-    // The locator is the LAST parenthesised `(file: …)` group on the line.
-    const locatorMatch = trimmed.match(/\(file: (.+)\)\s*$/);
-
-    if (!locatorMatch || locatorMatch[1].trim().length === 0) {
-      unparsedEntries.push(trimmed);
-      continue;
-    }
-
-    const locator = locatorMatch[1].trim().replace(/\\+/g, "/");
-
-    if (!locator.startsWith("/") && !/^[A-Za-z]:\//.test(locator)) {
-      unparsedEntries.push(trimmed);
-      continue;
-    }
-
-    locators.push(locator);
   }
 
   if (unparsedEntries.length > 0) {
@@ -140,8 +192,12 @@ export function parseAvailableSkillLocators(promptInputJson) {
  * inside `<workspace>/.agents/skills/<name>/`). Case-insensitive on Windows
  * path semantics; compared on normalized separators. */
 export function isTargetSkillLocator(locator, { workspaceDir, skillName }) {
-  const normalized = locator.replace(/\\+/g, "/").toLowerCase();
-  const expectedSuffix = `${workspaceDir.replace(/\\+/g, "/").toLowerCase()}/.agents/skills/${skillName.toLowerCase()}/skill.md`;
+  const normalized = locator.replace(/\\+/g, "/");
+  const expectedSuffix = `${workspaceDir.replace(/\\+/g, "/")}/.agents/skills/${skillName}/SKILL.md`;
+  // Windows/conda file systems are case-insensitive; Linux/macOS are not.
+  if (process.platform === "win32") {
+    return normalized.toLowerCase() === expectedSuffix.toLowerCase();
+  }
   return normalized === expectedSuffix;
 }
 
@@ -157,7 +213,13 @@ function tomlEscapeString(value) {
     .replace(/"/g, '\\"')
     .replace(/\n/g, "\\n")
     .replace(/\r/g, "\\r")
-    .replace(/\t/g, "\\t");
+    .replace(/\t/g, "\\t")
+    .replace(/\x08/g, "\\b")
+    .replace(/\x0C/g, "\\f")
+    // Control characters U+0000–U+001F (excluding already-escaped \n \r \t
+    // \b \f, which were handled above as their literal codepoints) plus
+    // U+007F (DEL) must use \uXXXX form per TOML spec.
+    .replace(/[\x00-\x07\x0B\x0E-\x1F\x7F]/g, (char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, "0")}`);
 }
 
 /**

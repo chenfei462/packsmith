@@ -99,34 +99,40 @@ export function scoreTriggerResults({ suite, runtimeIds, runs, observations }) {
   }
 
   // Divergence compares per case × repeat binary pairs across runtimes.
-  // A pair is comparable only when BOTH runtimes produced a binary outcome
-  // for that repeat; the four non-binary states never enter the denominator.
+  // A repeat is comparable when at least two runtimes produced binary
+  // outcomes; the four non-binary states never enter the denominator.
+  // Aggregate activationCounts per runtime are retained for the original
+  // data contract; per-repeat pairs carry the actual comparison detail.
   const divergence = [];
   const incomparableCases = [];
   if (runtimeIds.length > 1) {
     for (const entry of suite.cases) {
       let sawDifference = false;
       const pairs = [];
+      const activationCounts = {};
+      for (const runtimeId of runtimeIds) {
+        activationCounts[runtimeId] = runtimes[runtimeId].cases[entry.id].triggered;
+      }
       for (let repeat = 1; repeat <= runs; repeat += 1) {
         const statuses = runtimeIds.map((runtimeId) => {
           const key = `${runtimeId}\u0000${entry.id}\u0000${repeat}`;
           return byKey.get(key)?.status ?? null;
         });
-        const binary = statuses.every((status) => status !== null && BINARY_STATUSES.has(status));
-        if (!binary) {
-          pairs.push({ repeat, statuses, comparable: false });
-          continue;
-        }
-        const unique = new Set(statuses);
-        if (unique.size > 1) {
+        // Compare runtime PAIRS independently: a repeat is comparable when
+        // at least two runtimes produced binary outcomes, even if other
+        // runtimes had unresolved states at the same repeat. This prevents
+        // a third runtime's infra_error from discarding a real binary
+        // divergence between the first two.
+        const binaryStatuses = statuses.filter((status) => status !== null && BINARY_STATUSES.has(status));
+        const comparable = binaryStatuses.length >= 2;
+        const divergent = comparable && new Set(binaryStatuses).size > 1;
+        if (divergent) {
           sawDifference = true;
-          pairs.push({ repeat, statuses: [...statuses], comparable: true, divergent: true });
-        } else {
-          pairs.push({ repeat, statuses: [...statuses], comparable: true, divergent: false });
         }
+        pairs.push({ repeat, statuses: [...statuses], comparable, divergent });
       }
       if (sawDifference) {
-        divergence.push({ caseId: entry.id, pairs });
+        divergence.push({ caseId: entry.id, activationCounts, runs, pairs });
       }
       const comparablePairs = pairs.filter((pair) => pair.comparable);
       if (comparablePairs.length === 0) {
