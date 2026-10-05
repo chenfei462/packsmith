@@ -55,7 +55,7 @@ if (argv.includes("debug") && argv.includes("prompt-input")) {
     for (let index = 0; index < argv.length; index += 1) {
       if (argv[index] === "-c" && typeof argv[index + 1] === "string") {
         const configValue = argv[index + 1];
-        for (const match of configValue.matchAll(/path='([^']+)'\s*,\s*enabled\s*=\s*false/g)) {
+        for (const match of configValue.matchAll(/path=["']([^"']+)["']\s*,\s*enabled\s*=\s*false/g)) {
           disabled.add(match[1].replace(/\\+/g, "/"));
         }
       }

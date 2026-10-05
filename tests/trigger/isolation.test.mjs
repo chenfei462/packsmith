@@ -927,8 +927,8 @@ test("establishCodexSkillScope keeps the target and disables every global skill"
   assert.equal(scope.ok, true);
   assert.equal(scope.availableSkills, 3, "the audit sees the target plus two global skills");
   assert.equal(scope.scopedSkills, 1, "scoping leaves only the target");
-  assert.match(scope.scopeConfigValue, /using-superpowers\/SKILL\.md',enabled=false/);
-  assert.match(scope.scopeConfigValue, /godot\/SKILL\.md',enabled=false/);
+  assert.match(scope.scopeConfigValue, /using-superpowers\/SKILL\.md",enabled=false/);
+  assert.match(scope.scopeConfigValue, /godot\/SKILL\.md",enabled=false/);
   assert.equal(scope.scopeConfigValue.includes("review-pr"), false, "the target is never disabled");
 });
 
@@ -1002,5 +1002,82 @@ test("a global skill leaking through is a hard failure, never a silent pass", as
         }
       }),
     (error) => /non-target skill\(s\) available/.test(error.message)
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Round-3 acceptance: TOML apostrophe escaping, parenthesized locator
+// parsing, and CLI duplicate flag rejection.
+// ---------------------------------------------------------------------------
+
+test("buildSkillScopeConfigValue escapes apostrophes in TOML basic strings", async () => {
+  const { buildSkillScopeConfigValue } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const config = buildSkillScopeConfigValue(
+    ["/fixture/user's-skill/SKILL.md"],
+    "/fixture/target/SKILL.md"
+  );
+  // Apostrophe must not break the TOML basic string (double-quoted).
+  assert.equal(config, `[{path="/fixture/user's-skill/SKILL.md",enabled=false}]`);
+  // Must be valid TOML: no unescaped bare single-quote inside a basic string.
+  assert.ok(!config.includes("path='"), "must not use TOML literal strings (single-quoted)");
+});
+
+test("buildSkillScopeConfigValue escapes backslashes and double quotes", async () => {
+  const { buildSkillScopeConfigValue } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const BS = String.fromCharCode(92);
+  const DQ = String.fromCharCode(34);
+  const winPath = ["C:", "path", "with", "backslashes", "SKILL.md"].join(BS);
+  const unixDQ = "/path/with/" + DQ + "quotes" + DQ + "/SKILL.md";
+  const config = buildSkillScopeConfigValue(
+    [winPath, unixDQ],
+    "/fixture/target/SKILL.md"
+  );
+  // Backslashes doubled for TOML basic string.
+  assert.ok(config.includes(winPath.split(BS).join(BS + BS)), "backslashes must be doubled");
+  // Double quotes escaped with backslash.
+  assert.ok(config.includes(BS + DQ + "quotes" + BS + DQ), "double quotes must be escaped");
+});
+
+test("parseAvailableSkillLocators handles paths with parentheses", async () => {
+  const { parseAvailableSkillLocators } = await import("../../src/trigger/codex-skill-scope.mjs");
+  const render = JSON.stringify([
+    {
+      type: "message",
+      role: "developer",
+      content: [
+        {
+          type: "input_text",
+          text: "<skills_instructions>\n- a: x (file: /fixture/global/collection(with-parentheses)/other-skill/SKILL.md)\n- b: y (file: /fixture/target/SKILL.md)\n</skills_instructions>"
+        }
+      ]
+    }
+  ]);
+
+  const locators = parseAvailableSkillLocators(render);
+  assert.deepEqual(locators, [
+    "/fixture/global/collection(with-parentheses)/other-skill/SKILL.md",
+    "/fixture/target/SKILL.md"
+  ]);
+});
+
+test("parseAvailableSkillLocators fail-closes on unparseable skill entries", async () => {
+  const { parseAvailableSkillLocators } = await import("../../src/trigger/codex-skill-scope.mjs");
+  // A bullet line with `(file:` but no valid absolute path at the end.
+  const render = JSON.stringify([
+    {
+      type: "message",
+      role: "developer",
+      content: [
+        {
+          type: "input_text",
+          text: "<skills_instructions>\n- a: x (file: relative/path/SKILL.md)\n- b: y (file: /fixture/target/SKILL.md)\n</skills_instructions>"
+        }
+      ]
+    }
+  ]);
+
+  await assert.rejects(
+    async () => parseAvailableSkillLocators(render),
+    (error) => error.isInfrastructureError === true && /unparseable skill entry/.test(error.message)
   );
 });

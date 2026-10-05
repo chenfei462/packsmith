@@ -1340,6 +1340,16 @@ async function main() {
         if (options.format !== undefined && options.format !== "json") {
           throw new UsageError(`Unsupported --format value for trigger: ${options.format}. Use --format json.`);
         }
+
+        // Duplicate --runs/--runtime are upfront usage errors, not silent
+        // last-wins overrides — a repeated flag changes the invocation count.
+        for (const flagName of ["--runs", "--runtime"]) {
+          const occurrences = rawArgs.filter((arg) => arg === flagName || arg.startsWith(`${flagName}=`)).length;
+          if (occurrences > 1) {
+            throw new UsageError(`${flagName} was specified ${occurrences} times; each flag may only appear once.`);
+          }
+        }
+
         const runtimeIds = options.runtime === undefined ? ["claude-code", "codex"] : options.runtime.split(",").map((id) => id.trim());
         if (options.runs !== undefined && !/^[1-9]\d*$/.test(options.runs)) {
           throw new UsageError("--runs must be a decimal integer from 1 to 20.");

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
+import { parseSkill } from "../core/skill-parser.mjs";
 import { RUNTIME_IDS, TRIGGER_STATUSES } from "../runtimes/base.mjs";
 import { claudeCodeAdapter } from "../runtimes/claude-code.mjs";
 import { codexAdapter } from "../runtimes/codex.mjs";
@@ -102,6 +103,46 @@ async function inspectSkillTarget(targetPath) {
       : parsed.problems;
     throw new TriggerRunValidationError(`invalid trigger suite ${suitePath}: ${problems.join("; ")}`);
   }
+
+  // Validate the actual SKILL.md frontmatter BEFORE creating any artifacts
+  // or calling any adapter: the skill's declared name must match the
+  // suite's `skill` field AND the containing directory name. Bad YAML,
+  // missing frontmatter and name mismatches are validation failures
+  // (exit 1) — never a wasted adapter invocation with misidentified skills.
+  const skill = await parseSkill(skillDir);
+
+  if (skill.parse.status === "missing-skill-file") {
+    throw new TriggerRunValidationError(`SKILL.md is missing from ${skillDir}`);
+  }
+
+  if (skill.parse.status === "invalid-yaml") {
+    throw new TriggerRunValidationError(`SKILL.md contains invalid YAML: ${skill.parse.error?.message ?? "parse error"}`);
+  }
+
+  if (skill.parse.status === "missing-frontmatter" || skill.parse.status === "empty-frontmatter" || skill.parse.status === "frontmatter-not-mapping") {
+    throw new TriggerRunValidationError(`SKILL.md has no usable frontmatter (status: ${skill.parse.status})`);
+  }
+
+  const declaredName = skill.frontmatter?.name;
+
+  if (typeof declaredName !== "string" || declaredName.trim().length === 0) {
+    throw new TriggerRunValidationError(`SKILL.md frontmatter is missing a usable name field`);
+  }
+
+  const directoryName = path.basename(skillDir);
+
+  if (declaredName !== suite.skill) {
+    throw new TriggerRunValidationError(
+      `SKILL.md frontmatter name "${declaredName}" does not match the trigger suite skill "${suite.skill}"; fix the suite or the skill frontmatter before running`
+    );
+  }
+
+  if (declaredName !== directoryName) {
+    throw new TriggerRunValidationError(
+      `SKILL.md frontmatter name "${declaredName}" does not match the containing directory "${directoryName}"`
+    );
+  }
+
   return { skillDir, suitePath, suite: parsed.suite };
 }
 

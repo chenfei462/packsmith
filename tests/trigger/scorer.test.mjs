@@ -103,9 +103,120 @@ test("divergence compares only complete binary samples for each runtime", () => 
     ]
   });
   assert.deepEqual(report.divergence.map((item) => item.caseId), ["review-security"]);
-  assert.deepEqual(report.divergence[0].activationCounts, { "claude-code": 3, codex: 2 });
   assert.equal(report.incomparableCases.length, 0);
   assert.equal(report.status, "fail");
+  // Pair-level divergence: the third repeat is where the runtimes differ.
+  assert.deepEqual(
+    report.divergence[0].pairs.map((pair) => ({ repeat: pair.repeat, divergent: pair.divergent })),
+    [
+      { repeat: 1, divergent: false },
+      { repeat: 2, divergent: false },
+      { repeat: 3, divergent: true }
+    ]
+  );
+});
+
+test("divergence is paired per repeat: equal aggregate counts can still diverge", () => {
+  // A: [triggered, not_triggered]; B: [not_triggered, triggered].
+  // Aggregate counts are identical (1 each) but every repeat diverges.
+  const report = scoreTriggerResults({
+    suite,
+    runtimeIds: ["a", "b"],
+    runs: 2,
+    observations: [
+      observation("a", "review-security", 1, "triggered"),
+      observation("a", "review-security", 2, "not_triggered"),
+      observation("b", "review-security", 1, "not_triggered"),
+      observation("b", "review-security", 2, "triggered"),
+      observation("a", "explain-pr", 1, "not_triggered"),
+      observation("a", "explain-pr", 2, "not_triggered"),
+      observation("b", "explain-pr", 1, "not_triggered"),
+      observation("b", "explain-pr", 2, "not_triggered")
+    ]
+  });
+  assert.equal(report.status, "fail");
+  const divergence = report.divergence.find((item) => item.caseId === "review-security");
+  assert.ok(divergence, "divergence must be detected despite equal aggregate counts");
+  assert.deepEqual(
+    divergence.pairs.map((pair) => ({ repeat: pair.repeat, divergent: pair.divergent })),
+    [
+      { repeat: 1, divergent: true },
+      { repeat: 2, divergent: true }
+    ]
+  );
+});
+
+test("partial divergence: binary repeat compared even when another repeat has an unresolved state", () => {
+  // A: [triggered, infra_error]; B: [not_triggered, triggered].
+  // Repeat 1 is binary and divergent; repeat 2 is excluded from metrics.
+  const report = scoreTriggerResults({
+    suite,
+    runtimeIds: ["a", "b"],
+    runs: 2,
+    observations: [
+      observation("a", "review-security", 1, "triggered"),
+      observation("a", "review-security", 2, "infra_error"),
+      observation("b", "review-security", 1, "not_triggered"),
+      observation("b", "review-security", 2, "triggered"),
+      observation("a", "explain-pr", 1, "not_triggered"),
+      observation("a", "explain-pr", 2, "not_triggered"),
+      observation("b", "explain-pr", 1, "not_triggered"),
+      observation("b", "explain-pr", 2, "not_triggered")
+    ]
+  });
+  assert.equal(report.status, "incomplete");
+  assert.equal(report.exitCode, 2);
+  const divergence = report.divergence.find((item) => item.caseId === "review-security");
+  assert.ok(divergence, "repeat 1 divergence must survive even with an unresolved repeat 2");
+  const first = divergence.pairs.find((pair) => pair.repeat === 1);
+  assert.equal(first.divergent, true, "repeat 1 is binary and divergent");
+  const second = divergence.pairs.find((pair) => pair.repeat === 2);
+  assert.equal(second.comparable, false, "repeat 2 is not comparable (infra_error)");
+});
+
+test("mixed FP + infra_error: infra takes precedence (incomplete, exit 2), FP is retained", () => {
+  const report = scoreTriggerResults({
+    suite,
+    runtimeIds: ["codex"],
+    runs: 2,
+    observations: [
+      observation("codex", "review-security", 1, "not_triggered"), // expect trigger → FN, but not FP
+      observation("codex", "review-security", 2, "infra_error"),
+      observation("codex", "explain-pr", 1, "triggered"), // expect no-trigger → FP
+      observation("codex", "explain-pr", 2, "not_triggered")
+    ]
+  });
+  assert.equal(report.status, "incomplete");
+  assert.equal(report.exitCode, 2);
+  assert.deepEqual(report.runtimes.codex.confusion, { tp: 0, fp: 1, tn: 1, fn: 1 });
+  assert.deepEqual(report.runtimes.codex.unresolved, { ambiguous: 0, infra_error: 1, timeout: 0, unsupported: 0 });
+});
+
+test("runtimeIds containing __proto__ are rejected instead of producing a false pass", () => {
+  // A runtime id of "__proto__" would silently create a prototype slot on
+  // a plain object dictionary, losing FN entries and returning pass.
+  assert.throws(
+    () =>
+      scoreTriggerResults({
+        suite,
+        runtimeIds: ["__proto__"],
+        runs: 1,
+        observations: [
+          observation("__proto__", "explain-pr", 1, "not_triggered") // expect no-trigger → tn (lost on proto)
+        ]
+      }),
+    /invalid runtime id/
+  );
+  assert.throws(
+    () =>
+      scoreTriggerResults({
+        suite,
+        runtimeIds: ["constructor"],
+        runs: 1,
+        observations: [observation("constructor", "explain-pr", 1, "not_triggered")]
+      }),
+    /invalid runtime id/
+  );
 });
 
 test("missing and duplicate observations are rejected instead of yielding a misleading score", () => {

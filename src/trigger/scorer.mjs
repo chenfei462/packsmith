@@ -23,6 +23,15 @@ export function scoreTriggerResults({ suite, runtimeIds, runs, observations }) {
   if (!Array.isArray(runtimeIds) || runtimeIds.length === 0 || runtimeIds.some((id) => typeof id !== "string" || id.length === 0) || new Set(runtimeIds).size !== runtimeIds.length) {
     throw new TypeError("runtimeIds must be a non-empty array of unique runtime ids");
   }
+  // Reject runtime ids that collide with Object.prototype or dangerous
+  // dictionary keys — they would silently corrupt the per-runtime results
+  // or produce a false pass when an FN entry lands on the prototype.
+  const DANGEROUS_RUNTIME_IDS = new Set(["__proto__", "constructor", "hasOwnProperty", "toString", "valueOf", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString"]);
+  for (const runtimeId of runtimeIds) {
+    if (DANGEROUS_RUNTIME_IDS.has(runtimeId) || Object.prototype.hasOwnProperty.call(Object.prototype, runtimeId)) {
+      throw new TypeError(`invalid runtime id: ${JSON.stringify(runtimeId)}`);
+    }
+  }
   if (!Number.isSafeInteger(runs) || runs < 1) {
     throw new TypeError("runs must be a positive safe integer");
   }
@@ -42,12 +51,14 @@ export function scoreTriggerResults({ suite, runtimeIds, runs, observations }) {
     }
     byKey.set(key, item);
   }
-
-  const runtimes = {};
+  const runtimes = Object.create(null);
   for (const runtimeId of runtimeIds) {
+    if (typeof runtimeId !== "string" || runtimeId.length === 0) {
+      throw new TypeError("runtimeIds must be a non-empty array of unique non-empty string runtime ids");
+    }
     const confusion = { tp: 0, fp: 0, tn: 0, fn: 0 };
     const unresolved = { ambiguous: 0, infra_error: 0, timeout: 0, unsupported: 0 };
-    const cases = {};
+    const cases = Object.create(null);
     for (const entry of suite.cases) {
       const statuses = [];
       for (let repeat = 1; repeat <= runs; repeat += 1) {
@@ -87,28 +98,46 @@ export function scoreTriggerResults({ suite, runtimeIds, runs, observations }) {
     };
   }
 
+  // Divergence compares per case × repeat binary pairs across runtimes.
+  // A pair is comparable only when BOTH runtimes produced a binary outcome
+  // for that repeat; the four non-binary states never enter the denominator.
   const divergence = [];
   const incomparableCases = [];
   if (runtimeIds.length > 1) {
     for (const entry of suite.cases) {
-      const counts = {};
-      const comparable = runtimeIds.every((runtimeId) => runtimes[runtimeId].cases[entry.id].validRuns === runs);
-      if (!comparable) {
+      let sawDifference = false;
+      const pairs = [];
+      for (let repeat = 1; repeat <= runs; repeat += 1) {
+        const statuses = runtimeIds.map((runtimeId) => {
+          const key = `${runtimeId}\u0000${entry.id}\u0000${repeat}`;
+          return byKey.get(key)?.status ?? null;
+        });
+        const binary = statuses.every((status) => status !== null && BINARY_STATUSES.has(status));
+        if (!binary) {
+          pairs.push({ repeat, statuses, comparable: false });
+          continue;
+        }
+        const unique = new Set(statuses);
+        if (unique.size > 1) {
+          sawDifference = true;
+          pairs.push({ repeat, statuses: [...statuses], comparable: true, divergent: true });
+        } else {
+          pairs.push({ repeat, statuses: [...statuses], comparable: true, divergent: false });
+        }
+      }
+      if (sawDifference) {
+        divergence.push({ caseId: entry.id, pairs });
+      }
+      const comparablePairs = pairs.filter((pair) => pair.comparable);
+      if (comparablePairs.length === 0) {
         incomparableCases.push(entry.id);
-        continue;
-      }
-      for (const runtimeId of runtimeIds) {
-        counts[runtimeId] = runtimes[runtimeId].cases[entry.id].triggered;
-      }
-      if (new Set(Object.values(counts)).size > 1) {
-        divergence.push({ caseId: entry.id, activationCounts: counts, runs });
       }
     }
   }
 
-  const anyError = Object.values(runtimes).some(({ confusion }) => confusion.fp > 0 || confusion.fn > 0);
-  const anyUnresolved = Object.values(runtimes).some(({ unresolved }) => UNRESOLVED_STATUSES.some((status) => unresolved[status] > 0));
-  const status = anyError || divergence.length > 0 ? "fail" : anyUnresolved ? "incomplete" : "pass";
+const anyError = Object.values(runtimes).some(({ confusion }) => confusion.fp > 0 || confusion.fn > 0);
+  const anyUnresolved = Object.values(runtimes).some(({ unresolved }) => UNRESOLVED_STATUSES.some((state) => unresolved[state] > 0));
+  const status = anyUnresolved ? "incomplete" : (anyError || divergence.length > 0 ? "fail" : "pass");
   return {
     schemaVersion: 1,
     skill: suite.skill,
@@ -119,5 +148,5 @@ export function scoreTriggerResults({ suite, runtimeIds, runs, observations }) {
     runtimes,
     divergence,
     incomparableCases
-  };
+  }
 }

@@ -45,22 +45,95 @@ import { resolveLaunchEntry } from "../runtimes/base.mjs";
  */
 
 /** Locator pattern in the `<skills_instructions>` block: `(file: …/SKILL.md)`. */
-const SKILL_LOCATOR_PATTERN = /\(file: ([^)]+SKILL\.md)\)/g;
-
-/** Parse every distinct canonical SKILL.md locator out of a prompt-input
- * render. The render is JSON text, so a Windows path may appear with
- * single or doubled backslashes depending on the encoding layer — both are
- * normalized to `/` (any run of backslashes collapses to one separator).
- * Pure. */
+/**
+ * Parse every distinct canonical SKILL.md locator out of a prompt-input
+ * render. The render contains a `<skills_instructions>` block in which
+ * each available skill is listed as a bullet with a `(file: <path>)`
+ * locator. A path may legally contain parentheses (e.g.
+ * `/fixture/global/collection(with-parentheses)/other-skill/SKILL.md`),
+ * so the block is extracted first and each bullet line is matched for its
+ * trailing `(file: …)` group — never `[^)]`, which truncates at the first
+ * inner parenthesis. Any bullet that LOOKS like a skill entry but does not
+ * produce a parseable absolute locator is fail-closed: an unparsed entry
+ * could be a skill that scoping then misses.
+ *
+ * Pure. Throws InfrastructureError on fail-closed conditions.
+ */
 export function parseAvailableSkillLocators(promptInputJson) {
-  const text = String(promptInputJson ?? "");
-  const locators = new Set();
+  const raw = String(promptInputJson ?? "");
 
-  for (const match of text.matchAll(SKILL_LOCATOR_PATTERN)) {
-    locators.add(match[1].replace(/\\+/g, "/"));
+  // The render is a JSON array whose text fields contain the
+  // `<skills_instructions>` block. Parse it to get the decoded text (real
+  // newlines, unescaped backslashes); if it is not valid JSON, fall back to
+  // the raw text so a plain-text render also works.
+  let text = raw;
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      const parts = [];
+      for (const message of parsed) {
+        const content = message?.content;
+        if (!Array.isArray(content)) continue;
+        for (const part of content) {
+          if (typeof part?.text === "string") parts.push(part.text);
+        }
+      }
+      if (parts.length > 0) text = parts.join("\n");
+    }
+  } catch {
+    // Not valid JSON: use raw text as-is (still searched for the block).
   }
 
-  return [...locators].sort();
+  const blockMatch = text.match(/<skills_instructions>([\s\S]*?)<\/skills_instructions>/);
+
+  if (!blockMatch) {
+    // No skills block at all: the runtime offered zero skills.
+    return [];
+  }
+
+  const block = blockMatch[1];
+  const locators = [];
+  const unparsedEntries = [];
+
+  for (const line of block.split(/\r?\n/)) {
+    const trimmed = line.trim();
+
+    // Match two entry formats:
+    //   1. bullet:  `- name: description (file: <locator>)`
+    //   2. bare:    `(file: <locator>)` on its own line
+    const isBullet = trimmed.startsWith("- ") && trimmed.includes("(file:");
+    const isBare = trimmed.startsWith("(file: ") && trimmed.endsWith(")");
+
+    if (!isBullet && !isBare) {
+      continue;
+    }
+
+    // The locator is the LAST parenthesised `(file: …)` group on the line.
+    const locatorMatch = trimmed.match(/\(file: (.+)\)\s*$/);
+
+    if (!locatorMatch || locatorMatch[1].trim().length === 0) {
+      unparsedEntries.push(trimmed);
+      continue;
+    }
+
+    const locator = locatorMatch[1].trim().replace(/\\+/g, "/");
+
+    if (!locator.startsWith("/") && !/^[A-Za-z]:\//.test(locator)) {
+      unparsedEntries.push(trimmed);
+      continue;
+    }
+
+    locators.push(locator);
+  }
+
+  if (unparsedEntries.length > 0) {
+    throw new InfrastructureError(
+      `skill audit found ${unparsedEntries.length} unparseable skill entry/entries; refusing to scope (fail-closed): ${unparsedEntries[0].slice(0, 200)}`
+    );
+  }
+
+  return [...new Set(locators)].sort();
 }
 
 /** True when `locator` names the skill under test (its SKILL.md path is
@@ -73,15 +146,32 @@ export function isTargetSkillLocator(locator, { workspaceDir, skillName }) {
 }
 
 /**
+ * Escape a path for use inside a TOML basic string (double-quoted).
+ * TOML basic strings support backslash escapes; a literal backslash must be
+ * doubled, a double quote must be escaped, and control characters use
+ * \uXXXX form. Single quotes do NOT need escaping in basic strings.
+ */
+function tomlEscapeString(value) {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
+}
+
+/**
  * Build the `-c skills.config=…` TOML value disabling every non-target
- * skill by canonical path. Pure. `targetLocator` (the skill under test) is
- * never disabled; if it is absent from `locators` the caller must treat that
- * as a failure (the run cannot prove the target is available).
+ * skill by canonical path. Uses TOML basic strings (double-quoted) with
+ * proper escaping so paths containing apostrophes, quotes or backslashes
+ * produce valid TOML. Pure. `targetLocator` (the skill under test) is
+ * never disabled; if it is absent from `locators` the caller must treat
+ * that as a failure (the run cannot prove the target is available).
  */
 export function buildSkillScopeConfigValue(locators, targetLocator) {
   const entries = locators
     .filter((locator) => locator !== targetLocator)
-    .map((locator) => `{path='${locator}',enabled=false}`);
+    .map((locator) => `{path="${tomlEscapeString(locator)}",enabled=false}`);
 
   return `[${entries.join(",")}]`;
 }
