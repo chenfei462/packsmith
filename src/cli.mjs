@@ -39,6 +39,7 @@ import { defaultInstallRoot, defaultStateDir, TARGET_ADAPTERS } from "./lib/targ
 import { runDoctor } from "./doctor.mjs";
 import { runTriggerInit } from "./trigger/init.mjs";
 import { runTriggerEvaluation } from "./trigger/runner.mjs";
+import { runMatrix, MatrixUsageError, MatrixValidationError } from "./trigger/matrix.mjs";
 import { renderDoctorTerminal } from "./reporters/terminal.mjs";
 import { renderDoctorJson } from "./reporters/json.mjs";
 
@@ -68,6 +69,7 @@ const COMMAND_FLAGS = {
   inspect:   ["json", "quiet"],
   doctor:    ["json", "quiet", "format", "target"],
   trigger:   ["json", "quiet", "format", "runtime", "runs"],
+  matrix:    ["json", "quiet", "format", "results"],
   score:     ["json", "quiet", "registry", "scope", "stateDir"],
   passport:  ["json", "quiet", "registry", "scope", "stateDir"],
   targets:   ["json", "quiet"],
@@ -130,6 +132,39 @@ function writeOutput(options, printer) {
     return;
   }
   printer();
+}
+
+function renderMatrix(report) {
+  const lines = ["Packsmith Matrix", `${report.skill}`, "", "STATIC COMPATIBILITY"];
+  const header = ["Runtime", "Static", "Live", "Entry", "Evidence", "Verified"];
+  lines.push(header.join("  "));
+  for (const row of report.staticCompatibility) {
+    const staticMark = row.staticCompatibility === null ? "?" : row.staticCompatibility ? "✓" : "✗";
+    const liveMark = row.liveTriggerRunner === null ? "?" : row.liveTriggerRunner ? "✓" : "✗";
+    const entry = row.skillDiscoveryEntryFile ?? "?";
+    const source = row.evidenceSource ?? "?";
+    const verified = row.evidenceVerifiedOn ?? "?";
+    lines.push(`${row.runtime}  ${staticMark}  ${liveMark}  ${entry}  ${source}  ${verified}`);
+  }
+  if (report.observedBehavior) {
+    lines.push("", "OBSERVED BEHAVIOR (imported from M8 results)");
+    for (const runtimeId of report.observedBehavior.runtimeIds) {
+      const runtimeBehavior = report.observedBehavior.behavior[runtimeId];
+      if (!runtimeBehavior) continue;
+      lines.push(`  ${runtimeId}:`);
+      for (const [caseId, cell] of Object.entries(runtimeBehavior)) {
+        if (!cell.observed) {
+          lines.push(`    ${caseId}: unobserved`);
+        } else {
+          const pct = (v) => v === null ? "n/a" : `${Math.round(v * 100)}%`;
+          lines.push(`    ${caseId}: activation ${pct(cell.activationRate)}  FP ${pct(cell.falsePositiveRate)}  infra ${pct(cell.infrastructureErrorRate)}  [${cell.validRuns}/${cell.totalRuns}]`);
+        }
+      }
+    }
+  } else {
+    lines.push("", "OBSERVED BEHAVIOR: not available (no --results provided)");
+  }
+  return lines.join("\n");
 }
 
 function renderTriggerEvaluation(report) {
@@ -209,6 +244,7 @@ Authoring:
   packsmith inspect <pack-dir>
   packsmith doctor <path> [--target <runtime>] [--format json]
   packsmith trigger init <skill-dir> [--format json]
+  packsmith matrix <skill-dir> [--results <report.json>] [--format json]
   packsmith trigger <skill-dir> [--runtime claude-code,codex] [--runs 1] [--format json]
   packsmith build <pack-dir> [--out dist]
   packsmith install <pack-or-built-dir> [--target <name>] [--dest <dir>] [--dry-run]
@@ -1439,6 +1475,64 @@ async function main() {
       } else {
         console.error(`Error: ${error.message}`);
         process.exitCode = exitCode;
+      }
+    }
+
+    return;
+  }
+
+  if (command === "matrix") {
+    // v0.2 Wave 3 (plan §20): matrix <skill-dir> [--results <report.json>]
+    // [--format json]. Static compatibility from the KB; observed behavior
+    // only from an explicit M8 results file. No model calls.
+    const jsonOutput = options.format === "json" || options.json === true || hasExplicitJsonIntent(rawArgs);
+
+    try {
+      if (!primary) {
+        throw new UsageError("Missing <skill-dir> argument for matrix.");
+      }
+
+      if (options.format !== undefined && options.format !== "json") {
+        throw new UsageError(`Unsupported --format value for matrix: ${options.format}. Use --format json.`);
+      }
+
+      const report = await runMatrix({
+        targetPath: primary,
+        knowledgeBase: await (await import("./knowledge/loader.mjs")).loadKnowledgeBase(),
+        ...(options.results !== undefined ? { resultsJson: options.results } : {})
+      });
+
+      if (jsonOutput) {
+        printJson(report);
+      } else if (!options.quiet) {
+        console.log(renderMatrix(report));
+      }
+
+      process.exitCode = 0;
+    } catch (error) {
+      const isUsage = error.isUsageError === true || error instanceof UsageError ||
+        error instanceof MatrixUsageError;
+      const isValidation = error.isValidationError === true || error instanceof MatrixValidationError;
+
+      if (jsonOutput) {
+        printJson({
+          schemaVersion: 1,
+          ok: false,
+          error: {
+            code: isUsage ? "usage_error" : isValidation ? "validation_error" : "infrastructure_error",
+            message: error.message,
+            exitCode: isUsage || isValidation ? (isValidation ? 1 : 2) : 2
+          }
+        });
+        process.exitCode = isValidation ? 1 : 2;
+      } else if (isUsage) {
+        throw new UsageError(error.message);
+      } else if (isValidation) {
+        console.error(`Validation error: ${error.message}`);
+        process.exitCode = 1;
+      } else {
+        console.error(`Error: ${error.message}`);
+        process.exitCode = 2;
       }
     }
 

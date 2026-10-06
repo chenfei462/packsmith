@@ -114,7 +114,7 @@
     "packsmith": "src/cli.mjs"
   },
   "scripts": {
-    "test": "node --test tests/pack.test.mjs tests/hackathon-demo.test.mjs tests/contract.test.mjs tests/core/skill-parser.test.mjs tests/core/diagnostics.test.mjs tests/core/workspace-missing.test.mjs tests/knowledge/loader.test.mjs tests/knowledge/runtime-facts.test.mjs tests/checks/spec.test.mjs tests/checks/spec-links.test.mjs tests/checks/activation.test.mjs tests/checks/context.test.mjs tests/checks/compatibility.test.mjs tests/checks/security.test.mjs tests/checks/doctor.test.mjs tests/checks/doctor-json-envelope.test.mjs tests/checks/doctor-faults.test.mjs tests/trigger/schema.test.mjs tests/trigger/trigger-init.test.mjs tests/runtimes/base.test.mjs tests/runtimes/codex.test.mjs tests/runtimes/claude-code.test.mjs tests/runtimes/static.test.mjs tests/runtimes/spawn.test.mjs tests/trigger/isolation.test.mjs tests/trigger/scorer.test.mjs tests/trigger/runner.test.mjs tests/trigger/trigger-run-cli.test.mjs",
+    "test": "node --test tests/pack.test.mjs tests/hackathon-demo.test.mjs tests/contract.test.mjs tests/core/skill-parser.test.mjs tests/core/diagnostics.test.mjs tests/core/workspace-missing.test.mjs tests/knowledge/loader.test.mjs tests/knowledge/runtime-facts.test.mjs tests/checks/spec.test.mjs tests/checks/spec-links.test.mjs tests/checks/activation.test.mjs tests/checks/context.test.mjs tests/checks/compatibility.test.mjs tests/checks/security.test.mjs tests/checks/doctor.test.mjs tests/checks/doctor-json-envelope.test.mjs tests/checks/doctor-faults.test.mjs tests/trigger/schema.test.mjs tests/trigger/trigger-init.test.mjs tests/runtimes/base.test.mjs tests/runtimes/codex.test.mjs tests/runtimes/claude-code.test.mjs tests/runtimes/static.test.mjs tests/runtimes/spawn.test.mjs tests/trigger/isolation.test.mjs tests/trigger/scorer.test.mjs tests/trigger/runner.test.mjs tests/trigger/trigger-run-cli.test.mjs tests/trigger/matrix.test.mjs",
     "prepublishOnly": "npm test && npm run verify:hackathon:ci && node scripts/i18n-check.mjs --ci && npm run pack:dry-run",
     "validate:example": "node src/cli.mjs validate examples/research-launchpad",
     "doctor:example": "node src/cli.mjs doctor examples/research-launchpad",
@@ -135,7 +135,8 @@
     "smoke:runtimes": "node scripts/smoke-runtimes.mjs",
     "smoke:isolation": "node scripts/smoke-isolation.mjs",
     "smoke:codex-skill-scope": "node scripts/smoke-codex-skill-scope.mjs",
-    "smoke:trigger:run": "node scripts/smoke-trigger-run.mjs"
+    "smoke:trigger:run": "node scripts/smoke-trigger-run.mjs",
+    "smoke:matrix": "node scripts/smoke-matrix.mjs"
   },
   "dependencies": {
     "yaml": "2.9.1"
