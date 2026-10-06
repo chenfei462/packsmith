@@ -272,9 +272,48 @@ export async function runMatrix({ targetPath, knowledgeBase, resultsJson }) {
     throw new MatrixUsageError(`no skill found at ${resolvedPath}`);
   }
 
-  // For multi-skill workspaces, use the first skill as the primary target.
-  // Results are bound to a single skill identity; other skills are unobserved.
-  const primarySkill = skillRoots[0];
+  // If --results is provided, read it early to determine which skill the
+  // report belongs to, then find the matching skill root.
+  let reportSkillName = null;
+  let reportParsed = null;
+
+  if (resultsJson !== undefined) {
+    let reportRaw;
+    try {
+      reportRaw = await fs.readFile(resultsJson, "utf8");
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        throw new MatrixUsageError(`results file does not exist: ${resultsJson}`);
+      }
+      throw new InfrastructureError(`cannot read results file ${resultsJson}: ${error.message}`, { cause: error });
+    }
+
+    try {
+      reportParsed = JSON.parse(reportRaw);
+    } catch {
+      throw new MatrixValidationError("results file is not valid JSON");
+    }
+
+    if (typeof reportParsed.skill !== "string" || reportParsed.skill.length === 0) {
+      throw new MatrixValidationError("results file must carry a skill name");
+    }
+    reportSkillName = reportParsed.skill;
+  }
+
+  // Select the primary skill: when results are provided, match by the
+  // report's skill name; otherwise use the first discovered skill.
+  let primarySkill;
+  if (reportSkillName !== null) {
+    primarySkill = skillRoots.find((s) => s.name === reportSkillName);
+    if (!primarySkill) {
+      throw new MatrixValidationError(
+        `results file skill "${reportSkillName}" does not match any discovered skill in ${resolvedPath} (found: ${skillRoots.map((s) => s.name).join(", ")})`
+      );
+    }
+  } else {
+    primarySkill = skillRoots[0];
+  }
+
   const primarySkillDir = path.resolve(resolvedPath, primarySkill.directory === "." ? "" : primarySkill.directory);
 
   // If the primary skill's SKILL.md has structural errors, reject rather
@@ -301,27 +340,11 @@ export async function runMatrix({ targetPath, knowledgeBase, resultsJson }) {
     (d) => d.severity === "error"
   );
 
-  // Observed behavior from --results (optional).
+  // Observed behavior from --results (reportParsed is already available
+  // from the early read above).
   let observedBehavior = null;
 
-  if (resultsJson !== undefined) {
-    let reportRaw;
-    try {
-      reportRaw = await fs.readFile(resultsJson, "utf8");
-    } catch (error) {
-      if (error.code === "ENOENT") {
-        throw new MatrixUsageError(`results file does not exist: ${resultsJson}`);
-      }
-      throw new InfrastructureError(`cannot read results file ${resultsJson}: ${error.message}`, { cause: error });
-    }
-
-    let reportParsed;
-    try {
-      reportParsed = JSON.parse(reportRaw);
-    } catch {
-      throw new MatrixValidationError("results file is not valid JSON");
-    }
-
+  if (resultsJson !== undefined && reportParsed !== null) {
     // The results file must match a trigger suite for grid validation.
     const suitePath = path.join(primarySkillDir, "evals", "triggers.json");
     let suiteRaw;

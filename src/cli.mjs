@@ -1496,6 +1496,10 @@ async function main() {
         throw new UsageError(`Unsupported --format value for matrix: ${options.format}. Use --format json.`);
       }
 
+      if (positionals.length > 1) {
+        throw new UsageError("matrix accepts exactly one <skill-dir> path argument.");
+      }
+
       // Duplicate --results are upfront usage errors, not silent last-wins.
       const resultsOccurrences = rawArgs.filter((arg) => arg === "--results" || arg.startsWith("--results=")).length;
       if (resultsOccurrences > 1) {
@@ -1514,7 +1518,7 @@ async function main() {
         console.log(renderMatrix(report));
       }
 
-      process.exitCode = 0;
+      process.exitCode = report.exitCode;
     } catch (error) {
       const isUsage = error.isUsageError === true || error instanceof UsageError ||
         error instanceof MatrixUsageError;
