@@ -83,7 +83,7 @@ test("importObservedBehavior recomputes metrics from raw observations", () => {
   });
 
   assert.equal(behavior.isImportedHistorical, true);
-  assert.equal(behavior.observedRuntimes.has("codex"), true);
+  assert.equal(behavior.observedRuntimes.includes("codex"), true);
   const cell = behavior.behavior.codex["review-security"];
   assert.equal(cell.observed, true);
   assert.equal(cell.activationRate, 0.5);
@@ -93,33 +93,32 @@ test("importObservedBehavior recomputes metrics from raw observations", () => {
   assert.equal(tn.falsePositiveRate, 0);
 });
 
-test("importObservedBehavior leaves unobserved cases as null, never 100%", () => {
-  const behavior = importObservedBehavior({
-    reportJson: {
-      schemaVersion: 1,
-      skill: "review-pr",
-      runs: 1,
-      runtimeIds: ["codex"],
-      observations: [
-        { runtime: "codex", caseId: "review-security", repeat: 1, status: "triggered" }
-        // explain-pr is missing → unobserved
-      ]
-    },
-    suite: SUITE,
-    expectedSkill: "review-pr"
-  });
-
-  const unobserved = behavior.behavior.codex["explain-pr"];
-  assert.equal(unobserved.observed, false);
-  assert.equal(unobserved.activationRate, null);
-  assert.equal(unobserved.falsePositiveRate, null);
+test("importObservedBehavior rejects incomplete grids (missing rows)", () => {
+  assert.throws(
+    () =>
+      importObservedBehavior({
+        reportJson: {
+          schemaVersion: 1,
+          skill: "review-pr",
+          runs: 1,
+          runtimeIds: ["codex"],
+          observations: [
+            { runtime: "codex", caseId: "review-security", repeat: 1, status: "triggered" }
+            // explain-pr is missing → incomplete grid
+          ]
+        },
+        suite: SUITE,
+        expectedSkill: "review-pr"
+      }),
+    (error) => error instanceof MatrixValidationError && /grid is incomplete/.test(error.message)
+  );
 });
 
 test("importObservedBehavior rejects a mismatched skill", () => {
   assert.throws(
     () =>
       importObservedBehavior({
-        reportJson: { skill: "other-skill", runs: 1, runtimeIds: ["codex"], observations: [] },
+        reportJson: { schemaVersion: 1, skill: "other-skill", runs: 1, runtimeIds: ["codex"], observations: [] },
         suite: SUITE,
         expectedSkill: "review-pr"
       }),
@@ -132,6 +131,7 @@ test("importObservedBehavior rejects unknown runtimes and statuses", () => {
     () =>
       importObservedBehavior({
         reportJson: {
+          schemaVersion: 1,
           skill: "review-pr", runs: 1, runtimeIds: ["__proto__"],
           observations: [{ runtime: "__proto__", caseId: "review-security", repeat: 1, status: "triggered" }]
         },
@@ -143,6 +143,7 @@ test("importObservedBehavior rejects unknown runtimes and statuses", () => {
     () =>
       importObservedBehavior({
         reportJson: {
+          schemaVersion: 1,
           skill: "review-pr", runs: 1, runtimeIds: ["codex"],
           observations: [{ runtime: "codex", caseId: "review-security", repeat: 1, status: "fabricated" }]
         },
@@ -153,7 +154,7 @@ test("importObservedBehavior rejects unknown runtimes and statuses", () => {
 });
 
 test("importObservedBehavior rejects duplicate observations and wrong caseIds", () => {
-  const base = { skill: "review-pr", runs: 1, runtimeIds: ["codex"] };
+  const base = { schemaVersion: 1, skill: "review-pr", runs: 1, runtimeIds: ["codex"] };
   assert.throws(
     () =>
       importObservedBehavior({
@@ -234,6 +235,6 @@ test("runMatrix rejects invalid YAML", async (t) => {
 
   await assert.rejects(
     () => runMatrix({ targetPath: skillDir, knowledgeBase }),
-    (error) => error instanceof MatrixValidationError && /invalid YAML/.test(error.message)
+    (error) => error instanceof MatrixValidationError && /structural errors/.test(error.message)
   );
 });

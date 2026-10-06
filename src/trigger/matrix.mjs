@@ -8,8 +8,9 @@ import { codexAdapter } from "../runtimes/codex.mjs";
 import { cursorAdapter } from "../runtimes/cursor.mjs";
 import { geminiCliAdapter } from "../runtimes/gemini-cli.mjs";
 import { opencodeAdapter } from "../runtimes/opencode.mjs";
-import { parseSkill } from "../core/skill-parser.mjs";
+import { runDoctor } from "../doctor.mjs";
 import { parseTriggerSuiteJson } from "./schema.mjs";
+import { scoreTriggerResults } from "./scorer.mjs";
 
 const ADAPTERS = Object.freeze({
   "claude-code": claudeCodeAdapter,
@@ -37,17 +38,14 @@ export class MatrixValidationError extends Error {
 
 /**
  * Build the STATIC COMPATIBILITY section from the knowledge-base runtime
- * records and adapter capabilities. Missing/optional fields are `null`
- * (unknown), never `true` or `false` by default. Provenance (source,
- * verifiedOn) is traceable to the KB record.
+ * records. Missing/optional fields are `null` (unknown), never defaulted.
+ * Provenance (source, verifiedOn) is traceable to the KB record.
  */
 export function buildStaticCompatibility(knowledgeBase) {
   const runtimes = knowledgeBase.runtimes.filter((r) => r.kind === "runtime");
   const rows = [];
 
   for (const record of runtimes) {
-    const adapter = ADAPTERS[record.id];
-    const capabilities = adapter ? adapter.capabilities() : null;
     const evidence = Array.isArray(record.evidence) ? record.evidence : [];
     const primaryEvidence = evidence[0] ?? null;
 
@@ -76,18 +74,23 @@ export function buildStaticCompatibility(knowledgeBase) {
 
 /**
  * Validate and import an M8 trigger-evaluation report for the OBSERVED
- * BEHAVIOR section. Recomputes metrics from the raw observations; does NOT
- * trust any score fields in the file. Enforces:
- *   - report.skill matches the target skill
- *   - runtimeIds are valid known runtimes
- *   - every (runtime, caseId, repeat) is unique and within the declared grid
- *   - every status is one of the six trigger statuses
- *   - every observation's runtime/caseId exists in the suite
- * Missing rows make the affected case/runtime unobserved (null), never 100%.
+ * BEHAVIOR section. Enforces a COMPLETE grid — incomplete imports are
+ * rejected with MatrixValidationError, not filled with synthetic ambiguous
+ * observations (no runtime event is not a real ambiguous result, and a
+ * huge runs value would make the fill loop a DoS vector). Delegates metric
+ * computation to `scoreTriggerResults` (the M8 scorer) so precision, recall,
+ * FPR, infrastructure rate and paired divergence are computed by the same
+ * code path.
  */
 export function importObservedBehavior({ reportJson, suite, expectedSkill }) {
   if (typeof reportJson !== "object" || reportJson === null || Array.isArray(reportJson)) {
     throw new MatrixValidationError("--results file must contain a JSON object");
+  }
+
+  if (reportJson.schemaVersion !== 1) {
+    throw new MatrixValidationError(
+      `results file schemaVersion must be 1, got ${JSON.stringify(reportJson.schemaVersion)}`
+    );
   }
 
   if (reportJson.skill !== expectedSkill) {
@@ -102,21 +105,24 @@ export function importObservedBehavior({ reportJson, suite, expectedSkill }) {
 
   const declaredRuntimes = reportJson.runtimeIds;
   if (!Array.isArray(declaredRuntimes) || declaredRuntimes.length === 0 ||
-      declaredRuntimes.some((id) => !RUNTIME_IDS.includes(id))) {
+      declaredRuntimes.some((id) => typeof id !== "string" || !RUNTIME_IDS.includes(id))) {
     throw new MatrixValidationError(
       `results file runtimeIds must be a non-empty array of known runtimes (${RUNTIME_IDS.join(", ")})`
     );
   }
+  if (new Set(declaredRuntimes).size !== declaredRuntimes.length) {
+    throw new MatrixValidationError("results file runtimeIds must be unique (no duplicates)");
+  }
 
   const runs = reportJson.runs;
-  if (!Number.isSafeInteger(runs) || runs < 1) {
-    throw new MatrixValidationError(`results file runs must be a positive integer, got ${JSON.stringify(runs)}`);
+  if (!Number.isSafeInteger(runs) || runs < 1 || runs > 20) {
+    throw new MatrixValidationError(`results file runs must be an integer 1..20, got ${JSON.stringify(runs)}`);
   }
 
   const suiteCaseIds = new Set(suite.cases.map((c) => c.id));
   const caseExpectById = new Map(suite.cases.map((c) => [c.id, c.expect]));
 
-  // Validate grid: every (runtime, caseId, repeat) exactly once.
+  // Validate observations before grid completeness check.
   const seen = new Set();
   const observations = [];
 
@@ -140,6 +146,11 @@ export function importObservedBehavior({ reportJson, suite, expectedSkill }) {
         `observation status ${JSON.stringify(obs.status)} is not a valid trigger status`
       );
     }
+    if (obs.expect !== undefined && obs.expect !== caseExpectById.get(obs.caseId)) {
+      throw new MatrixValidationError(
+        `observation expect "${obs.expect}" does not match the suite expectation "${caseExpectById.get(obs.caseId)}" for case "${obs.caseId}"`
+      );
+    }
 
     const key = `${obs.runtime}\u0000${obs.caseId}\u0000${obs.repeat}`;
     if (seen.has(key)) {
@@ -149,128 +160,146 @@ export function importObservedBehavior({ reportJson, suite, expectedSkill }) {
     observations.push(obs);
   }
 
-  // Recompute activation rate per runtime per case from actual observations.
-  // Only binary statuses (triggered/not_triggered) count; all others are
-  // unresolved and make the cell null rather than 0% or 100%.
-  const behavior = {};
+  // Enforce a COMPLETE grid: observations.length must equal
+  // declaredRuntimes × suite.cases × runs. An incomplete import is rejected
+  // — missing runtime events are not real ambiguous results.
+  const expectedSlots = declaredRuntimes.length * suite.cases.length * runs;
+  if (observations.length !== expectedSlots) {
+    throw new MatrixValidationError(
+      `results file grid is incomplete: expected ${expectedSlots} observations (${declaredRuntimes.length} runtimes × ${suite.cases.length} cases × ${runs} runs), got ${observations.length}`
+    );
+  }
 
+  // Delegate to the M8 scorer for all metric computation.
+  const score = scoreTriggerResults({ suite, runtimeIds: declaredRuntimes, runs, observations });
+
+  // Build per-runtime per-case behavior cells from the scorer output.
+  const behavior = {};
   for (const runtimeId of declaredRuntimes) {
     behavior[runtimeId] = {};
+    const runtimeScore = score.runtimes[runtimeId];
+
     for (const entry of suite.cases) {
-      const runtimeObservations = observations.filter(
+      const caseData = runtimeScore.cases[entry.id];
+      const cellObservations = observations.filter(
         (obs) => obs.runtime === runtimeId && obs.caseId === entry.id
       );
 
-      if (runtimeObservations.length === 0) {
-        behavior[runtimeId][entry.id] = {
-          activationRate: null,
-          falsePositiveRate: null,
-          infrastructureErrorRate: null,
-          observed: false,
-          triggered: null,
-          validRuns: null,
-          totalRuns: runs,
-          statuses: []
-        };
-        continue;
-      }
-
-      const triggered = runtimeObservations.filter((obs) => obs.status === "triggered").length;
-      const notTriggered = runtimeObservations.filter((obs) => obs.status === "not_triggered").length;
-      const infraErrors = runtimeObservations.filter((obs) => obs.status === "infra_error").length;
-      const validRuns = triggered + notTriggered;
-      const observedRuns = runtimeObservations.length;
-      const expected = caseExpectById.get(entry.id);
-
       behavior[runtimeId][entry.id] = {
-        activationRate: validRuns === 0 ? null : triggered / validRuns,
-        falsePositiveRate: entry.expect === "no-trigger" && (triggered + notTriggered) > 0
-          ? triggered / validRuns
+        activationRate: caseData.validRuns > 0 ? caseData.triggered / caseData.validRuns : null,
+        falsePositiveRate: entry.expect === "no-trigger" && caseData.validRuns > 0
+          ? cellObservations.filter((o) => o.status === "triggered").length / caseData.validRuns
           : null,
-        infrastructureErrorRate: observedRuns === 0 ? null : infraErrors / observedRuns,
+        infrastructureErrorRate: cellObservations.filter((o) => o.status === "infra_error").length / cellObservations.length,
         observed: true,
-        triggered,
-        validRuns,
+        triggered: caseData.triggered,
+        validRuns: caseData.validRuns,
         totalRuns: runs,
-        statuses: runtimeObservations.map((obs) => obs.status),
-        expected
+        statuses: cellObservations.map((obs) => obs.status),
+        expected: entry.expect
       };
     }
+  }
+
+  // Collect runtime versions; multiple distinct versions are listed.
+  const runtimeVersions = {};
+  for (const runtimeId of declaredRuntimes) {
+    const versions = [...new Set(
+      observations.filter((o) => o.runtime === runtimeId && o.runtimeVersion).map((o) => o.runtimeVersion)
+    )];
+    runtimeVersions[runtimeId] = versions.length === 1 ? versions[0] : versions.length > 1 ? versions : null;
   }
 
   return {
     sourceSkill: reportJson.skill,
     runs,
     runtimeIds: [...declaredRuntimes],
-    observedRuntimes: new Set(observations.map((obs) => obs.runtime)),
+    observedRuntimes: [...new Set(observations.map((obs) => obs.runtime))],
+    runtimeVersions,
     behavior,
     observationCount: observations.length,
+    score: {
+      status: score.status,
+      exitCode: score.exitCode,
+      runtimes: Object.fromEntries(
+        declaredRuntimes.map((runtimeId) => {
+          const r = score.runtimes[runtimeId];
+          return [runtimeId, {
+            confusion: r.confusion,
+            unresolved: r.unresolved,
+            precision: r.precision,
+            recall: r.recall,
+            falsePositiveRate: r.falsePositiveRate,
+            infrastructureErrorRate: r.infrastructureErrorRate,
+            validRuns: r.validRuns,
+            totalRuns: r.totalRuns
+          }];
+        })
+      ),
+      divergence: score.divergence,
+      incomparableCases: score.incomparableCases
+    },
     isImportedHistorical: true
   };
 }
 
 /**
- * Determine the overall matrix exit code:
- *   0 = all sections valid, no observed failures
- *   1 = static compatibility errors for the target skill (validation)
- *   2 = infrastructure problems reading results/KB
- * Inherited from the doctor convention (plan §8).
- */
-export function resolveMatrixExitCode({ staticErrors = 0, observationErrors = 0 }) {
-  if (observationErrors > 0) return 2;
-  if (staticErrors > 0) return 1;
-  return 0;
-}
-
-/**
- * Run the full matrix for one target skill directory. Combines:
- *   1. static compatibility from the KB + adapter capabilities
- *   2. observed behavior from an optional M8 report (--results)
- * Returns a structured report for the terminal/JSON reporters.
+ * Run the full matrix for one target path (workspace, project, or single
+ * skill directory). Combines:
+ *   1. static validation via the existing doctor (reuses discoverSkillRoots
+ *      for project/pack/multi-skill discovery)
+ *   2. static compatibility from the KB + adapter capabilities
+ *   3. observed behavior from an optional M8 report (--results)
  */
 export async function runMatrix({ targetPath, knowledgeBase, resultsJson }) {
   if (typeof targetPath !== "string" || targetPath.trim().length === 0) {
-    throw new MatrixUsageError("matrix requires one <skill-dir> path");
+    throw new MatrixUsageError("matrix requires one <path> argument");
   }
 
-  const skillDir = path.resolve(targetPath);
+  const resolvedPath = path.resolve(targetPath);
 
-  // Validate the target skill exists and has a SKILL.md.
-  const skill = await parseSkill(skillDir);
+  // Run doctor for static validation (reuses discoverSkillRoots for
+  // project/pack/multi-skill support; gives spec/security/context errors).
+  const doctorReport = await runDoctor({ targetPath: resolvedPath });
 
-  if (skill.parse.status === "missing-skill-file") {
-    throw new MatrixUsageError(`SKILL.md is missing from ${skillDir}`);
+  // Discover skill roots (doctor already did this; reuse its parsed skills).
+  const skillRoots = doctorReport.skills.map((s) => ({
+    name: s.name,
+    directory: s.directory
+  }));
+
+  if (skillRoots.length === 0) {
+    throw new MatrixUsageError(`no skill found at ${resolvedPath}`);
   }
 
-  if (skill.parse.status === "invalid-yaml") {
-    throw new MatrixValidationError("SKILL.md contains invalid YAML; fix the frontmatter before running matrix");
-  }
+  // For multi-skill workspaces, use the first skill as the primary target.
+  // Results are bound to a single skill identity; other skills are unobserved.
+  const primarySkill = skillRoots[0];
+  const primarySkillDir = path.resolve(resolvedPath, primarySkill.directory === "." ? "" : primarySkill.directory);
 
-  if (skill.parse.status === "missing-frontmatter" || skill.parse.status === "empty-frontmatter") {
-    throw new MatrixValidationError("SKILL.md has no usable frontmatter");
-  }
-
-  const declaredName = skill.frontmatter?.name;
-
-  if (typeof declaredName !== "string" || declaredName.trim().length === 0) {
-    throw new MatrixValidationError("SKILL.md frontmatter is missing a usable name field");
-  }
-
-  const directoryName = path.basename(skillDir);
-
-  if (declaredName !== directoryName) {
-    throw new MatrixValidationError(
-      `SKILL.md frontmatter name "${declaredName}" does not match the containing directory "${directoryName}"`
+  // If the primary skill's SKILL.md has structural errors, reject rather
+  // than building a matrix from unparseable metadata.
+  const primarySkillData = doctorReport.skills.find((s) => s.name === primarySkill.name);
+  if (primarySkillData) {
+    const structuralError = primarySkillData.diagnostics.find(
+      (d) => d.severity === "error" && ["PS-SPEC-001", "PS-SPEC-002", "PS-SPEC-003"].includes(d.id)
     );
+    if (structuralError) {
+      throw new MatrixValidationError(
+        `SKILL.md for "${primarySkill.name}" has structural errors (${structuralError.id}); fix the frontmatter before running matrix`
+      );
+    }
   }
 
   // Static compatibility from the KB.
   const staticCompatibility = buildStaticCompatibility(knowledgeBase);
 
-  // Count static errors for the target skill: a global spec error (from
-  // doctor) would be a validation concern, but the matrix's static section
-  // records capability facts, not per-skill validation. We report the skill's
-  // frontmatter presence as a fact and the runtime records' provenance.
+  // Global errors from the doctor report — not just spec errors; security,
+  // context and compatibility errors also count. These must NOT be treated
+  // as "green" just because per-runtime sections show no runtime-bound errors.
+  const globalErrors = doctorReport.diagnostics.filter(
+    (d) => d.severity === "error"
+  );
 
   // Observed behavior from --results (optional).
   let observedBehavior = null;
@@ -293,8 +322,8 @@ export async function runMatrix({ targetPath, knowledgeBase, resultsJson }) {
       throw new MatrixValidationError("results file is not valid JSON");
     }
 
-    // The results file must have a trigger suite for grid validation.
-    const suitePath = path.join(skillDir, "evals", "triggers.json");
+    // The results file must match a trigger suite for grid validation.
+    const suitePath = path.join(primarySkillDir, "evals", "triggers.json");
     let suiteRaw;
     try {
       suiteRaw = await fs.readFile(suitePath, "utf8");
@@ -304,7 +333,7 @@ export async function runMatrix({ targetPath, knowledgeBase, resultsJson }) {
       );
     }
 
-    const parsed = parseTriggerSuiteJson(suiteRaw, { expectedSkill: declaredName });
+    const parsed = parseTriggerSuiteJson(suiteRaw, { expectedSkill: primarySkill.name });
     if (!parsed.ok) {
       throw new MatrixValidationError(`invalid trigger suite ${suitePath}: ${parsed.problems.join("; ")}`);
     }
@@ -312,16 +341,56 @@ export async function runMatrix({ targetPath, knowledgeBase, resultsJson }) {
     observedBehavior = importObservedBehavior({
       reportJson: reportParsed,
       suite: parsed.suite,
-      expectedSkill: declaredName
+      expectedSkill: primarySkill.name
     });
+  }
+
+  const staticErrors = globalErrors.length;
+
+  // Determine exit code: doctor errors and observed-behavior failures both
+  // contribute. Infrastructure/incomplete (exit 2) takes precedence over
+  // static/measured failures (exit 1).
+  let exitCode = 0;
+  if (staticErrors > 0) {
+    exitCode = 1;
+  }
+  if (observedBehavior !== null) {
+    const scoreExit = observedBehavior.score.exitCode;
+    if (scoreExit === 2) {
+      exitCode = 2;
+    } else if (scoreExit === 1 && exitCode === 0) {
+      exitCode = 1;
+    }
   }
 
   return {
     schemaVersion: 1,
-    skill: declaredName,
-    skillDir,
+    skill: primarySkill.name,
+    skillDir: primarySkillDir,
+    skills: skillRoots,
     staticCompatibility,
+    staticValidation: {
+      errors: staticErrors,
+      warnings: doctorReport.counts.warnings,
+      globalErrors: globalErrors.map((d) => ({
+        id: d.id, severity: d.severity, category: d.category,
+        message: d.message, file: d.file, line: d.line
+      }))
+    },
     observedBehavior,
+    exitCode,
     ...(observedBehavior !== null ? { resultsFile: path.resolve(resultsJson) } : {})
   };
+}
+
+/**
+ * Determine the overall matrix exit code:
+ *   0 = all sections valid, no observed failures
+ *   1 = static compatibility errors for the target skill (validation)
+ *   2 = infrastructure problems reading results/KB
+ */
+export function resolveMatrixExitCode({ staticErrors = 0, observationErrors = 0 }) {
+  if (observationErrors > 0) return 2;
+  if (staticErrors > 0) return 1;
+  return 0;
 }

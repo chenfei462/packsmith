@@ -1248,7 +1248,7 @@ async function main() {
     // machine-readable contract even here: one stable usage_error envelope
     // on stdout, empty stderr, exit 2. Text mode keeps the standard
     // UsageError path and every other command is unchanged.
-    if ((command === "doctor" || command === "trigger") && error instanceof UsageError && hasExplicitJsonIntent(rawArgs)) {
+    if ((command === "doctor" || command === "trigger" || command === "matrix") && error instanceof UsageError && hasExplicitJsonIntent(rawArgs)) {
       printJson({
         schemaVersion: 1,
         ok: false,
@@ -1494,6 +1494,12 @@ async function main() {
 
       if (options.format !== undefined && options.format !== "json") {
         throw new UsageError(`Unsupported --format value for matrix: ${options.format}. Use --format json.`);
+      }
+
+      // Duplicate --results are upfront usage errors, not silent last-wins.
+      const resultsOccurrences = rawArgs.filter((arg) => arg === "--results" || arg.startsWith("--results=")).length;
+      if (resultsOccurrences > 1) {
+        throw new UsageError("--results was specified " + resultsOccurrences + " times; each flag may only appear once.");
       }
 
       const report = await runMatrix({

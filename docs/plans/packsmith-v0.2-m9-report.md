@@ -33,9 +33,22 @@ A missing or absent `v02Scope` or `skillDiscovery` or `frontmatter` field in a K
 - `scripts/smoke-matrix.mjs` — offline CLI smoke (static/json/results/usage/validation)
 - `package.json` — test script + `smoke:matrix` registration
 
+## Round-2 fixes
+
+1. `importObservedBehavior` enforces a COMPLETE grid: observations.length must equal declaredRuntimes × cases × runs. Incomplete imports are rejected with MatrixValidationError, not filled with synthetic ambiguous observations.
+2. `results file runs` is strictly validated as 1..20 (matching the M8 runner contract).
+3. Observation `expect` field is validated against the target suite's expectations.
+4. `runtimeIds` are validated against the `RUNTIME_IDS` whitelist and checked for duplicates.
+5. Overall exit code computed from both static validation errors and observed-behavior score: infra/incomplete (exit 2) takes precedence, then static/measured failures (exit 1).
+6. `runMatrix` uses `runDoctor` for static validation (reuses discoverSkillRoots for project/pack/multi-skill), and checks structural errors for the primary skill. Global errors include all categories (not just spec). YAML errors are sanitized.
+7. `observedRuntimes` is an array (not a Set) for JSON serialization. `runtimeVersions` collects per-runtime versions; multiple distinct versions are listed as an array.
+8. `score.runtimes` carries the full per-runtime scorer projection (confusion, unresolved, precision, recall, FPR, infra rate) and paired divergence.
+9. `matrix` is added to the doctor/trigger JSON-intent error path; duplicate `--results` flags are rejected.
+10. Tests updated to include `schemaVersion: 1` in report fixtures, expect complete-grid rejection for missing rows, and use `structural errors` matching for YAML validation errors.
+
 ## Verification
 
-- Full test suite (`node --test` with the 29 test files listed in `npm test`): **477 total, 472 passed, zero failed, 5 privilege-skips** (3 file-symlink, 2 junction). Skips are not counted as passes.
+- Full test suite (`npm test`, 29 test files): **477 total, 472 passed, zero failed, 5 privilege-skips** (3 file-symlink, 2 junction). Skips are not counted as passes.
 - M9 matrix tests: **11/11 passed**.
 - `node scripts/smoke-matrix.mjs`: **PASS** (static/json/results/usage/validation).
 - All other smokes pass: `smoke:v01` 5/5, `smoke:trigger:init` PASS, `smoke:doctor` PASS, `smoke:doctor:packaged` PASS, `smoke:runtimes` PASS, `smoke:isolation` PASS, `smoke:codex-skill-scope` PASS (real Codex 0.148.0 no-model 37→1), `smoke:trigger:run` PASS.
