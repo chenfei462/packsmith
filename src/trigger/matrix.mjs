@@ -294,6 +294,10 @@ export async function runMatrix({ targetPath, knowledgeBase, resultsJson }) {
       throw new MatrixValidationError("results file is not valid JSON");
     }
 
+    if (typeof reportParsed !== "object" || reportParsed === null || Array.isArray(reportParsed)) {
+      throw new MatrixValidationError("results file must contain a JSON object");
+    }
+
     if (typeof reportParsed.skill !== "string" || reportParsed.skill.length === 0) {
       throw new MatrixValidationError("results file must carry a skill name");
     }
@@ -350,10 +354,14 @@ export async function runMatrix({ targetPath, knowledgeBase, resultsJson }) {
     let suiteRaw;
     try {
       suiteRaw = await fs.readFile(suitePath, "utf8");
-    } catch {
-      throw new MatrixValidationError(
-        `trigger suite is missing: ${suitePath}; run packsmith trigger init first or omit --results for static-only output`
-      );
+    } catch (error) {
+      if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+        throw new MatrixValidationError(
+          `trigger suite is missing: ${suitePath}; run packsmith trigger init first or omit --results for static-only output`
+        );
+      }
+      // EACCES, EIO, etc. are infrastructure faults — not "suite missing".
+      throw new InfrastructureError(`cannot read trigger suite ${suitePath}: ${error.message}`, { cause: error });
     }
 
     const parsed = parseTriggerSuiteJson(suiteRaw, { expectedSkill: primarySkill.name });

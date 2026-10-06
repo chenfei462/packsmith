@@ -238,3 +238,69 @@ test("runMatrix rejects invalid YAML", async (t) => {
     (error) => error instanceof MatrixValidationError && /structural errors/.test(error.message)
   );
 });
+
+// ---------------------------------------------------------------------------
+// Round-3 I/O fault and JSON null regressions: EACCES/EIO on the suite file
+// is infrastructure (exit 2), not "suite missing" (exit 1); a legal JSON
+// null in the results file is a validation error (exit 1), not a TypeError.
+// ---------------------------------------------------------------------------
+
+test('suite readFile EACCES is infrastructure_error, not suite-missing validation', async (t) => {
+  const { root, skillDir } = await makeSkill(t);
+  const suitePath = path.join(skillDir, //eslint-disable-line
+'evals', 'triggers.json');
+  const resultsPath = path.join(root, "results.json");
+  const validObs = SUITE.cases.map((c) => ({
+    runtime: "codex", caseId: c.id, repeat: 1, expect: c.expect,
+    status: c.expect === "trigger" ? "triggered" : "not_triggered",
+    runtimeVersion: "mock-1"
+  }));
+  await writeFile(resultsPath, JSON.stringify({ schemaVersion: 1, skill: "review-pr", runs: 1, runtimeIds: ["codex"], observations: validObs }), "utf8");
+
+  // Patch fs.readFile on the same default-export object that matrix.mjs uses.
+  const fsPromises = (await import("node:fs/promises")).default;
+  const originalReadFile = fsPromises.readFile;
+  let injectedCalls = 0;
+  const suitePathNormalized = suitePath.replace(/\+/g, "/");
+  fsPromises.readFile = async function patchedReadFile(...args) {
+    const normalized = path.resolve(String(args[0])).replace(/\+/g, "/");
+    if (normalized === suitePathNormalized || normalized === path.resolve(suitePath).replace(/\+/g, "/")) {
+      injectedCalls += 1;
+      const error = new Error("synthetic EACCES");
+      error.code = "EACCES";
+      throw error;
+    }
+    return originalReadFile(...args);
+  };
+
+  try {
+    await assert.rejects(
+      () => runMatrix({ targetPath: skillDir, knowledgeBase, resultsJson: resultsPath }),
+      (error) => error.isInfrastructureError === true
+    );
+    assert.ok(injectedCalls > 0, "fault injection must have been triggered");
+  } finally {
+    fsPromises.readFile = originalReadFile;
+  }
+});
+test("legal JSON null in results file is a validation error, not a TypeError", async (t) => {
+  const { root, skillDir } = await makeSkill(t);
+  const resultsPath = path.join(root, "null-results.json");
+  await writeFile(resultsPath, "null", "utf8");
+
+  await assert.rejects(
+    () => runMatrix({ targetPath: skillDir, knowledgeBase, resultsJson: resultsPath }),
+    (error) => error instanceof MatrixValidationError && /must contain a JSON object/.test(error.message)
+  );
+});
+
+test("JSON array in results file is a validation error", async (t) => {
+  const { root, skillDir } = await makeSkill(t);
+  const resultsPath = path.join(root, "array-results.json");
+  await writeFile(resultsPath, "[]", "utf8");
+
+  await assert.rejects(
+    () => runMatrix({ targetPath: skillDir, knowledgeBase, resultsJson: resultsPath }),
+    (error) => error instanceof MatrixValidationError && /must contain a JSON object/.test(error.message)
+  );
+});
