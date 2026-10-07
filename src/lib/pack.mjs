@@ -52,7 +52,7 @@ import {
 import { fetchJsonWithTimeout, fetchBytesWithTimeout, validateGitHubFetchUrl } from "./http.mjs";
 import { getLogger, PacksmithError, createPacksmithError } from "./log.mjs";
 import { findTyposquattingMatches } from "./typosquatting.mjs";
-import { parseSkill } from "../core/skill-parser.mjs";
+import { normalizeFrontmatter, parseFrontmatterDoc, splitFrontmatter } from "../core/skill-parser.mjs";
 
 const KNOWN_POLICY_FIELDS = new Set([
   "requireVerified",
@@ -323,28 +323,25 @@ function manifestSchemaVersion(manifest) {
   return { error: "unsupported schemaVersion (expected 1, or omitted, or 2)." };
 }
 
-/** Resolve one path to its real location and require it to stay inside the
- * pack's REAL boundary (the realpath of the pack root) before anything under
- * it is read. Returns the real path, or null with a collected issue. A final
- * symlink/junction component is allowed only when its resolution stays
- * inside the pack. */
-async function realpathInsidePack(realPackDir, targetPath, issuePrefix, issues, { mustBeFile = false } = {}) {
+/** Resolve one directory path to its real location and require it to stay
+ * inside the pack's REAL boundary (the realpath of the pack root). Returns
+ * the real path, or null with a collected issue. A final symlink/junction
+ * component is allowed only when its resolution stays inside the pack; the
+ * authoritative containment gate for SKILL.md bytes is the opened-handle
+ * verification in readVerifiedSkillFrontmatter. */
+async function realpathInsidePack(realPackDir, targetPath, issuePrefix, issues) {
   let stats;
   try {
     stats = await lstat(targetPath);
   } catch (error) {
     if (error.code === "ENOENT" || error.code === "ENOTDIR") {
-      issues.push(`${issuePrefix} ${mustBeFile ? "must include SKILL.md" : "does not exist inside the pack directory"}.`);
+      issues.push(`${issuePrefix} does not exist inside the pack directory.`);
     } else {
       issues.push(`${issuePrefix} cannot be inspected (${error.code ?? "stat fault"}).`);
     }
     return null;
   }
-  if (mustBeFile && !stats.isFile() && !stats.isSymbolicLink()) {
-    issues.push(`${issuePrefix} SKILL.md is not a file.`);
-    return null;
-  }
-  if (!mustBeFile && !stats.isDirectory() && !stats.isSymbolicLink()) {
+  if (!stats.isDirectory() && !stats.isSymbolicLink()) {
     issues.push(`${issuePrefix} is not a directory.`);
     return null;
   }
@@ -363,16 +360,134 @@ async function realpathInsidePack(realPackDir, targetPath, issuePrefix, issues, 
 }
 
 /**
+ * Open SKILL.md, verify the OPENED file's identity and containment, and read
+ * the frontmatter bytes from that same handle. Verification order:
+ * open → fstat → realpath → containment → identity agreement — so a symlink
+ * or junction swap of the skill directory (before or after the directory
+ * checks) is refused WITHOUT reading any bytes: every refusal path happens
+ * before the read. Identity agreement means the opened handle's (dev, ino)
+ * must still be the file the verified path points at now; a swap in between
+ * fails closed. Frontmatter parsing reuses the existing pure parser helpers,
+ * so error reporting stays status-name-only (never raw YAML content). A
+ * close fault on the verified read path fails closed as well (M10 lesson:
+ * success-path close errors are never swallowed). Returns the validated
+ * `{ name, description }`, or null with collected issues.
+ */
+async function readVerifiedSkillFrontmatter(realPackDir, skillFilePath, issuePrefix, issues) {
+  let handle;
+  try {
+    handle = await fs.open(skillFilePath, "r");
+  } catch (error) {
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+      issues.push(`${issuePrefix} must include SKILL.md.`);
+    } else if (error.code === "EISDIR") {
+      issues.push(`${issuePrefix} SKILL.md is not a file.`);
+    } else {
+      issues.push(`${issuePrefix} SKILL.md cannot be opened (${error.code ?? "open fault"}).`);
+    }
+    return null;
+  }
+
+  let result = null;
+  try {
+    let handleStats;
+    try {
+      handleStats = await handle.stat();
+    } catch (error) {
+      issues.push(`${issuePrefix} SKILL.md cannot be inspected (${error.code ?? "stat fault"}).`);
+      return null;
+    }
+    if (!handleStats.isFile()) {
+      issues.push(`${issuePrefix} SKILL.md is not a file.`);
+      return null;
+    }
+
+    let realFilePath;
+    try {
+      realFilePath = await fs.realpath(skillFilePath);
+    } catch (error) {
+      issues.push(`${issuePrefix} SKILL.md cannot be resolved (${error.code ?? "resolve fault"}).`);
+      return null;
+    }
+    if (!containsPath(realPackDir, realFilePath)) {
+      issues.push(`${issuePrefix} SKILL.md resolves outside the pack directory (symlink or junction escape refused).`);
+      return null;
+    }
+
+    let pathStats;
+    try {
+      pathStats = await lstat(realFilePath);
+    } catch {
+      issues.push(`${issuePrefix} SKILL.md was swapped while being verified (identity mismatch refused).`);
+      return null;
+    }
+    if (pathStats.dev !== handleStats.dev || pathStats.ino !== handleStats.ino) {
+      issues.push(`${issuePrefix} SKILL.md was swapped while being verified (identity mismatch refused).`);
+      return null;
+    }
+
+    let raw;
+    try {
+      raw = await handle.readFile({ encoding: "utf8" });
+    } catch (error) {
+      issues.push(`${issuePrefix} SKILL.md cannot be read (${error.code ?? "read fault"}).`);
+      return null;
+    }
+
+    const { frontmatterText, hasBlock } = splitFrontmatter(raw);
+    if (!hasBlock) {
+      issues.push(`${issuePrefix} SKILL.md has no usable frontmatter (missing-frontmatter).`);
+      return null;
+    }
+    const { value, error } = parseFrontmatterDoc(frontmatterText);
+    if (error) {
+      // Sanitized: the parser keeps raw YAML error content local; only the
+      // stable status name reaches the report.
+      issues.push(`${issuePrefix} SKILL.md has no usable frontmatter (invalid-yaml).`);
+      return null;
+    }
+    if (value === null || value === undefined) {
+      issues.push(`${issuePrefix} SKILL.md has no usable frontmatter (empty-frontmatter).`);
+      return null;
+    }
+    if (typeof value !== "object" || Array.isArray(value)) {
+      issues.push(`${issuePrefix} SKILL.md has no usable frontmatter (frontmatter-not-mapping).`);
+      return null;
+    }
+    const { name, description } = normalizeFrontmatter(value);
+    if (typeof name !== "string" || name.trim().length === 0) {
+      issues.push(`${issuePrefix} SKILL.md frontmatter is missing a usable name.`);
+      return null;
+    }
+    if (typeof description !== "string" || description.trim().length === 0) {
+      issues.push(`${issuePrefix} SKILL.md frontmatter is missing a usable description.`);
+      return null;
+    }
+    result = { name, description };
+  } finally {
+    try {
+      await handle.close();
+    } catch (error) {
+      issues.push(`${issuePrefix} SKILL.md handle failed to close (${error.code ?? "close fault"}).`);
+      result = null;
+    }
+  }
+  return result;
+}
+
+/**
  * The single v1/v2 source-manifest boundary (M12). Returns
  * `{ manifest, issues }`: empty `issues` means usable. v1 manifests pass
  * through untouched; v2 manifests are validated (skills as safe relative
  * directory paths, SKILL.md frontmatter as the authority for id/description,
  * duplicate paths and derived ids, optional reliability metadata) and
  * normalized to the internal object shape. Fail-fast callers throw the first
- * issue; collected validation appends every issue. All reads are gated on
- * realpath containment of the pack root, the skill directory and SKILL.md,
- * so a symlink or junction can never make this boundary read outside the
- * pack. The boundary never writes to disk and never mutates its input.
+ * issue; collected validation appends every issue. SKILL.md bytes are read
+ * only through an opened file handle whose identity (fstat) and realpath
+ * containment are verified after opening, so a symlink or junction —
+ * including one swapped in after the directory checks — can never make this
+ * boundary read outside the pack. The boundary never writes to disk and
+ * never mutates its input.
  */
 export async function normalizeSourceManifest(manifest, packDir) {
   const schema = manifestSchemaVersion(manifest);
@@ -459,32 +574,15 @@ export async function normalizeSourceManifest(manifest, packDir) {
     }
     const realSkillDir = await realpathInsidePack(realPackDir, absoluteSkillDir, issuePrefix, issues);
     if (realSkillDir === null) continue;
-    const realSkillFile = await realpathInsidePack(realPackDir, path.join(realSkillDir, "SKILL.md"), issuePrefix, issues, { mustBeFile: true });
-    if (realSkillFile === null) continue;
 
     // SKILL.md frontmatter is authoritative for v2 Skill id and description.
-    let parsed;
-    try {
-      parsed = await parseSkill(realSkillDir);
-    } catch (error) {
-      issues.push(`${issuePrefix} cannot be read (${error.code ?? "read fault"}).`);
-      continue;
-    }
-    if (parsed.parse.status !== "ok") {
-      // Sanitized: the parser keeps raw YAML error content local; only the
-      // stable status name reaches the report.
-      issues.push(`${issuePrefix} SKILL.md has no usable frontmatter (${parsed.parse.status}).`);
-      continue;
-    }
-    const { name, description } = parsed.frontmatter ?? {};
-    if (typeof name !== "string" || name.trim().length === 0) {
-      issues.push(`${issuePrefix} SKILL.md frontmatter is missing a usable name.`);
-      continue;
-    }
-    if (typeof description !== "string" || description.trim().length === 0) {
-      issues.push(`${issuePrefix} SKILL.md frontmatter is missing a usable description.`);
-      continue;
-    }
+    // The bytes are read ONLY through a handle whose identity and containment
+    // were verified after opening — never by re-traversing the directory
+    // path, which a racing junction swap could repoint outside the pack
+    // between verification and read.
+    const frontmatter = await readVerifiedSkillFrontmatter(realPackDir, path.join(realSkillDir, "SKILL.md"), issuePrefix, issues);
+    if (frontmatter === null) continue;
+    const { name, description } = frontmatter;
     if (seenIds.has(name)) {
       issues.push(`packsmith.json: duplicate skill id "${name}" derived from SKILL.md frontmatter.`);
       continue;

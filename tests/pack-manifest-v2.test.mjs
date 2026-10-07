@@ -292,6 +292,60 @@ test("v2 refuses a SKILL.md symlink that escapes the pack", async (t) => {
   assert.ok(!result.issues.join("\n").includes("OUTSIDE FILE MARKER"));
 });
 
+test("a junction swapped in after SKILL.md verification is refused without adopting outside frontmatter", async (t) => {
+  const normalize = await boundary();
+  const manifest = v2Manifest();
+  const { root, packDir } = await makePack(t, manifest);
+  const outsideDir = path.join(root, "outside-swapped");
+  await fs.mkdir(outsideDir, { recursive: true });
+  await fs.writeFile(path.join(outsideDir, "SKILL.md"), "---\nname: outside\ndescription: OUTSIDE SWAP MARKER\n---\n", "utf8");
+
+  const realSkillDir = path.join(packDir, "skills", "review-pr");
+  const originalSkillContent = await fs.readFile(path.join(realSkillDir, "SKILL.md"), "utf8");
+  const originalRealpath = fs.realpath;
+  let swapped = false;
+  const patchedRealpath = async (target, options) => {
+    const result = await originalRealpath(target, options);
+    // Swap the verified skill directory for a junction to the outside right
+    // after its SKILL.md resolved inside the pack — the exact gap between
+    // verification and read that the opened-handle fix must close.
+    if (!swapped && String(target).endsWith("SKILL.md")) {
+      swapped = true;
+      await fs.rm(realSkillDir, { recursive: true, force: true });
+      await fs.symlink(outsideDir, realSkillDir, process.platform === "win32" ? "junction" : "dir");
+    }
+    return result;
+  };
+  fs.realpath = patchedRealpath;
+  try {
+    const result = await normalize(manifest, packDir);
+    assert.ok(swapped, "the probe swap must have fired");
+    assert.equal(result.manifest, null);
+    assert.ok(
+      result.issues.some((message) => /resolves outside the pack directory|swapped while being verified/.test(message)),
+      `expected a refusal, got ${JSON.stringify(result.issues)}`
+    );
+    assert.ok(!result.issues.join("\n").includes("OUTSIDE SWAP MARKER"), "outside content must never be adopted or echoed");
+  } finally {
+    fs.realpath = originalRealpath;
+    try {
+      await fs.unlink(realSkillDir);
+      await fs.mkdir(realSkillDir, { recursive: true });
+      await fs.writeFile(path.join(realSkillDir, "SKILL.md"), originalSkillContent, "utf8");
+    } catch {
+      // Best effort; the fixture rm covers the rest.
+    }
+  }
+
+  // After restoring, the same pack normalizes cleanly — the refusal above
+  // was the swap, not the fixture.
+  const clean = await normalize(manifest, packDir);
+  assert.deepEqual(clean.issues, []);
+  assert.deepEqual(clean.manifest.skills, [
+    { id: "review-pr", path: "skills/review-pr", description: "Review pull requests when asked." }
+  ]);
+});
+
 // ---------------------------------------------------------------------------
 // Task 3 — reliability metadata: validated, preserved, never enforced.
 // ---------------------------------------------------------------------------

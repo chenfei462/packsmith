@@ -48,10 +48,11 @@ The manifest's `id`/`description` declarations are authoritative.
   ADS colons, no Windows reserved device names, no trailing dots/spaces).
   `prompts` keeps the existing prompt-entry object shape and defaults to `[]`.
 - **SKILL.md is authoritative.** For every declared path, the pack's real
-  filesystem boundary is verified first (realpath of the pack root, the skill
-  directory and its `SKILL.md`; a symlink or junction is allowed only when it
-  resolves inside the pack), and only then is the frontmatter parsed with the
-  existing skill parser. A usable `name` and `description` are required; the
+  filesystem boundary is checked against the real pack root. The normalizer
+  opens `SKILL.md`, verifies the opened file's identity against its resolved
+  path inside that boundary, and reads frontmatter from the same handle.
+  A symlink or junction is allowed only when it resolves inside the pack.
+  A usable `name` and `description` are required; the
   normalized Skill `id` is the frontmatter `name`. Duplicate paths, duplicate
   derived ids, missing/unusable frontmatter and any containment escape are
   rejected **before any build or install write** — the source file is never
