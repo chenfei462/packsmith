@@ -191,8 +191,13 @@ values — only positions and validated enum names.
   call budget are validated BEFORE any model call: at most 4 explicit cases
   (`PACKSMITH_INTEGRATION_CASES`, default the first 4), runs bounded to 1..2,
   and the total case×runtime×repeat count capped at 16. Execution uses the
-  programmatic M8 runner API with an explicit `timeoutMs` and explicit
-  `runtimeOptions`. Credential honesty: when auth source files are provided,
+  programmatic M8 runner API with an explicit `caseIds` selection, an
+  explicit `timeoutMs` and explicit `runtimeOptions`. The selection is
+  enforced at the RUNNER boundary — the runner re-validates it against its
+  own suite read (unknown, duplicate or empty selections refuse with zero
+  model calls) and iterates only the selected cases, so the budget bounds
+  the ACTUAL model calls even if the suite file changes between validation
+  and execution. Credential honesty: when auth source files are provided,
   the M8 isolation bridge performs a PRIVATE read of those files and a
   private copy into the isolated runtime state; the script never prints
   credentials, raw client output or auth state, and its only output is a

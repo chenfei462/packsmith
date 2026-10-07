@@ -14,9 +14,19 @@ Date: 2026-10-07. Branch: `feat/v0.2-reliability-gate`. Scope: plan §M11. Roles
 
 ## Opt-in integration run (`scripts/integration-trigger.mjs`)
 
-NOT part of `npm test` (`npm run test:integration`). It refuses (exit 2, zero model calls) unless every gate is satisfied: `PACKSMITH_INTEGRATION=1`, a skill directory with a valid `evals/triggers.json`, and an EXPLICIT auth source file for every selected runtime (`PACKSMITH_INTEGRATION_CODEX_AUTH`, `PACKSMITH_INTEGRATION_CLAUDE_SETTINGS`) — no implicit workstation-login fallback. The suite, the runtime selection and the total budget are validated BEFORE any model call: at most 4 explicit cases (default the first 4), runs bounded 1..2, total case×runtime×repeat calls capped at 16 and printed before launch. Execution uses the programmatic M8 runner API (`runTriggerEvaluation`) with an explicit `timeoutMs` and explicit `runtimeOptions` — nothing is parsed out of raw child stdout. Output is a whitelist summary only (identities, statuses, counts); failures print `{error, code}` plus a message only for usage/validation error classes.
+NOT part of `npm test` (`npm run test:integration`). It refuses (exit 2, zero model calls) unless every gate is satisfied: `PACKSMITH_INTEGRATION=1`, a skill directory with a valid `evals/triggers.json`, and an EXPLICIT auth source file for every selected runtime (`PACKSMITH_INTEGRATION_CODEX_AUTH`, `PACKSMITH_INTEGRATION_CLAUDE_SETTINGS`) — no implicit workstation-login fallback. The suite, the runtime selection and the total budget are validated BEFORE any model call: at most 4 explicit cases (default the first 4), runs bounded 1..2, total case×runtime×repeat calls capped at 16 and printed before launch. Execution uses the programmatic M8 runner API (`runTriggerEvaluation`) with an explicit `caseIds` selection, an explicit `timeoutMs` and explicit `runtimeOptions` — nothing is parsed out of raw child stdout. The selection is enforced at the RUNNER boundary (see the post-review fix below): the runner re-validates it against its own suite read and iterates only the selected cases, so the budget bounds the ACTUAL model calls even if the suite file changes between this script's validation and execution. Output is a whitelist summary only (identities, statuses, counts, `selectedCaseIds`); failures print `{error, code}` plus a message only for usage/validation error classes.
 
 **Credential honesty:** when auth source files are provided, the M8 isolation bridge performs a PRIVATE read of those files and a private copy into the isolated runtime state (`src/trigger/isolation.mjs` `bridgeAuth`). The script never prints credentials, raw client output or auth state — and the docs no longer claim that credentials are never read; they say exactly this.
+
+## Post-review fix (Codex blocking finding, same session)
+
+Codex's independent review of `58a4b12` found one blocking defect, reproduced with a model-free five-case suite (one runtime, runs=1): the integration script validated a 4-case selection and printed a 4-call budget, but never passed the selection to the runner, and `runTriggerEvaluation` iterates the FULL suite it reads itself — five actual adapter calls against a validated budget of four. A validation-side cap is not an execution boundary.
+
+Fix (TDD, deterministic red first):
+
+- `runTriggerEvaluation` accepts an optional programmatic-only `caseIds`, validated against the runner's OWN suite read before any adapter: non-empty unique strings that all exist in the suite; unknown/duplicate/empty selections are `TriggerRunUsageError` (exit 2) with zero adapter calls and zero artifacts. The selected subset drives BOTH the execution loop and the scorer (`selectedSuite`), so the score is coherent for exactly the cases that ran — a full-suite score over a partial grid is impossible (the scorer rejects missing observations). The report carries `caseIds` = the ids actually executed, only when a selection was made. Omitting `caseIds` preserves the full-suite default for the `trigger` CLI and the baseline save path.
+- The integration script passes its validated selection through and reports `selectedCaseIds`. Because the enforcement now lives at the runner boundary, a suite file that changes between the script's validation and the runner's own read can neither expand the actual calls beyond the validated budget (extra cases are ignored) nor silently run fewer (a removed selected case refuses).
+- New runner tests (`tests/trigger/runner.test.mjs`, written first and confirmed failing): subset selection makes EXACTLY 4 of 5 adapter calls with a coherent subset score; unknown, duplicate and empty selections refuse before any adapter with no runs artifacts; a five-case suite without `caseIds` still runs all five.
 
 ## Workflow example (`.github/workflows/regression-gate.yml`)
 
@@ -37,9 +47,11 @@ Platform facts, stated honestly: the offline unit/CLI controls are Windows-verif
 - `src/trigger/ci.mjs` — the two-phase gate (preflight, snapshot drift, fresh/imported evidence, sanitization, exit-code mapping)
 - `src/cli.mjs` — `ci` command wiring (`COMMAND_FLAGS.ci`, JSON/text envelopes, usage errors)
 - `src/trigger/baseline.mjs` — additive `readBaselineSnapshot` (single-read validation + rawHash); `readBaseline` kept as a wrapper
+- `src/trigger/runner.mjs` — execution-boundary `caseIds` selection (post-review fix): selection validated against the runner's own suite read before any adapter; selected suite drives execution and scoring
 - `tests/trigger/regression.test.mjs` — comparator unit tests (real files, no models)
 - `tests/trigger/ci-cli.test.mjs` — gate regressions through the real `cli.mjs` process, including the read-boundary replacement race (refuses exit 2, zero adapters) and YAML/EIO sanitization controls
 - `tests/trigger/baseline-cli.test.mjs` — machinery updates for the snapshot reader + race injection
+- `tests/trigger/runner.test.mjs` — caseIds subset/refusal/default tests (post-review fix, TDD red first)
 - `scripts/smoke-ci.mjs` — 11-control end-to-end smoke through the real CLI (Windows-gated, honest POSIX refusal)
 - `scripts/smoke-baseline.mjs` — Windows platform gate + `NODE_OPTIONS` join fix
 - `scripts/integration-trigger.mjs` — the bounded opt-in integration run described above
@@ -50,12 +62,12 @@ Platform facts, stated honestly: the offline unit/CLI controls are Windows-verif
 
 ## Test evidence (this host, real exit codes)
 
-- Full `npm test`: **531 tests / 523 passed / 0 failed / 8 skipped (Windows symlink/junction privilege skips), exit 0** (~81 s). The two new registrations reconcile exactly: 503 (M10) + 19 (`regression.test.mjs`) + 9 (`ci-cli.test.mjs`, including the 9th read-boundary race control) = 531.
-- `node --test tests/trigger/regression.test.mjs`: 19/19, exit 0. `node --test tests/trigger/ci-cli.test.mjs`: 9/9, exit 0. `tests/trigger/baseline-cli.test.mjs`: 4/4, exit 0.
-- `npm run smoke:ci`: **11/11 controls pass, exit 0, `actualModelCalls: 0`** — fresh pass (exit 0) and measured regression (exit 1, `case-activation-decrease`); imported valid (exit 0, `mode: "imported"`, zero adapters); imported unresolved (exit 2, unable, measured regressions retained, `validRuns: 0` — no invented cells); imported schemaVersion 2 / duplicate slot / expect conflict (exit 1); imported empty observations (exit 2); mid-run suite drift (exit 2, unable, drift reason surfaced); two-phase preflight (second skill without baseline blocks ALL adapters, zero calls); `--runs 0` usage error (exit 2, JSON envelope). No control's report leaks the private temp root (no absolute paths).
-- `npm run smoke:baseline`: 8/8, exit 0 (`actualModelCalls: 0`, `actualAuthReads: 0`) — M10 controls unchanged on the snapshot refactor.
-- `npm run smoke:trigger:run`: PASS. `npm run smoke:matrix`: PASS (both touch the modified `cli.mjs`/`baseline.mjs` surfaces).
-- `npm run test:integration` negative control (no opt-in env): **refuses with exit 2, zero model calls**, as documented.
+- Full `npm test`: **536 tests / 530 passed / 0 failed / 6 skipped, exit 0** (~100 s), fresh run AFTER the post-review fix. Reconciliation: 531 (M11 registrations: 503 M10 + 19 `regression.test.mjs` + 9 `ci-cli.test.mjs`) + 5 new `caseIds` runner tests = 536. The skip count moved 8 → 6 between runs because two Windows symlink/junction-privilege tests that skipped in the earlier (non-elevated) run executed and passed in this one — environment-dependent privilege, not a test change.
+- TDD red, before the runner fix: `node --test tests/trigger/runner.test.mjs` = 5 pass / **4 fail** (the subset test measured 5 actual adapter calls for a 4-case selection — the exact defect; unknown/duplicate/empty selections did not refuse). After the fix: **9/9, exit 0** (4 pre-existing + 5 new).
+- `npm run smoke:ci`: **11/11 controls pass, exit 0, `actualModelCalls: 0`** — fresh pass (exit 0) and measured regression (exit 1, `case-activation-decrease`); imported valid (exit 0, `mode: "imported"`, zero adapters); imported unresolved (exit 2, unable, measured regressions retained, `validRuns: 0` — no invented cells); imported schemaVersion 2 / duplicate slot / expect conflict (exit 1); imported empty observations (exit 2); mid-run suite drift (exit 2, unable, drift reason surfaced); two-phase preflight (second skill without baseline blocks ALL adapters, zero calls); `--runs 0` usage error (exit 2, JSON envelope). No control's report leaks the private temp root (no absolute paths). Re-run green after the fix.
+- `npm run smoke:baseline`: 8/8, exit 0 (`actualModelCalls: 0`, `actualAuthReads: 0`) — M10 controls unchanged on the snapshot refactor; re-run green after the fix.
+- `npm run smoke:trigger:run`: PASS. `npm run smoke:matrix`: PASS (both re-run after the fix).
+- `npm run test:integration` negatives (both after the fix, zero model calls, exit 2): no opt-in env → opt-in refusal; opt-in + valid skill fixture WITHOUT an explicit auth source file → "codex requires an explicit auth source file … no implicit workstation-login fallback" (the credential gate fires before the budget is even computed).
 
 ## Independent review status (relayed)
 

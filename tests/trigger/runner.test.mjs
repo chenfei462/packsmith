@@ -119,3 +119,93 @@ test("invalid suites stop before any runtime artifacts are created", async (t) =
   await assert.rejects(() => runTriggerEvaluation(options(skillDir, runsRoot, adapter)), /trigger suite.*non-empty array/);
   await assert.rejects(() => stat(runsRoot), { code: "ENOENT" });
 });
+
+const FIVE_CASE_SUITE = {
+  schemaVersion: 1,
+  skill: "review-pr",
+  cases: [
+    { id: "case-1", prompt: "Review this PR one", expect: "trigger" },
+    { id: "case-2", prompt: "Review this PR two", expect: "trigger" },
+    { id: "case-3", prompt: "Review this PR three", expect: "trigger" },
+    { id: "case-4", prompt: "Summarize this PR four", expect: "no-trigger" },
+    { id: "case-5", prompt: "Explain this PR five", expect: "no-trigger" }
+  ]
+};
+
+test("caseIds selects a subset: actual adapter calls equal the validated selection", async (t) => {
+  const { skillDir, runsRoot } = await fixture(t, FIVE_CASE_SUITE);
+  let calls = 0;
+  const adapter = fakeAdapter(({ prompt }) => {
+    calls += 1;
+    return buildTriggerResult({ status: prompt.startsWith("Review") ? "triggered" : "not_triggered", runtime: "codex", evidence: [] });
+  });
+  const report = await runTriggerEvaluation({
+    ...options(skillDir, runsRoot, adapter),
+    runs: 1,
+    caseIds: ["case-1", "case-2", "case-4", "case-5"]
+  });
+  assert.equal(calls, 4);
+  assert.deepEqual(report.caseIds, ["case-1", "case-2", "case-4", "case-5"]);
+  assert.deepEqual([...new Set(report.observations.map((entry) => entry.caseId))], ["case-1", "case-2", "case-4", "case-5"]);
+  assert.equal(report.observations.length, 4);
+  assert.equal(report.score.runtimes.codex.totalRuns, 4);
+  assert.equal(report.status, "pass");
+  assert.equal(report.exitCode, 0);
+});
+
+test("caseIds with an unknown id refuses before any adapter call", async (t) => {
+  const { skillDir, runsRoot } = await fixture(t, FIVE_CASE_SUITE);
+  let calls = 0;
+  const adapter = fakeAdapter(() => {
+    calls += 1;
+    return buildTriggerResult({ status: "triggered", runtime: "codex", evidence: [] });
+  });
+  await assert.rejects(
+    () => runTriggerEvaluation({ ...options(skillDir, runsRoot, adapter), runs: 1, caseIds: ["case-1", "case-9"] }),
+    (error) => error.name === "TriggerRunUsageError" && error.exitCode === 2
+  );
+  assert.equal(calls, 0);
+  await assert.rejects(() => stat(runsRoot), { code: "ENOENT" });
+});
+
+test("caseIds with duplicate ids refuses before any adapter call", async (t) => {
+  const { skillDir, runsRoot } = await fixture(t, FIVE_CASE_SUITE);
+  let calls = 0;
+  const adapter = fakeAdapter(() => {
+    calls += 1;
+    return buildTriggerResult({ status: "triggered", runtime: "codex", evidence: [] });
+  });
+  await assert.rejects(
+    () => runTriggerEvaluation({ ...options(skillDir, runsRoot, adapter), runs: 1, caseIds: ["case-1", "case-1"] }),
+    (error) => error.name === "TriggerRunUsageError" && error.exitCode === 2
+  );
+  assert.equal(calls, 0);
+  await assert.rejects(() => stat(runsRoot), { code: "ENOENT" });
+});
+
+test("caseIds must be a non-empty array", async (t) => {
+  const { skillDir, runsRoot } = await fixture(t, FIVE_CASE_SUITE);
+  let calls = 0;
+  const adapter = fakeAdapter(() => {
+    calls += 1;
+    return buildTriggerResult({ status: "triggered", runtime: "codex", evidence: [] });
+  });
+  await assert.rejects(
+    () => runTriggerEvaluation({ ...options(skillDir, runsRoot, adapter), runs: 1, caseIds: [] }),
+    (error) => error.name === "TriggerRunUsageError" && error.exitCode === 2
+  );
+  assert.equal(calls, 0);
+});
+
+test("without caseIds the full suite still runs every case", async (t) => {
+  const { skillDir, runsRoot } = await fixture(t, FIVE_CASE_SUITE);
+  let calls = 0;
+  const adapter = fakeAdapter(({ prompt }) => {
+    calls += 1;
+    return buildTriggerResult({ status: prompt.startsWith("Review") ? "triggered" : "not_triggered", runtime: "codex", evidence: [] });
+  });
+  const report = await runTriggerEvaluation({ ...options(skillDir, runsRoot, adapter), runs: 1 });
+  assert.equal(calls, 5);
+  assert.equal(report.observations.length, 5);
+  assert.equal(report.caseIds, undefined);
+});

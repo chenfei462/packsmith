@@ -159,7 +159,15 @@ async function inspectSkillTarget(targetPath) {
  * failure of one case is an infra_error observation, not a missing row or a
  * false negative; later cases still execute in fresh isolation. Tests may
  * supply adapter and runtime-option overrides, while production defaults to
- * the verified Claude/Codex adapters and local CLI entry points. */
+ * the verified Claude/Codex adapters and local CLI entry points.
+ *
+ * `caseIds` (optional, programmatic only) restricts execution to an explicit
+ * subset of the suite's cases. It is validated against THIS read of the
+ * suite BEFORE any adapter runs: unknown, duplicate or empty selections are
+ * usage errors, so the caller's model-call budget is enforced at the
+ * execution boundary — the loop below iterates the selected cases only and
+ * can never be expanded by a suite file that changes after the caller's own
+ * validation. Omitting `caseIds` keeps the full-suite default. */
 export async function runTriggerEvaluation({
   targetPath,
   runtimeIds = DEFAULT_RUNTIME_IDS,
@@ -167,7 +175,8 @@ export async function runTriggerEvaluation({
   runsRoot,
   timeoutMs = 300000,
   adapters = DEFAULT_ADAPTERS,
-  runtimeOptions = {}
+  runtimeOptions = {},
+  caseIds
 } = {}) {
   if (!Array.isArray(runtimeIds) || runtimeIds.length === 0 || new Set(runtimeIds).size !== runtimeIds.length || runtimeIds.some((id) => !RUNTIME_IDS.includes(id))) {
     throw new TriggerRunUsageError(`--runtime must name one or more distinct runtimes: ${RUNTIME_IDS.join(",")}`);
@@ -184,6 +193,28 @@ export async function runTriggerEvaluation({
     throw new TriggerRunUsageError("runsRoot must be outside the skill source directory");
   }
 
+  // Execution-boundary case selection (see the doc comment above). The
+  // selected suite drives BOTH the execution loop and the scorer: the score
+  // is coherent for exactly the cases that ran, never a full-suite score
+  // over a partial grid.
+  let selectedSuite = suite;
+  let selected = false;
+  if (caseIds !== undefined) {
+    if (!Array.isArray(caseIds) || caseIds.length === 0 ||
+        caseIds.some((id) => typeof id !== "string" || id.length === 0) ||
+        new Set(caseIds).size !== caseIds.length) {
+      throw new TriggerRunUsageError("caseIds must be a non-empty array of unique case ids");
+    }
+    const suiteCaseIds = new Set(suite.cases.map((entry) => entry.id));
+    const unknownCount = caseIds.filter((id) => !suiteCaseIds.has(id)).length;
+    if (unknownCount > 0) {
+      throw new TriggerRunUsageError(`caseIds must reference cases of the current suite (${unknownCount} unknown)`);
+    }
+    const selection = new Set(caseIds);
+    selectedSuite = { ...suite, cases: suite.cases.filter((entry) => selection.has(entry.id)) };
+    selected = true;
+  }
+
   const observations = [];
   for (const runtimeId of runtimeIds) {
     const adapter = adapters[runtimeId];
@@ -191,7 +222,7 @@ export async function runTriggerEvaluation({
       throw new TriggerRunUsageError(`no adapter for runtime ${runtimeId}`);
     }
     const configuration = runtimeOptions[runtimeId] ?? {};
-    for (const entry of suite.cases) {
+    for (const entry of selectedSuite.cases) {
       for (let repeat = 1; repeat <= runs; repeat += 1) {
         const started = Date.now();
         try {
@@ -244,7 +275,7 @@ export async function runTriggerEvaluation({
     }
   }
 
-  const score = scoreTriggerResults({ suite, runtimeIds, runs, observations });
+  const score = scoreTriggerResults({ suite: selectedSuite, runtimeIds, runs, observations });
   return {
     schemaVersion: 1,
     skill: suite.skill,
@@ -252,6 +283,7 @@ export async function runTriggerEvaluation({
     runsRoot: resolvedRunsRoot,
     runtimeIds: [...runtimeIds],
     runs,
+    ...(selected ? { caseIds: selectedSuite.cases.map((entry) => entry.id) } : {}),
     status: score.status,
     exitCode: score.exitCode,
     observations,

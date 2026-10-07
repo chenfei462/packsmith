@@ -168,6 +168,11 @@ try {
     runtimeIds: runtimes,
     runs,
     timeoutMs,
+    // The selection is enforced at the RUNNER boundary: the runner
+    // re-validates it against its own suite read and iterates the selected
+    // cases only, so the budget below bounds the ACTUAL model calls even if
+    // the suite file changes between this script's validation and execution.
+    caseIds,
     runtimeOptions
   });
 } catch (error) {
@@ -191,6 +196,7 @@ const summary = {
   status: report.status ?? null,
   exitCode: report.exitCode ?? null,
   totalModelCalls,
+  selectedCaseIds: report.caseIds ?? caseIds,
   observations: (report.observations ?? []).map((o) => ({
     runtime: o.runtime,
     caseId: o.caseId,
