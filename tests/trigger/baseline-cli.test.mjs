@@ -51,6 +51,12 @@ codexAdapter.runTriggerCase = async ({ prompt }) => {
 };`;
 
 async function setup(t) {
+  // The owned-APPDATA npm/codex.cmd shim machinery is Windows-verified;
+  // POSIX offline CLI mocking is not claimed. Skip honestly.
+  if (process.platform !== "win32") {
+    t.skip("CLI adapter-mock machinery is Windows-verified (owned npm/codex.cmd shim); POSIX offline CLI mocking is not claimed");
+    return null;
+  }
   const root = await mkdtemp(path.join(os.tmpdir(), "packsmith-m10-baseline-cli-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const app = path.join(root, "appdata", "npm");
@@ -98,7 +104,9 @@ async function runCase({ root, app, home, preload }, { id, mode, extra = [], wit
       HOME: home, USERPROFILE: home,
       APPDATA: path.dirname(app), LOCALAPPDATA: path.join(root, "local"),
       QA_SKILL: skill, QA_CALLS: calls, QA_MODE: mode,
-      NODE_OPTIONS: "--import=" + pathToFileURL(preload).href
+      // Preserve any parent NODE_OPTIONS (offline guard preloads) and append
+      // the test preload — never silently drop the guard in children.
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, "--import=" + pathToFileURL(preload).href].filter(Boolean).join(" ")
     }
   });
   let json = null;
@@ -110,6 +118,7 @@ async function runCase({ root, app, home, preload }, { id, mode, extra = [], wit
 
 test("baseline CLI: normal save exit0 and measured FN save exit1", async (t) => {
   const h = await setup(t);
+  if (h === null) return;
   const normal = await runCase(h, { id: "normal", mode: "normal" });
   assert.equal(normal.child.status, 0, normal.child.stderr);
   assert.ok(normal.contents !== null && normal.contents.includes('"schemaVersion": 1'), "baseline saved");
@@ -123,6 +132,7 @@ test("baseline CLI: normal save exit0 and measured FN save exit1", async (t) => 
 
 test("baseline CLI: suite drift during evaluation refuses with infrastructure_error exit2 and prior preserved", async (t) => {
   const h = await setup(t);
+  if (h === null) return;
   const { child, json, contents, priorText } = await runCase(h, { id: "suite-drift", mode: "suite-drift", priorBaseline: true });
   assert.equal(child.status, 2, child.stderr);
   assert.equal(json?.error?.code, "infrastructure_error");
@@ -133,6 +143,7 @@ test("baseline CLI: suite drift during evaluation refuses with infrastructure_er
 
 test("baseline CLI: baseline edited during evaluation refuses and the edit is preserved", async (t) => {
   const h = await setup(t);
+  if (h === null) return;
   const { child, json, contents } = await runCase(h, { id: "baseline-drift", mode: "baseline-drift", priorBaseline: true });
   assert.equal(child.status, 2, child.stderr);
   assert.equal(json?.error?.code, "infrastructure_error");
@@ -143,6 +154,7 @@ test("baseline CLI: baseline edited during evaluation refuses and the edit is pr
 
 test("baseline CLI: --baseline without --save-baseline is usage_error exit2 before any adapter call", async (t) => {
   const h = await setup(t);
+  if (h === null) return;
   const { child, json, adapterCalls } = await runCase(h, {
     id: "without-save", mode: "normal", withSave: false, extra: ["--baseline", path.join(h.root, "unrequested.json")]
   });

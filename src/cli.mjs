@@ -40,6 +40,7 @@ import { runDoctor } from "./doctor.mjs";
 import { runTriggerInit } from "./trigger/init.mjs";
 import { runTriggerEvaluation } from "./trigger/runner.mjs";
 import { runMatrix, MatrixUsageError, MatrixValidationError } from "./trigger/matrix.mjs";
+import { runCi, CiUsageError, CiValidationError } from "./trigger/ci.mjs";
 import { InfrastructureError } from "./core/diagnostics.mjs";
 import { renderDoctorTerminal } from "./reporters/terminal.mjs";
 import { renderDoctorJson } from "./reporters/json.mjs";
@@ -71,6 +72,7 @@ const COMMAND_FLAGS = {
   doctor:    ["json", "quiet", "format", "target"],
   trigger:   ["json", "quiet", "format", "runtime", "runs", "saveBaseline", "baseline"],
   matrix:    ["json", "quiet", "format", "results"],
+  ci:        ["json", "quiet", "format", "results", "runs"],
   score:     ["json", "quiet", "registry", "scope", "stateDir"],
   passport:  ["json", "quiet", "registry", "scope", "stateDir"],
   targets:   ["json", "quiet"],
@@ -168,6 +170,73 @@ function renderMatrix(report) {
   return lines.join("\n");
 }
 
+function renderCi(report) {
+  const pct = (value) => value === null ? "n/a" : `${Math.round(value * 100)}%`;
+  const lines = ["Packsmith CI — trigger regression gate", `${report.path}`, ""];
+  for (const skill of report.skills) {
+    if (!skill.gated) {
+      lines.push(`${skill.skill}: ${skill.exitCode === 2 ? "UNABLE" : "INVALID"} — ${skill.reason}`);
+      continue;
+    }
+    if (skill.executed === false) {
+      lines.push(`${skill.skill}: PREPARED, NOT EXECUTED — ${skill.reason}`);
+      continue;
+    }
+    const verdict = skill.verdict === "pass" ? "PASS" : skill.verdict === "regression" ? "REGRESSION" : "UNABLE";
+    lines.push(`${skill.skill}: ${verdict} (${skill.mode} evidence, runs ${skill.comparison.runs.baseline}→${skill.comparison.runs.current})`);
+    if (skill.comparison.skillContentChanged) {
+      lines.push(`  note: SKILL.md changed since the baseline (provenance only, not a gate failure)`);
+    }
+    if (skill.comparison.runsDrift?.changed) {
+      lines.push(`  note: sample-count drift ${skill.comparison.runsDrift.baseline}→${skill.comparison.runsDrift.current} (rates compared)`);
+    }
+    for (const [runtimeId, drift] of Object.entries(skill.comparison.versionDrift ?? {})) {
+      if (drift.changed) {
+        lines.push(`  note: ${runtimeId} version drift ${drift.baseline} → ${drift.current} (rates compared)`);
+      }
+    }
+    if (skill.comparison.comparable === false) {
+      for (const reason of skill.comparison.unableReasons) {
+        lines.push(`  unable: ${reason}`);
+      }
+      for (const [runtimeId, diag] of Object.entries(skill.comparison.diagnostics?.runtimes ?? {})) {
+        for (const measured of diag.measuredRegressions ?? []) {
+          lines.push(`  measured regression (not a verdict — evidence incomplete): ${runtimeId}/${measured.caseId} ${measured.check} ${pct(measured.baseline)}→${pct(measured.current)}`);
+        }
+      }
+      continue;
+    }
+    for (const [runtimeId, runtime] of Object.entries(skill.comparison.runtimes)) {
+      for (const [caseId, cell] of Object.entries(runtime.cases)) {
+        const mark = cell.regression ? "REGRESSED" : cell.expect === "trigger"
+          ? (cell.current.activationRate === 1 ? "pass" : `imperfect (${pct(cell.current.activationRate)})`)
+          : (cell.current.activationRate === 0 ? "pass" : `imperfect (${pct(cell.current.activationRate)})`);
+        lines.push(`  ${runtimeId}/${caseId}: ${pct(cell.baseline.activationRate)}→${pct(cell.current.activationRate)} ${mark}`);
+      }
+      const agg = runtime.aggregates;
+      lines.push(`  ${runtimeId} recall ${pct(agg.baseline.recall)}→${pct(agg.current.recall)}  precision ${pct(agg.baseline.precision)}→${pct(agg.current.precision)}  FPR ${pct(agg.baseline.falsePositiveRate)}→${pct(agg.current.falsePositiveRate)}`);
+    }
+    if (skill.comparison.divergence.applicable) {
+      for (const entry of skill.comparison.divergence.cases) {
+        if (entry.regression || entry.current.rate > 0) {
+          lines.push(`  divergence ${entry.caseId}: ${pct(entry.baseline.rate)}→${pct(entry.current.rate)}${entry.regression ? " REGRESSED" : ""}`);
+        }
+      }
+    }
+    for (const check of skill.comparison.failedChecks) {
+      lines.push(`  failed: ${check.kind}${check.runtime ? ` (${check.runtime})` : ""}${check.caseId ? ` ${check.caseId}` : ""} ${pct(check.baseline)}→${pct(check.current)}`);
+    }
+  }
+  if (report.staticValidation.errors > 0) {
+    lines.push("", `STATIC VALIDATION: ${report.staticValidation.errors} error(s)`);
+    for (const diagnostic of report.staticValidation.globalErrors) {
+      lines.push(`  ${diagnostic.id}: ${diagnostic.message}`);
+    }
+  }
+  lines.push("", `exit ${report.exitCode} (0 pass, 1 regression/validation, 2 infrastructure/incomplete)`);
+  return lines.join("\n");
+}
+
 function renderTriggerEvaluation(report) {
   const pct = (value) => value === null ? "n/a" : `${Math.round(value * 100)}%`;
   const lines = ["Activation Reliability", `${report.skill} — ${report.runs} run(s) per case/runtime`, ""];
@@ -246,6 +315,7 @@ Authoring:
   packsmith doctor <path> [--target <runtime>] [--format json]
   packsmith trigger init <skill-dir> [--format json]
   packsmith matrix <skill-dir> [--results <report.json>] [--format json]
+  packsmith ci <path> [--results <report.json>] [--runs 1] [--format json]
   packsmith trigger <skill-dir> [--runtime claude-code,codex] [--runs 1] [--format json]
   packsmith build <pack-dir> [--out dist]
   packsmith install <pack-or-built-dir> [--target <name>] [--dest <dir>] [--dry-run]
@@ -1249,7 +1319,7 @@ async function main() {
     // machine-readable contract even here: one stable usage_error envelope
     // on stdout, empty stderr, exit 2. Text mode keeps the standard
     // UsageError path and every other command is unchanged.
-    if ((command === "doctor" || command === "trigger" || command === "matrix") && error instanceof UsageError && hasExplicitJsonIntent(rawArgs)) {
+    if ((command === "doctor" || command === "trigger" || command === "matrix" || command === "ci") && error instanceof UsageError && hasExplicitJsonIntent(rawArgs)) {
       printJson({
         schemaVersion: 1,
         ok: false,
@@ -1688,6 +1758,87 @@ async function main() {
         console.error(`Validation error: ${error.message}`);
         process.exitCode = 1;
       } else {
+        console.error(`Error: ${error.message}`);
+        process.exitCode = 2;
+      }
+    }
+
+    return;
+  }
+
+  if (command === "ci") {
+    // v0.2 Wave 3 (plan M11): ci <path> [--results <report.json>] [--runs n]
+    // [--format json]. Regression gate over discovered skills. Fresh M8
+    // execution by default; --results imports an explicit report (labeled
+    // imported). No baseline writes, no model calls without real adapters.
+    const jsonOutput = options.format === "json" || options.json === true || hasExplicitJsonIntent(rawArgs);
+
+    try {
+      if (!primary) {
+        throw new UsageError("Missing <path> argument for ci.");
+      }
+      if (options.format !== undefined && options.format !== "json") {
+        throw new UsageError(`Unsupported --format value for ci: ${options.format}. Use --format json.`);
+      }
+      if (positionals.length > 1) {
+        throw new UsageError("ci accepts exactly one <path> argument.");
+      }
+      const resultsOccurrences = rawArgs.filter((arg) => arg === "--results" || arg.startsWith("--results=")).length;
+      if (resultsOccurrences > 1) {
+        throw new UsageError("--results was specified " + resultsOccurrences + " times; each flag may only appear once.");
+      }
+      const runsOccurrences = rawArgs.filter((arg) => arg === "--runs" || arg.startsWith("--runs=")).length;
+      if (runsOccurrences > 1) {
+        throw new UsageError("--runs was specified " + runsOccurrences + " times; each flag may only appear once.");
+      }
+      if (options.runs !== undefined && !/^[1-9]\d*$/.test(options.runs)) {
+        throw new UsageError("--runs must be a decimal integer from 1 to 20.");
+      }
+
+      const report = await runCi({
+        targetPath: primary,
+        ...(options.results !== undefined ? { resultsJson: options.results } : {}),
+        ...(options.runs !== undefined ? { runs: Number(options.runs) } : {})
+      });
+
+      if (jsonOutput) {
+        printJson(report);
+      } else if (!options.quiet) {
+        console.log(renderCi(report));
+      }
+
+      process.exitCode = report.exitCode;
+    } catch (error) {
+      const isUsage = error.isUsageError === true || error instanceof UsageError ||
+        error instanceof CiUsageError;
+      const isValidation = error.isValidationError === true || error instanceof CiValidationError;
+
+      if (jsonOutput) {
+        // Sanitized boundary: infrastructure failures must not echo raw
+        // underlying fs/adapter messages (absolute paths, injected bytes)
+        // into the uploadable envelope. Usage/validation messages are
+        // Packsmith-generated; infrastructure errors are trusted only when
+        // the ci boundary marked them sanitized (relative refs + codes).
+        const safeMessage = isUsage || isValidation || error.safeMessage === true
+          ? error.message
+          : "infrastructure error during gate execution; run locally with terminal output for details";
+        printJson({
+          schemaVersion: 1,
+          ok: false,
+          error: {
+            code: isUsage ? "usage_error" : isValidation ? "validation_error" : "infrastructure_error",
+            message: safeMessage,
+            exitCode: isValidation ? 1 : 2
+          }
+        });
+        process.exitCode = isValidation ? 1 : 2;
+      } else if (isUsage) {
+        throw new UsageError(error.message);
+      } else if (isValidation) {
+        console.error(`Validation error: ${error.message}`);
+        process.exitCode = 1;
+      } else {
+        // Local terminal output keeps the full diagnostic detail.
         console.error(`Error: ${error.message}`);
         process.exitCode = 2;
       }

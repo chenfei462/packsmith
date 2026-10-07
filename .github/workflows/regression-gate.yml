@@ -1,0 +1,118 @@
+# Opt-in trigger regression gate (Wave 3 M11 example).
+#
+# This workflow is MANUAL ONLY (workflow_dispatch) — it never runs on push or
+# pull_request, it is not a required check, and it does not participate in
+# pull_request_target. Copy/adapt it only if you accept that it launches REAL
+# model runs against a baseline you have committed to this repository.
+#
+# Platform note (honest): Packsmith's offline unit/CLI controls are verified
+# on Windows (owned npm/codex.cmd shim). This workflow runs the REAL gate on
+# ubuntu-latest, where the trigger runner resolves the `codex` client from
+# PATH — no offline mock is involved and none is claimed.
+#
+# Authentication: the M8 isolation bridge reads the parent Codex auth file
+# from HOME/.codex/auth.json. The CODEX_AUTH_JSON secret reaches the
+# filesystem ONLY through an environment variable (never interpolated into
+# shell program text), is written into a temporary private HOME created for
+# the gate step, and that HOME is deleted in an always() cleanup step.
+# Without the secret the bridge finds no parent auth file, every case
+# resolves to an infrastructure failure, and the gate exits 2 honestly.
+# Only the sanitized `ci` JSON report is uploaded as an artifact — never
+# auth state, raw traces or run directories.
+#
+# This workflow has NOT been executed on GitHub Actions; its structure is
+# verified by review only. Do not claim a real run without one.
+
+name: trigger-regression-gate
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Skill directory (relative to repo root) with a COMMITTED evals/triggers.json AND packsmith-baseline.json"
+        required: true
+      runs:
+        description: "Runs per case (defaults to the baseline's sample count when omitted)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TARGET: ${{ inputs.target }}
+      RUNS: ${{ inputs.runs }}
+    steps:
+      - name: Check out repository (immutable pin)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 24 (immutable pin)
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+
+      - name: Install project dependencies (lockfile-pinned)
+        run: npm ci
+
+      - name: Install runtime client (pinned tested version)
+        run: |
+          npm install --global @openai/codex@0.148.0
+          codex --version
+
+      - name: Preflight target and baseline (fail fast, zero model calls)
+        run: |
+          if [ ! -f "$TARGET/evals/triggers.json" ]; then
+            echo "No trigger suite at $TARGET/evals/triggers.json — the gate refuses to run blind." >&2
+            exit 2
+          fi
+          if [ ! -f "$TARGET/packsmith-baseline.json" ]; then
+            echo "No committed baseline at $TARGET/packsmith-baseline.json — save one with 'packsmith trigger <skill-dir> --save-baseline' and commit it first." >&2
+            exit 2
+          fi
+
+      - name: Restore Codex credentials into a temporary private HOME
+        env:
+          CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}
+        run: |
+          if [ -z "$CODEX_AUTH_JSON" ]; then
+            echo "CODEX_AUTH_JSON is not configured: the M8 bridge will find no parent auth file and the gate exits 2 honestly."
+          else
+            mkdir -p "$RUNNER_TEMP/packsmith-home/.codex"
+            printf '%s' "$CODEX_AUTH_JSON" > "$RUNNER_TEMP/packsmith-home/.codex/auth.json"
+            chmod 700 "$RUNNER_TEMP/packsmith-home" "$RUNNER_TEMP/packsmith-home/.codex"
+          fi
+
+      - name: Run the regression gate (real models, opt-in)
+        id: gate
+        env:
+          HOME: ${{ runner.temp }}/packsmith-home
+        run: |
+          ARGS=(ci "$TARGET" --format json)
+          if [ -n "$RUNS" ]; then
+            ARGS+=(--runs "$RUNS")
+          fi
+          set +e
+          node src/cli.mjs "${ARGS[@]}" > "$RUNNER_TEMP/ci-report.json"
+          code=$?
+          set -e
+          echo "exit=$code" >> "$GITHUB_OUTPUT"
+          exit $code
+
+      - name: Upload sanitized gate report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ci-report
+          path: ${{ runner.temp }}/ci-report.json
+          if-no-files-found: warn
+
+      - name: Delete temporary credentials and private HOME
+        if: always()
+        run: |
+          rm -rf "$RUNNER_TEMP/packsmith-home"

@@ -26,6 +26,14 @@ import { spawnSync } from "node:child_process";
 import { pathToFileURL, fileURLToPath } from "node:url";
 
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
+
+// The offline adapter mock uses the Windows-verified owned npm/codex.cmd
+// shim. On POSIX the runner resolves `codex` from its private PATH and the
+// shim is ignored — fail loudly rather than pretend coverage.
+if (process.platform !== "win32") {
+  console.error("smoke requires Windows: offline CLI mocking is Windows-verified; POSIX offline CLI mocking is not claimed");
+  process.exit(1);
+}
 const cliEntry = path.join(repoRoot, "src", "cli.mjs");
 const codexModule = path.join(repoRoot, "src", "runtimes", "codex.mjs");
 const baselineModule = path.join(repoRoot, "src", "trigger", "baseline.mjs");
@@ -146,7 +154,7 @@ for (const [id, mode, extra, expectedExit, opts] of [
       HOME: home, USERPROFILE: home,
       APPDATA: path.dirname(app), LOCALAPPDATA: path.join(root, "local"),
       QA_ROOT: root, QA_SKILL: skill, QA_MODE: mode, QA_CALLS: calls,
-      NODE_OPTIONS: "--import=" + pathToFileURL(preload).href
+      NODE_OPTIONS: [process.env.NODE_OPTIONS, "--import=" + pathToFileURL(preload).href].filter(Boolean).join(" ")
     }
   });
 

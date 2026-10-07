@@ -602,9 +602,13 @@ export async function saveBaseline(baselinePath, baselineObject) {
 }
 
 /**
- * Read and strictly validate a baseline file.
+ * Read a baseline file ONCE and strictly validate exactly the bytes that
+ * were read. Returns { baseline, raw, rawHash } so callers that need a
+ * drift-check hash (e.g. the M11 gate's mid-run snapshot verification)
+ * fingerprint the SAME revision they validated — never a second, possibly
+ * replaced, read. Throws BaselineValidationError on missing/invalid input.
  */
-export async function readBaseline(baselinePath, { suite, expectedSkill }) {
+export async function readBaselineSnapshot(baselinePath, { suite, expectedSkill }) {
   let raw;
   try {
     raw = await fs.readFile(baselinePath, "utf8");
@@ -614,6 +618,8 @@ export async function readBaseline(baselinePath, { suite, expectedSkill }) {
     }
     throw new InfrastructureError(`cannot read baseline ${baselinePath}: ${error.message}`, { cause: error });
   }
+
+  const rawHash = sha256(raw);
 
   let parsed;
   try {
@@ -627,5 +633,12 @@ export async function readBaseline(baselinePath, { suite, expectedSkill }) {
     throw new BaselineValidationError(`invalid baseline ${baselinePath}: ${problems.join("; ")}`);
   }
 
-  return parsed;
+  return { baseline: parsed, raw, rawHash };
+}
+
+/**
+ * Read and strictly validate a baseline file.
+ */
+export async function readBaseline(baselinePath, { suite, expectedSkill }) {
+  return (await readBaselineSnapshot(baselinePath, { suite, expectedSkill })).baseline;
 }
