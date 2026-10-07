@@ -40,6 +40,7 @@ import { runDoctor } from "./doctor.mjs";
 import { runTriggerInit } from "./trigger/init.mjs";
 import { runTriggerEvaluation } from "./trigger/runner.mjs";
 import { runMatrix, MatrixUsageError, MatrixValidationError } from "./trigger/matrix.mjs";
+import { InfrastructureError } from "./core/diagnostics.mjs";
 import { renderDoctorTerminal } from "./reporters/terminal.mjs";
 import { renderDoctorJson } from "./reporters/json.mjs";
 
@@ -68,7 +69,7 @@ const COMMAND_FLAGS = {
   validate:  ["json", "quiet", "allowRisk"],
   inspect:   ["json", "quiet"],
   doctor:    ["json", "quiet", "format", "target"],
-  trigger:   ["json", "quiet", "format", "runtime", "runs"],
+  trigger:   ["json", "quiet", "format", "runtime", "runs", "saveBaseline", "baseline"],
   matrix:    ["json", "quiet", "format", "results"],
   score:     ["json", "quiet", "registry", "scope", "stateDir"],
   passport:  ["json", "quiet", "registry", "scope", "stateDir"],
@@ -90,7 +91,7 @@ const COMMAND_FLAGS = {
   audit:     ["json", "quiet", "policy", "ci", "verbose", "stateDir"]
 };
 
-const BOOLEAN_FLAGS = new Set(["--dry-run", "--ci", "--json", "--quiet", "--yes", "--pin", "--verbose", "--trace", "--all-targets"]);
+const BOOLEAN_FLAGS = new Set(["--dry-run", "--ci", "--json", "--quiet", "--yes", "--pin", "--verbose", "--trace", "--all-targets", "--save-baseline"]);
 
 function printJson(value) {
   console.log(JSON.stringify(value, null, 2));
@@ -1400,7 +1401,150 @@ async function main() {
           throw new UsageError("--runs must be a decimal integer from 1 to 20.");
         }
         const runs = options.runs === undefined ? 1 : Number(options.runs);
+        // --baseline only names the output path; without --save-baseline it
+        // must not silently run adapters and discard the result.
+        if (options.baseline !== undefined && options.saveBaseline === undefined) {
+          throw new UsageError("--baseline requires --save-baseline; an output path alone does not save a baseline.");
+        }
+        // Baseline preflight: read the real suite and capture the SKILL.md
+        // content hash BEFORE running the evaluation, so the fingerprint
+        // matches the suite that was actually executed.
+        let baselineSuiteData = null;
+        let baselineSkillHash = null;
+        let baselineOutputPath = null;
+        let baselineSuiteRawHash = null;
+        let baselineExistingHash = null;
+
+        if (options.saveBaseline !== undefined) {
+          const suitePath = path.join(subcommand, "evals", "triggers.json");
+          baselineOutputPath = options.baseline !== undefined
+            ? options.baseline
+            : path.join(subcommand, "packsmith-baseline.json");
+
+          try {
+            const suiteRaw = await (await import("node:fs/promises")).readFile(suitePath, "utf8");
+            const { parseTriggerSuiteJson: parseSuite } = await import("./trigger/schema.mjs");
+            const parsedSuite = parseSuite(suiteRaw, { expectedSkill: undefined });
+            if (!parsedSuite.ok) {
+              throw new Error("invalid trigger suite: " + parsedSuite.problems.join("; "));
+            }
+            baselineSuiteData = parsedSuite.suite;
+            const { createHash } = await import("node:crypto");
+            baselineSuiteRawHash = "sha256:" + createHash("sha256").update(suiteRaw).digest("hex");
+            const skillMd = await (await import("node:fs/promises")).readFile(path.join(subcommand, "SKILL.md"), "utf8");
+            baselineSkillHash = "sha256:" + createHash("sha256").update(skillMd).digest("hex");
+          } catch (error) {
+            if (error.code === "ENOENT") {
+              throw new UsageError("trigger suite not found at " + suitePath + "; run packsmith trigger init first.");
+            }
+            throw new UsageError("cannot prepare baseline preflight: " + error.message);
+          }
+
+          // Preflight the output path: the parent directory must exist and
+          // be writable, and the target must not be a symlink/junction.
+          const outputDir = path.dirname(baselineOutputPath);
+          try {
+            const dirStat = await (await import("node:fs/promises")).stat(outputDir);
+            if (!dirStat.isDirectory()) {
+              throw new UsageError("baseline output parent is not a directory: " + outputDir);
+            }
+            try {
+              const existing = await (await import("node:fs/promises")).lstat(baselineOutputPath);
+              if (existing.isSymbolicLink()) {
+                throw new UsageError("baseline output path is a symlink/junction: " + baselineOutputPath);
+              }
+              // Capture the existing baseline's content so an edit during
+              // the run (after the adapters saw the old copy) refuses the save.
+              const existingRaw = await (await import("node:fs/promises")).readFile(baselineOutputPath, "utf8");
+              const { createHash: hashExisting } = await import("node:crypto");
+              baselineExistingHash = "sha256:" + hashExisting("sha256").update(existingRaw).digest("hex");
+            } catch (statError) {
+              if (statError.code !== "ENOENT") throw statError;
+            }
+          } catch (error) {
+            if (error instanceof UsageError) throw error;
+            throw new UsageError("cannot prepare baseline output path: " + error.message);
+          }
+        }
+
         const report = await runTriggerEvaluation({ targetPath: subcommand, runtimeIds, runs });
+
+        if (options.saveBaseline !== undefined && baselineSuiteData !== null) {
+          // Post-execution: verify the suite file is byte-identical to the
+          // one that was fingerprinted and executed.
+          const fsPromises = await import("node:fs/promises");
+          const suiteRawNow = await fsPromises.readFile(path.join(subcommand, "evals", "triggers.json"), "utf8");
+          const { createHash } = await import("node:crypto");
+          const suiteHashNow = "sha256:" + createHash("sha256").update(suiteRawNow).digest("hex");
+          if (suiteHashNow !== baselineSuiteRawHash) {
+            if (jsonOutput) {
+              printJson({ schemaVersion: 1, ok: false, error: { code: "infrastructure_error", message: "trigger suite changed during evaluation; refusing to save baseline with a fingerprint from mixed sources", exitCode: 2 } });
+            } else {
+              console.error("Trigger suite changed during evaluation; refusing to save baseline with a fingerprint from mixed sources.");
+            }
+            process.exitCode = 2;
+            return;
+          }
+
+          // An existing baseline edited during the run must not be replaced:
+          // it was the input the user had before evaluation started.
+          if (baselineExistingHash !== null) {
+            let existingRawNow = null;
+            try {
+              existingRawNow = await fsPromises.readFile(baselineOutputPath, "utf8");
+            } catch (readError) {
+              if (readError.code !== "ENOENT") {
+                throw new InfrastructureError(`cannot re-read baseline ${baselineOutputPath}: ${readError.message}`, { cause: readError });
+              }
+            }
+            if (existingRawNow !== null) {
+              const existingHashNow = "sha256:" + createHash("sha256").update(existingRawNow).digest("hex");
+              if (existingHashNow !== baselineExistingHash) {
+                if (jsonOutput) {
+                  printJson({ schemaVersion: 1, ok: false, error: { code: "infrastructure_error", message: "existing baseline changed during evaluation; refusing to overwrite a file that was modified after the run started", exitCode: 2 } });
+                } else {
+                  console.error("Existing baseline changed during evaluation; refusing to overwrite a file that was modified after the run started.");
+                }
+                process.exitCode = 2;
+                return;
+              }
+            }
+          }
+
+          // Post-execution: verify SKILL.md hasn't changed during the run.
+          const skillMd = await fsPromises.readFile(path.join(subcommand, "SKILL.md"), "utf8");
+          const currentHash = "sha256:" + createHash("sha256").update(skillMd).digest("hex");
+          if (currentHash !== baselineSkillHash) {
+            if (jsonOutput) {
+              printJson({ schemaVersion: 1, ok: false, error: { code: "infrastructure_error", message: "SKILL.md changed during evaluation; refusing to save baseline with mismatched fingerprint", exitCode: 2 } });
+            } else {
+              console.error("SKILL.md changed during evaluation; refusing to save baseline with mismatched fingerprint.");
+            }
+            process.exitCode = 2;
+            return;
+          }
+
+          // Save the baseline using the preflight-captured suite data.
+          const { buildBaseline, saveBaseline: saveBaselineFile } = await import("./trigger/baseline.mjs");
+          const baseline = buildBaseline({
+            report,
+            suite: baselineSuiteData,
+            skillContentHash: baselineSkillHash
+          });
+          if (baseline === null) {
+            // The refusal exit code must match the native run's exit code:
+            // an unresolved/infra run (native exit 2) must not report 1.
+            const refusalExitCode = report.exitCode || 1;
+            if (jsonOutput) {
+              printJson({ schemaVersion: 1, ok: false, error: { code: "validation_error", message: "baseline cannot be saved: non-binary observations, missing runtime versions, or mixed versions are present", exitCode: refusalExitCode } });
+            } else {
+              console.error("Baseline cannot be saved: non-binary observations, missing runtime versions, or mixed versions are present; the existing baseline (if any) was preserved.");
+            }
+            process.exitCode = refusalExitCode;
+            return;
+          }
+          await saveBaselineFile(baselineOutputPath, baseline);
+        }
         if (jsonOutput) {
           printJson(report);
         } else if (!options.quiet) {
@@ -1411,6 +1555,9 @@ async function main() {
       }
       if (options.runtime !== undefined || options.runs !== undefined) {
         throw new UsageError("--runtime and --runs apply to trigger execution, not trigger init.");
+      }
+      if (options.saveBaseline !== undefined || options.baseline !== undefined) {
+        throw new UsageError("--save-baseline and --baseline apply to trigger execution, not trigger init.");
       }
 
       if (positionals.length > 2) {
