@@ -52,6 +52,7 @@ import {
 import { fetchJsonWithTimeout, fetchBytesWithTimeout, validateGitHubFetchUrl } from "./http.mjs";
 import { getLogger, PacksmithError, createPacksmithError } from "./log.mjs";
 import { findTyposquattingMatches } from "./typosquatting.mjs";
+import { parseSkill } from "../core/skill-parser.mjs";
 
 const KNOWN_POLICY_FIELDS = new Set([
   "requireVerified",
@@ -298,6 +299,215 @@ function ensureUniqueIds(items, label) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Manifest v2 normalization boundary (M12, optional opt-in source format).
+// `schemaVersion: 2` declares `skills` as safe relative directory-path
+// strings; each Skill's id and description are derived from its own
+// SKILL.md frontmatter and normalized into the same internal
+// {id, path, description} object shape v1 uses, so the builder, inspector,
+// validator and doctor keep one downstream contract and built bundles stay
+// installer-compatible. v1 (missing schemaVersion or explicit 1) passes
+// through untouched. See docs/manifest-v2.md.
+// ---------------------------------------------------------------------------
+const KNOWN_RELIABILITY_KEYS = new Set(["runs", "minRecall", "minPrecision"]);
+
+function manifestSchemaVersion(manifest) {
+  const version = manifest?.schemaVersion;
+  if (version === undefined || version === 1) {
+    return { version: 1 };
+  }
+  if (version === 2) {
+    return { version: 2 };
+  }
+  // Deliberately no echo of the raw value: it is unvetted manifest content.
+  return { error: "unsupported schemaVersion (expected 1, or omitted, or 2)." };
+}
+
+/** Resolve one path to its real location and require it to stay inside the
+ * pack's REAL boundary (the realpath of the pack root) before anything under
+ * it is read. Returns the real path, or null with a collected issue. A final
+ * symlink/junction component is allowed only when its resolution stays
+ * inside the pack. */
+async function realpathInsidePack(realPackDir, targetPath, issuePrefix, issues, { mustBeFile = false } = {}) {
+  let stats;
+  try {
+    stats = await lstat(targetPath);
+  } catch (error) {
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+      issues.push(`${issuePrefix} ${mustBeFile ? "must include SKILL.md" : "does not exist inside the pack directory"}.`);
+    } else {
+      issues.push(`${issuePrefix} cannot be inspected (${error.code ?? "stat fault"}).`);
+    }
+    return null;
+  }
+  if (mustBeFile && !stats.isFile() && !stats.isSymbolicLink()) {
+    issues.push(`${issuePrefix} SKILL.md is not a file.`);
+    return null;
+  }
+  if (!mustBeFile && !stats.isDirectory() && !stats.isSymbolicLink()) {
+    issues.push(`${issuePrefix} is not a directory.`);
+    return null;
+  }
+  let realPath;
+  try {
+    realPath = await fs.realpath(targetPath);
+  } catch (error) {
+    issues.push(`${issuePrefix} cannot be resolved (${error.code ?? "resolve fault"}).`);
+    return null;
+  }
+  if (!containsPath(realPackDir, realPath)) {
+    issues.push(`${issuePrefix} resolves outside the pack directory (symlink or junction escape refused).`);
+    return null;
+  }
+  return realPath;
+}
+
+/**
+ * The single v1/v2 source-manifest boundary (M12). Returns
+ * `{ manifest, issues }`: empty `issues` means usable. v1 manifests pass
+ * through untouched; v2 manifests are validated (skills as safe relative
+ * directory paths, SKILL.md frontmatter as the authority for id/description,
+ * duplicate paths and derived ids, optional reliability metadata) and
+ * normalized to the internal object shape. Fail-fast callers throw the first
+ * issue; collected validation appends every issue. All reads are gated on
+ * realpath containment of the pack root, the skill directory and SKILL.md,
+ * so a symlink or junction can never make this boundary read outside the
+ * pack. The boundary never writes to disk and never mutates its input.
+ */
+export async function normalizeSourceManifest(manifest, packDir) {
+  const schema = manifestSchemaVersion(manifest);
+  if (schema.error) {
+    return { manifest: null, issues: [`packsmith.json: ${schema.error}`] };
+  }
+  if (schema.version === 1) {
+    return { manifest, issues: [] };
+  }
+
+  const issues = [];
+  const absolutePackDir = path.resolve(packDir);
+  let realPackDir;
+  try {
+    realPackDir = await fs.realpath(absolutePackDir);
+  } catch (error) {
+    return { manifest: null, issues: [`packsmith.json: cannot resolve the pack directory (${error.code ?? "resolve fault"}).`] };
+  }
+
+  if (!Array.isArray(manifest.skills) || manifest.skills.length === 0) {
+    issues.push("packsmith.json: manifest.skills must be a non-empty array of skill directory path strings.");
+    return { manifest: null, issues };
+  }
+
+  if (manifest.prompts !== undefined && !Array.isArray(manifest.prompts)) {
+    issues.push("packsmith.json: manifest.prompts must be an array.");
+  }
+
+  // Optional reliability metadata is validated and preserved as pack metadata
+  // only. It deliberately does NOT change `packsmith ci` verdicts, scoring or
+  // any runner in M11/M12; enforcing it is a later, explicit change
+  // (docs/manifest-v2.md).
+  let reliability;
+  const reliabilityValue = manifest.reliability;
+  if (reliabilityValue !== undefined) {
+    if (reliabilityValue === null || typeof reliabilityValue !== "object" || Array.isArray(reliabilityValue)) {
+      issues.push("packsmith.json: manifest.reliability must be an object.");
+    } else {
+      const unknownKeys = Object.keys(reliabilityValue).filter((key) => !KNOWN_RELIABILITY_KEYS.has(key));
+      if (unknownKeys.length > 0) {
+        issues.push(`packsmith.json: manifest.reliability has unknown key(s): ${unknownKeys.join(", ")}.`);
+      }
+      if (reliabilityValue.runs !== undefined && (!Number.isSafeInteger(reliabilityValue.runs) || reliabilityValue.runs < 1 || reliabilityValue.runs > 20)) {
+        issues.push("packsmith.json: manifest.reliability.runs must be an integer from 1 to 20.");
+      }
+      for (const key of ["minRecall", "minPrecision"]) {
+        const bound = reliabilityValue[key];
+        if (bound !== undefined && (typeof bound !== "number" || !Number.isFinite(bound) || bound < 0 || bound > 1)) {
+          issues.push(`packsmith.json: manifest.reliability.${key} must be a number between 0 and 1.`);
+        }
+      }
+      reliability = reliabilityValue;
+    }
+  }
+
+  const seenPaths = new Set();
+  const seenIds = new Set();
+  const skills = [];
+
+  for (const entry of manifest.skills) {
+    if (typeof entry !== "string" || entry.trim().length === 0) {
+      issues.push("packsmith.json: manifest.skills entries must be non-empty relative directory path strings.");
+      continue;
+    }
+    try {
+      assertSafeRelativeAssetPath(entry, "manifest.skills entry");
+    } catch (error) {
+      issues.push(`packsmith.json: ${error.message}`);
+      continue;
+    }
+    if (seenPaths.has(entry)) {
+      issues.push(`packsmith.json: duplicate skill path "${entry}".`);
+      continue;
+    }
+    seenPaths.add(entry);
+
+    const issuePrefix = `packsmith.json: skill path "${entry}"`;
+    let absoluteSkillDir;
+    try {
+      absoluteSkillDir = resolvePackAssetPath(absolutePackDir, entry, "manifest.skills entry");
+    } catch (error) {
+      issues.push(`packsmith.json: ${error.message}`);
+      continue;
+    }
+    const realSkillDir = await realpathInsidePack(realPackDir, absoluteSkillDir, issuePrefix, issues);
+    if (realSkillDir === null) continue;
+    const realSkillFile = await realpathInsidePack(realPackDir, path.join(realSkillDir, "SKILL.md"), issuePrefix, issues, { mustBeFile: true });
+    if (realSkillFile === null) continue;
+
+    // SKILL.md frontmatter is authoritative for v2 Skill id and description.
+    let parsed;
+    try {
+      parsed = await parseSkill(realSkillDir);
+    } catch (error) {
+      issues.push(`${issuePrefix} cannot be read (${error.code ?? "read fault"}).`);
+      continue;
+    }
+    if (parsed.parse.status !== "ok") {
+      // Sanitized: the parser keeps raw YAML error content local; only the
+      // stable status name reaches the report.
+      issues.push(`${issuePrefix} SKILL.md has no usable frontmatter (${parsed.parse.status}).`);
+      continue;
+    }
+    const { name, description } = parsed.frontmatter ?? {};
+    if (typeof name !== "string" || name.trim().length === 0) {
+      issues.push(`${issuePrefix} SKILL.md frontmatter is missing a usable name.`);
+      continue;
+    }
+    if (typeof description !== "string" || description.trim().length === 0) {
+      issues.push(`${issuePrefix} SKILL.md frontmatter is missing a usable description.`);
+      continue;
+    }
+    if (seenIds.has(name)) {
+      issues.push(`packsmith.json: duplicate skill id "${name}" derived from SKILL.md frontmatter.`);
+      continue;
+    }
+    seenIds.add(name);
+    skills.push({ id: name, path: entry, description });
+  }
+
+  if (issues.length > 0) {
+    return { manifest: null, issues };
+  }
+
+  const normalized = {
+    ...manifest,
+    skills,
+    prompts: Array.isArray(manifest.prompts) ? manifest.prompts : []
+  };
+  if (reliability !== undefined) {
+    normalized.reliability = reliability;
+  }
+  return { manifest: normalized, issues };
+}
+
 async function loadManifest(packDir) {
   const manifestPath = path.join(packDir, "packsmith.json");
 
@@ -305,7 +515,13 @@ async function loadManifest(packDir) {
     throw new Error(`Missing manifest: ${manifestPath}`);
   }
 
-  const manifest = await readJson(manifestPath);
+  const rawManifest = await readJson(manifestPath);
+  const normalized = await normalizeSourceManifest(rawManifest, packDir);
+  if (normalized.issues.length > 0) {
+    throw new Error(normalized.issues[0]);
+  }
+  const manifest = normalized.manifest;
+
   assertSafeManifestName(manifest.name);
   assertString(manifest.description, "manifest.description");
   assertString(manifest.version, "manifest.version");
@@ -711,50 +927,71 @@ async function collectValidationIssues(packDir) {
     }
   }
 
-  attempt("packsmith.json", () => ensureUniqueIds(manifest.skills ?? [], "skill"));
-  attempt("packsmith.json", () => ensureUniqueIds(manifest.prompts ?? [], "prompt"));
-
-  for (const skill of Array.isArray(manifest.skills) ? manifest.skills : []) {
-    const label = `skill "${skill?.id ?? "(missing id)"}" (${skill?.path ?? "missing path"})`;
-    attempt(label, () => assertSafeRelativeAssetPath(skill?.path, "path"));
-
-    let absoluteSkillDir = null;
-    try {
-      absoluteSkillDir = resolvePackAssetPath(absolutePackDir, skill.path, "path");
-    } catch {
-      continue; // Path itself is unsafe; already reported above.
+  // Manifest v2 (M12): v1 passes through unchanged; v2 runs the shared
+  // normalization boundary and collects every issue it reports. When the v2
+  // manifest is clean, the object-level checks below run against the
+  // normalized manifest; when it has issues they are already collected here,
+  // so the object-entry loops are skipped instead of reporting noise.
+  const schema = manifestSchemaVersion(manifest);
+  let effective = null;
+  if (schema.error) {
+    issues.push(`packsmith.json: ${schema.error}`);
+  } else if (schema.version === 2) {
+    const normalized = await normalizeSourceManifest(manifest, absolutePackDir);
+    issues.push(...normalized.issues);
+    if (normalized.issues.length === 0) {
+      effective = normalized.manifest;
     }
-
-    if (!(await pathExists(absoluteSkillDir))) {
-      issues.push(`${label}: missing directory ${relative(absoluteSkillDir)}`);
-      continue;
-    }
-
-    const skillEntryPath = path.join(absoluteSkillDir, "SKILL.md");
-
-    if (!(await pathExists(skillEntryPath))) {
-      issues.push(`${label}: must include SKILL.md`);
-    }
-
-    attempt(label, () => assertString(skill?.description, "description"));
+  } else {
+    effective = manifest;
   }
 
-  for (const prompt of Array.isArray(manifest.prompts) ? manifest.prompts : []) {
-    const label = `prompt "${prompt?.id ?? "(missing id)"}" (${prompt?.path ?? "missing path"})`;
-    attempt(label, () => assertSafeRelativeAssetPath(prompt?.path, "path"));
+  if (effective !== null) {
+    attempt("packsmith.json", () => ensureUniqueIds(effective.skills ?? [], "skill"));
+    attempt("packsmith.json", () => ensureUniqueIds(effective.prompts ?? [], "prompt"));
 
-    let absolutePromptPath = null;
-    try {
-      absolutePromptPath = resolvePackAssetPath(absolutePackDir, prompt.path, "path");
-    } catch {
-      continue; // Path itself is unsafe; already reported above.
+    for (const skill of Array.isArray(effective.skills) ? effective.skills : []) {
+      const label = `skill "${skill?.id ?? "(missing id)"}" (${skill?.path ?? "missing path"})`;
+      attempt(label, () => assertSafeRelativeAssetPath(skill?.path, "path"));
+
+      let absoluteSkillDir = null;
+      try {
+        absoluteSkillDir = resolvePackAssetPath(absolutePackDir, skill.path, "path");
+      } catch {
+        continue; // Path itself is unsafe; already reported above.
+      }
+
+      if (!(await pathExists(absoluteSkillDir))) {
+        issues.push(`${label}: missing directory ${relative(absoluteSkillDir)}`);
+        continue;
+      }
+
+      const skillEntryPath = path.join(absoluteSkillDir, "SKILL.md");
+
+      if (!(await pathExists(skillEntryPath))) {
+        issues.push(`${label}: must include SKILL.md`);
+      }
+
+      attempt(label, () => assertString(skill?.description, "description"));
     }
 
-    if (!(await pathExists(absolutePromptPath))) {
-      issues.push(`${label}: referenced file not found (${relative(absolutePromptPath)})`);
-    }
+    for (const prompt of Array.isArray(effective.prompts) ? effective.prompts : []) {
+      const label = `prompt "${prompt?.id ?? "(missing id)"}" (${prompt?.path ?? "missing path"})`;
+      attempt(label, () => assertSafeRelativeAssetPath(prompt?.path, "path"));
 
-    attempt(label, () => assertString(prompt?.description, "description"));
+      let absolutePromptPath = null;
+      try {
+        absolutePromptPath = resolvePackAssetPath(absolutePackDir, prompt.path, "path");
+      } catch {
+        continue; // Path itself is unsafe; already reported above.
+      }
+
+      if (!(await pathExists(absolutePromptPath))) {
+        issues.push(`${label}: referenced file not found (${relative(absolutePromptPath)})`);
+      }
+
+      attempt(label, () => assertString(prompt?.description, "description"));
+    }
   }
 
   return { manifestPath, manifest, issues };
