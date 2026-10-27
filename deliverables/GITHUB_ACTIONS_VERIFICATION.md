@@ -1,10 +1,16 @@
 # GitHub Actions verification
 
-Status: `BLOCKED_EXTERNAL_DEPENDENCY` for remote execution.
+Date: 2026-10-26 (America/Los_Angeles)
 
-- Workflow reviewed: `.github/workflows/ci.yml` (static push/PR workflow) and `.github/workflows/regression-gate.yml` (manual-only behavioral example).
-- Remote: `https://github.com/chenfei462/packsmith.git`.
-- Run ID/URL: none; no GitHub CLI is installed (`gh: unavailable`) and this environment has no connected GitHub Actions control or authorization.
-- Therefore no runner OS, hosted Node result, install result, or GitHub workflow exit status is claimed.
+Status: `BLOCKED_EXTERNAL_DEPENDENCY`
 
-Local equivalents passed: `npm test`, `npm run smoke:v01`, `npm run smoke:doctor:packaged`, and `node src/cli.mjs doctor examples/research-launchpad`. The manual regression workflow remains intentionally opt-in and refuses to run without a committed suite/baseline and explicit credentials.
+The release commit `741b51a` was tested locally, but the required remote branch could not be created. `git push -u origin feat/v0.2-reliability-gate` returned HTTP 403: `Permission to chenfei462/packsmith.git denied to yuluchen03-dev`.
+
+- Workflow intended: `.github/workflows/ci.yml`
+- Hosted run ID/URL: none
+- Commit SHA: no remote SHA exists
+- Job IDs, runner OS, hosted Node version, step results, and artifacts: unavailable
+- Local equivalent: `npm test` = 554 total, 549 pass, 0 fail, 5 skipped; legacy and CLI smokes passed
+- Workflow changes staged in the closure commit run `npm test`, legacy smoke, doctor JSON, registry/package checks, and npm audit
+
+No hosted PASS is fabricated. A GitHub integration suggestion was made, but no connected GitHub account was available in this run.

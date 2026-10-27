@@ -12,7 +12,7 @@ Only rows classified B/C/D/E are eligible for the dedicated closure commit. Rows
 | B | Packsmith v0.2 implementation | 3 |
 | C | Packsmith v0.2 tests | 3 |
 | D | knowledge-base material | 24 |
-| E | closure / acceptance evidence | 18 |
+| E | closure / acceptance evidence | 19 |
 | F | unrelated / unknown | 7 |
 
 ## Path-by-path classification
@@ -403,3 +403,5 @@ Only rows classified B/C/D/E are eligible for the dedicated closure commit. Rows
 
 
 
+
+| ?? | `deliverables\REMOTE_RELEASE_EVIDENCE.md` | E | include | Remote push result and exact external blocker evidence. |
