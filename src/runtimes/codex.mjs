@@ -194,7 +194,7 @@ function classifyStatementTokens(statementTokens, canonicalTarget, workspaceDir)
     return "no-mention";
   }
 
-  const tool = toolBaseName(statementTokens[0], workspaceDir);
+  const tool = toolBaseName(statementTokens[0], canonicalTarget);
   const rest = statementTokens.slice(1);
 
   if (PS_SHELL_TOKENS.has(tool)) {
@@ -384,7 +384,7 @@ function classifyCodexCommand(command, canonicalTarget, workspaceDir) {
     return "no-mention";
   }
 
-  const tool = toolBaseName(tokens[0], workspaceDir);
+  const tool = toolBaseName(tokens[0], canonicalTarget);
 
   if (PS_SHELL_TOKENS.has(tool)) {
     // Only a TRUSTED wrapper prefix is understood: the shell may carry
