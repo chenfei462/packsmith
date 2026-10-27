@@ -390,6 +390,13 @@ async function readVerifiedSkillFrontmatter(realPackDir, skillFilePath, issuePre
         // Preserve the ordinary missing-file classification when the parent
         // cannot be resolved either.
       }
+      if (!redirectedParent) {
+        try {
+          redirectedParent = (await lstat(path.dirname(skillFilePath))).isSymbolicLink();
+        } catch {
+          // Keep the ordinary missing-file classification.
+        }
+      }
       issues.push(
         redirectedParent
           ? `${issuePrefix} SKILL.md was swapped while being verified (redirected directory refused).`
