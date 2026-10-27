@@ -20,7 +20,7 @@ Not created. Push was rejected by GitHub.
 
 ## Final acceptance SHA
 
-`741b51a` (`chore: close Packsmith v0.2 acceptance`), the closure commit on which the full deterministic suite, smokes, and final-commit runtime sample were run.
+`ac3cf07` (`docs: record v0.2 acceptance evidence`), the evidence-complete local acceptance state. The tested closure code commit is `741b51a`; the follow-up commit contains evidence-only report updates.
 
 ## Working tree status
 
@@ -112,3 +112,4 @@ Cursor/Gemini/OpenCode live runners, automatic Skill optimization, RAG, registry
 ## Final rationale
 
 The local release commit executes and classifies behavior truthfully, with zero knowledge-integrity failures and no false-PASS conversion of unresolved runtime states. The permitted blocked verdict is required until the branch can be pushed and the hosted static workflow runs against the exact release SHA.
+
