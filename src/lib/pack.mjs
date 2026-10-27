@@ -379,7 +379,22 @@ async function readVerifiedSkillFrontmatter(realPackDir, skillFilePath, issuePre
     handle = await fs.open(skillFilePath, "r");
   } catch (error) {
     if (error.code === "ENOENT" || error.code === "ENOTDIR") {
-      issues.push(`${issuePrefix} must include SKILL.md.`);
+      // On Windows, a junction swap can make the open itself report ENOENT
+      // after the verified directory has been redirected. Inspect the parent
+      // boundary before classifying it as an ordinary missing entry.
+      let redirectedParent = false;
+      try {
+        const parentRealPath = await fs.realpath(path.dirname(skillFilePath));
+        redirectedParent = !containsPath(realPackDir, parentRealPath);
+      } catch {
+        // Preserve the ordinary missing-file classification when the parent
+        // cannot be resolved either.
+      }
+      issues.push(
+        redirectedParent
+          ? `${issuePrefix} SKILL.md was swapped while being verified (redirected directory refused).`
+          : `${issuePrefix} must include SKILL.md.`
+      );
     } else if (error.code === "EISDIR") {
       issues.push(`${issuePrefix} SKILL.md is not a file.`);
     } else {
