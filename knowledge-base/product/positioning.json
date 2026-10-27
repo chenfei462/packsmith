@@ -1,0 +1,5 @@
+[
+  {"evidenceId":"PRODUCT-POSITIONING-RELIABILITY","sourceId":"packsmith-product-plan","claim":"A Skill being structurally valid is insufficient if it is undiscoverable, incorrectly selected, or unstable across runtimes.","adopted":"Position Packsmith as an evidence-backed cross-runtime reliability gate.","boundary":"Outcome uplift and automatic optimization remain future work.","verifiedOn":"2026-10-26"},
+  {"evidenceId":"PRODUCT-POSITIONING-EVIDENCE","sourceId":"skill-usage-wild","claim":"Activation and selection are separate evidence stages from final task outcome.","adopted":"Report discovery, selection, activation, execution, and outcome as distinct concepts.","boundary":"Do not infer outcome benefit from trigger success.","verifiedOn":"2026-10-26"},
+  {"evidenceId":"PRODUCT-POSITIONING-PORTABILITY","sourceId":"agentskills-repository","claim":"The folder-based Skill format is designed for portable, version-controlled agent workflows.","adopted":"Keep the CLI-first cross-runtime portability contract.","boundary":"Runtime-specific live support is limited to Claude Code and Codex in v0.2.","verifiedOn":"2026-10-26"}
+]

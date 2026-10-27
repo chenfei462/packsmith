@@ -21,8 +21,15 @@
     "notes": "For project paths OpenCode walks up from the current working directory until it reaches the git worktree, loading matching skills along the way. The Packsmith v0.1 target adapter installs to .opencode/skills (src/lib/targets.mjs), which matches the documented project location."
   },
   "frontmatter": {
-    "required": ["name", "description"],
-    "optional": ["license", "compatibility", "metadata"],
+    "required": [
+      "name",
+      "description"
+    ],
+    "optional": [
+      "license",
+      "compatibility",
+      "metadata"
+    ],
     "name": {
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
       "maxLength": 64,
@@ -40,5 +47,8 @@
       "normative": "MUST",
       "verifiedOn": "2026-10-03"
     }
+  ],
+  "evidenceIds": [
+    "CLAIM-RUNTIME-OPENCODE-STATIC"
   ]
 }

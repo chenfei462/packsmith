@@ -9,13 +9,25 @@
     "layout": "YAML frontmatter followed by Markdown content"
   },
   "frontmatterFields": {
-    "required": ["name", "description"],
-    "optional": ["license", "compatibility", "metadata", "allowed-tools"],
+    "required": [
+      "name",
+      "description"
+    ],
+    "optional": [
+      "license",
+      "compatibility",
+      "metadata",
+      "allowed-tools"
+    ],
     "name": {
       "minLength": 1,
       "maxLength": 64,
       "charset": "lowercase letters, numbers, and hyphens only",
-      "forbidden": ["leading hyphen", "trailing hyphen", "consecutive hyphens"],
+      "forbidden": [
+        "leading hyphen",
+        "trailing hyphen",
+        "consecutive hyphens"
+      ],
       "mustMatchDirectoryName": true
     },
     "description": {
@@ -40,7 +52,11 @@
     "recommendedBodyLines": 500
   },
   "conventions": {
-    "optionalDirectories": ["scripts", "references", "assets"],
+    "optionalDirectories": [
+      "scripts",
+      "references",
+      "assets"
+    ],
     "fileReferences": "relative paths from the skill root, kept one level deep from SKILL.md"
   },
   "evidence": [
@@ -50,5 +66,9 @@
       "normative": "MUST",
       "verifiedOn": "2026-10-03"
     }
+  ],
+  "evidenceIds": [
+    "CLAIM-SPEC-FRONTMATTER",
+    "CLAIM-SPEC-NAME-DIR"
   ]
 }

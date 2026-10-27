@@ -1,0 +1,5 @@
+[
+  {"evidenceId":"PRODUCT-BOUNDARY-REGISTRY","sourceId":"microsoft-apm-docs","claim":"Package managers and registries solve distribution and installation; Packsmith v0.2 consumes packaged Skills but does not become a registry.","adopted":"Keep legacy build/install compatibility and registry interoperability.","boundary":"Do not make registry or package management the reliability-gate core.","verifiedOn":"2026-10-26"},
+  {"evidenceId":"PRODUCT-BOUNDARY-LINT","sourceId":"skills-ref","claim":"Reference validators and generic linters cover structural conformance.","adopted":"Use a small evidence-backed doctor rule set.","boundary":"Do not compete on the largest generic lint catalog.","verifiedOn":"2026-10-26"},
+  {"evidenceId":"PRODUCT-BOUNDARY-EVAL","sourceId":"promptfoo","claim":"General agent-evaluation frameworks provide provider and assertion abstractions.","adopted":"Borrow bounded assertions and baseline comparison ideas.","boundary":"Do not become a universal agent benchmark or generic LLM judge.","verifiedOn":"2026-10-26"}
+]

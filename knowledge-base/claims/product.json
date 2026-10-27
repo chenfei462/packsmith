@@ -1,0 +1,72 @@
+[
+  {
+    "claimId": "CLAIM-PRODUCT-RELIABILITY-MOAT",
+    "claim": "Packsmith v0.2 differentiates on evidence-backed cross-runtime reliability checks rather than package distribution.",
+    "category": "product-boundary",
+    "sourceId": "packsmith-product-plan",
+    "sourceType": "product",
+    "authority": "product",
+    "verifiedOn": "2026-10-26",
+    "appliesTo": {
+      "product": "packsmith-v0.2"
+    },
+    "normative": false,
+    "confidence": "high",
+    "consumers": [
+      "PRODUCT-POSITIONING-RELIABILITY"
+    ]
+  },
+  {
+    "claimId": "CLAIM-PRODUCT-PACKAGING-BOUNDARY",
+    "claim": "Package managers and registries are adjacent ecosystems that Packsmith should interoperate with without making them the v0.2 core.",
+    "category": "competitive-boundary",
+    "sourceId": "microsoft-apm-docs",
+    "sourceType": "product",
+    "authority": "official",
+    "verifiedOn": "2026-10-26",
+    "appliesTo": {
+      "product": "packsmith-v0.2"
+    },
+    "normative": false,
+    "confidence": "high",
+    "consumers": [
+      "PRODUCT-BOUNDARY-REGISTRY"
+    ]
+  },
+  {
+    "claimId": "CLAIM-PRODUCT-NO-OPTIMIZER",
+    "claim": "Automatic Skill optimization is a future boundary; v0.2 validates and compares behavior without rewriting Skills.",
+    "category": "roadmap-boundary",
+    "sourceId": "microsoft-skillopt",
+    "sourceType": "implementation",
+    "authority": "official",
+    "verifiedOn": "2026-10-26",
+    "appliesTo": {
+      "product": "packsmith-v0.2"
+    },
+    "normative": false,
+    "confidence": "high",
+    "consumers": [
+      "PRODUCT-ROADMAP-OUTCOME"
+    ]
+  },
+  {
+    "claimId": "CLAIM-PRODUCT-SECURITY-BASELINE",
+    "claim": "Packsmith security diagnostics flag sensitive-file access, remote shell execution, and destructive commands for human review before trusting a Skill.",
+    "category": "security-policy",
+    "sourceId": "packsmith-security-baseline",
+    "sourceType": "docs",
+    "authority": "product",
+    "verifiedOn": "2026-10-26",
+    "appliesTo": {
+      "product": "packsmith-v0.2"
+    },
+    "normative": false,
+    "confidence": "high",
+    "consumers": [
+      "PS-SEC-001",
+      "PS-SEC-002",
+      "PS-SEC-003"
+    ]
+  }
+]

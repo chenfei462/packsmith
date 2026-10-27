@@ -5,9 +5,59 @@ on:
     branches: ["main"]
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node-version: [20, 22, 24]
+
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run offline test suite
+        run: npm test
+
+      - name: Run legacy smoke
+        run: npm run smoke:v01
+
+      - name: Run doctor reliability gate
+        run: node src/cli.mjs doctor examples/research-launchpad --format json
+
+      - name: Validate registry quality gate
+        run: node src/cli.mjs registry validate --quality-gate 85
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+      - name: Run npm audit
+        run: npm audit --production --audit-level=moderate
+
+      - name: Run site checks
+        run: npm run check --prefix site
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '22'
+
+  verify-generated:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -22,5 +72,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
-        run: npm test
+      - name: Verify generated files are up-to-date
+        run: node scripts/verify-generated.mjs
+

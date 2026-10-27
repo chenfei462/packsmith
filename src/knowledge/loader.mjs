@@ -79,7 +79,9 @@ export const NORMATIVE_KEYWORDS = Object.freeze([
   "SHOULD NOT",
   "RECOMMENDED",
   "MAY",
-  "OPTIONAL"
+  "OPTIONAL",
+  "UNKNOWN",
+  "NOT_VERIFIED"
 ]);
 
 /** Rule ids encode their category: PS-<PREFIX>-NNN. */
@@ -242,7 +244,13 @@ export function validateSource(source) {
     return problems;
   }
 
-  allowedKeys(source, ["id", "title", "sourceType", "url"], ["publisher", "notes"], "source", problems);
+  allowedKeys(
+    source,
+    ["id", "title", "sourceType", "url"],
+    ["publisher", "notes", "authority", "retrievedOn", "verifiedOn", "revision", "license", "status"],
+    "source",
+    problems
+  );
 
   if (!isNonEmptyString(source.id)) {
     problems.push("source id must be a non-empty string");
@@ -297,6 +305,13 @@ export function validateRuntimeRecord(record, { sources = [] } = {}) {
   }
 
   validateEvidenceList(record.evidence, buildEvidenceContext(sources), `runtime "${record.id ?? "?"}"`, problems);
+  if (record.evidenceIds !== undefined) {
+    if (!Array.isArray(record.evidenceIds) || record.evidenceIds.length === 0 || record.evidenceIds.some((id) => !isNonEmptyString(id))) {
+      problems.push(`runtime "${record.id ?? "?"}" evidenceIds must be a non-empty array of strings`);
+    } else if (new Set(record.evidenceIds).size !== record.evidenceIds.length) {
+      problems.push(`runtime "${record.id ?? "?"}" evidenceIds must be unique`);
+    }
+  }
 
   return problems;
 }
@@ -314,12 +329,12 @@ export function validateRule(rule, { sources = [], runtimes = [] } = {}) {
     return problems;
   }
 
-  exactKeys(
-    rule,
-    ["id", "title", "category", "severity", "appliesTo", "check", "message", "fix", "evidence"],
-    `rule ${isNonEmptyString(rule.id) ? `"${rule.id}"` : "(missing id)"}`,
-    problems
-  );
+  const ruleKeys = ["id", "title", "category", "severity", "appliesTo", "check", "message", "fix", "evidence"];
+  const ruleKeysWithClaims = [...ruleKeys, "evidenceIds"];
+  const ruleLabel = `rule ${isNonEmptyString(rule.id) ? `"${rule.id}"` : "(missing id)"}`;
+  if (!hasExactFields(rule, ruleKeys) && !hasExactFields(rule, ruleKeysWithClaims)) {
+    problems.push(`${ruleLabel} must have exactly the fields ${ruleKeys.join(", ")} (optional evidenceIds is allowed)`);
+  }
 
   const label = `rule "${isNonEmptyString(rule.id) ? rule.id : "(missing id)"}"`;
 
@@ -392,6 +407,13 @@ export function validateRule(rule, { sources = [], runtimes = [] } = {}) {
   }
 
   validateEvidenceList(rule.evidence, buildEvidenceContext(sources), label, problems);
+  if (rule.evidenceIds !== undefined) {
+    if (!Array.isArray(rule.evidenceIds) || rule.evidenceIds.length === 0 || rule.evidenceIds.some((id) => !isNonEmptyString(id))) {
+      problems.push(`${label} evidenceIds must be a non-empty array of strings`);
+    } else if (new Set(rule.evidenceIds).size !== rule.evidenceIds.length) {
+      problems.push(`${label} evidenceIds must be unique`);
+    }
+  }
 
   return problems;
 }

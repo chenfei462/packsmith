@@ -1,0 +1,97 @@
+[
+  {
+    "claimId": "CLAIM-RUNTIME-CODEX-DISCOVERY",
+    "claim": "Codex discovers repository and user Skills from documented .agents/skills locations and can expose Skill paths before activation.",
+    "category": "runtime-capability",
+    "sourceId": "codex-docs",
+    "sourceType": "docs",
+    "authority": "official",
+    "verifiedOn": "2026-10-04",
+    "appliesTo": {
+      "runtime": [
+        "codex"
+      ]
+    },
+    "normative": "MAY",
+    "confidence": "high",
+    "consumers": [
+      "codex"
+    ]
+  },
+  {
+    "claimId": "CLAIM-RUNTIME-CLAUDE-HEADLESS",
+    "claim": "Claude Code supports headless structured output and Skill tool evidence suitable for activation observation.",
+    "category": "runtime-capability",
+    "sourceId": "claude-code-docs",
+    "sourceType": "docs",
+    "authority": "official",
+    "verifiedOn": "2026-10-04",
+    "appliesTo": {
+      "runtime": [
+        "claude-code"
+      ]
+    },
+    "normative": "MAY",
+    "confidence": "high",
+    "consumers": [
+      "claude-code"
+    ]
+  },
+  {
+    "claimId": "CLAIM-RUNTIME-CURSOR-STATIC",
+    "claim": "Cursor documents project and user Skill discovery, but Packsmith v0.2 does not claim a live Cursor runner.",
+    "category": "runtime-boundary",
+    "sourceId": "cursor-docs",
+    "sourceType": "docs",
+    "authority": "official",
+    "verifiedOn": "2026-10-04",
+    "appliesTo": {
+      "runtime": [
+        "cursor"
+      ]
+    },
+    "normative": "UNKNOWN",
+    "confidence": "high",
+    "consumers": [
+      "cursor"
+    ]
+  },
+  {
+    "claimId": "CLAIM-RUNTIME-GEMINI-STATIC",
+    "claim": "Gemini CLI documents workspace and user Skill discovery, while Packsmith v0.2 keeps Gemini live execution static-only.",
+    "category": "runtime-boundary",
+    "sourceId": "gemini-cli-docs",
+    "sourceType": "docs",
+    "authority": "official",
+    "verifiedOn": "2026-10-04",
+    "appliesTo": {
+      "runtime": [
+        "gemini-cli"
+      ]
+    },
+    "normative": "UNKNOWN",
+    "confidence": "high",
+    "consumers": [
+      "gemini-cli"
+    ]
+  },
+  {
+    "claimId": "CLAIM-RUNTIME-OPENCODE-STATIC",
+    "claim": "OpenCode documents project and global Skill paths, while Packsmith v0.2 keeps OpenCode live execution static-only.",
+    "category": "runtime-boundary",
+    "sourceId": "opencode-docs",
+    "sourceType": "docs",
+    "authority": "official",
+    "verifiedOn": "2026-10-04",
+    "appliesTo": {
+      "runtime": [
+        "opencode"
+      ]
+    },
+    "normative": "UNKNOWN",
+    "confidence": "high",
+    "consumers": [
+      "opencode"
+    ]
+  }
+]

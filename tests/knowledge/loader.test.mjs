@@ -45,6 +45,18 @@ const PLAN_RULE_IDS = {
 const EXPECTED_JSON_FILES = new Set([
   "manifest.json",
   "sources/sources.json",
+  "sources/extended.json",
+  "evidence/manifest.json",
+  "claims/spec.json",
+  "claims/runtime.json",
+  "claims/research.json",
+  "claims/product.json",
+  "research/findings.json",
+  "implementations/profiles.json",
+  "incidents/incidents.json",
+  "product/competitive-boundaries.json",
+  "product/positioning.json",
+  "product/roadmap-evidence.json",
   ...RUNTIME_IDS.map((id) => `runtimes/${id}.json`),
   ...Object.keys(RULE_FILES).map((category) => `rules/${RULE_FILES[category]}`)
 ]);

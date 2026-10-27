@@ -20,7 +20,10 @@
     "notes": "Current Codex documentation lists .agents/skills as the skill location. The Packsmith v0.1 install path ~/.codex/skills (src/lib/targets.mjs) predates this layout; Codex scans .agents/skills in every directory from the working directory up to the repository root and follows symlinked skill folders. Skill state can be disabled without deletion via [[skills.config]] entries (enabled = false) in ~/.codex/config.toml."
   },
   "frontmatter": {
-    "required": ["name", "description"],
+    "required": [
+      "name",
+      "description"
+    ],
     "notes": "SKILL.md must include name and description. Optional interface metadata (display_name, short_description, icons, brand_color, default_prompt), a policy.allow_implicit_invocation flag, and MCP tool dependencies live in agents/openai.yaml, not in SKILL.md frontmatter."
   },
   "evidence": [
@@ -30,5 +33,8 @@
       "normative": "MUST",
       "verifiedOn": "2026-10-03"
     }
+  ],
+  "evidenceIds": [
+    "CLAIM-RUNTIME-CODEX-DISCOVERY"
   ]
 }

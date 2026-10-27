@@ -4,13 +4,27 @@
     "title": "non-standard frontmatter",
     "category": "compatibility",
     "severity": "info",
-    "appliesTo": { "runtimes": ["all"] },
+    "appliesTo": {
+      "runtimes": [
+        "all"
+      ]
+    },
     "check": {
       "type": "frontmatter-standard-keys",
-      "standardFields": ["name", "description", "license", "compatibility", "metadata", "allowed-tools"]
+      "standardFields": [
+        "name",
+        "description",
+        "license",
+        "compatibility",
+        "metadata",
+        "allowed-tools"
+      ]
     },
     "message": "SKILL.md frontmatter contains keys outside the standard field set; runtimes are free to ignore or reject unknown keys, so move custom data under the metadata mapping.",
-    "fix": { "available": false, "safe": false },
+    "fix": {
+      "available": false,
+      "safe": false
+    },
     "evidence": [
       {
         "source": "agent-skills-spec",
@@ -18,6 +32,9 @@
         "normative": "SHOULD",
         "verifiedOn": "2026-10-03"
       }
+    ],
+    "evidenceIds": [
+      "CLAIM-SPEC-FRONTMATTER"
     ]
   },
   {
@@ -25,16 +42,31 @@
     "title": "runtime-specific metadata reduces portability",
     "category": "compatibility",
     "severity": "warning",
-    "appliesTo": { "runtimes": ["all"] },
+    "appliesTo": {
+      "runtimes": [
+        "all"
+      ]
+    },
     "check": {
       "type": "frontmatter-runtime-specific-keys",
       "knownRuntimeKeys": {
-        "claude-code": ["disable-model-invocation"],
-        "cursor": ["paths", "globs", "disable-model-invocation", "icon", "color"]
+        "claude-code": [
+          "disable-model-invocation"
+        ],
+        "cursor": [
+          "paths",
+          "globs",
+          "disable-model-invocation",
+          "icon",
+          "color"
+        ]
       }
     },
     "message": "Frontmatter carries runtime-specific keys that other runtimes ignore or reject, reducing portability; prefer the standard fields, or move optional metadata to the location the target runtime documents.",
-    "fix": { "available": false, "safe": false },
+    "fix": {
+      "available": false,
+      "safe": false
+    },
     "evidence": [
       {
         "source": "agent-skills-spec",
@@ -60,6 +92,9 @@
         "normative": "MAY",
         "verifiedOn": "2026-10-03"
       }
+    ],
+    "evidenceIds": [
+      "CLAIM-SPEC-FRONTMATTER"
     ]
   }
 ]

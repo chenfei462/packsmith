@@ -21,7 +21,10 @@
     "notes": "Discovery precedence is lowest to highest: built-in skills, extension skills, user skills, then workspace skills. .agents/skills is documented as a compatible alternative to .gemini/skills, aligned with the agentskills.io standard. The Packsmith v0.1 target adapter still marks this runtime as planned (src/lib/targets.mjs) pending install-convention confirmation."
   },
   "frontmatter": {
-    "required": ["name", "description"],
+    "required": [
+      "name",
+      "description"
+    ],
     "notes": "The docs name two fields: name (a unique identifier that should match the directory name) and description ('CRITICAL. This is how Gemini decides when to use the skill.')."
   },
   "evidence": [
@@ -31,5 +34,8 @@
       "normative": "MUST",
       "verifiedOn": "2026-10-03"
     }
+  ],
+  "evidenceIds": [
+    "CLAIM-RUNTIME-GEMINI-STATIC"
   ]
 }

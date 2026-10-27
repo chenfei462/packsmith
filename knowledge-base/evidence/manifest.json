@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "name": "packsmith-evidence-graph",
+  "updatedOn": "2026-10-26",
+  "knowledgeBaseManifest": "../manifest.json",
+  "baseSourceFile": "../sources/sources.json",
+  "sourceFile": "../sources/extended.json",
+  "claimFiles": [
+    "../claims/spec.json",
+    "../claims/runtime.json",
+    "../claims/research.json",
+    "../claims/product.json"
+  ],
+  "researchFiles": [
+    "../research/findings.json"
+  ],
+  "implementationFiles": [
+    "../implementations/profiles.json"
+  ],
+  "incidentFiles": [
+    "../incidents/incidents.json"
+  ],
+  "productFiles": [
+    "../product/competitive-boundaries.json",
+    "../product/positioning.json",
+    "../product/roadmap-evidence.json"
+  ],
+  "counts": {
+    "sources": 28,
+    "runtimes": 6,
+    "rules": 20,
+    "claims": 17,
+    "research": 5,
+    "implementations": 11,
+    "incidents": 10,
+    "product": 9
+  }
+}
