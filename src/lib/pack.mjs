@@ -406,7 +406,11 @@ async function readVerifiedSkillFrontmatter(realPackDir, skillFilePath, issuePre
     try {
       realFilePath = await fs.realpath(skillFilePath);
     } catch (error) {
-      issues.push(`${issuePrefix} SKILL.md cannot be resolved (${error.code ?? "resolve fault"}).`);
+      if (error.code === "ENOTEMPTY" || error.code === "ELOOP") {
+        issues.push(`${issuePrefix} SKILL.md was swapped while being verified (redirected directory refused).`);
+      } else {
+        issues.push(`${issuePrefix} SKILL.md cannot be resolved (${error.code ?? "resolve fault"}).`);
+      }
       return null;
     }
     if (!containsPath(realPackDir, realFilePath)) {
