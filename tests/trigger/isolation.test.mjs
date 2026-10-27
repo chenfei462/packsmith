@@ -444,7 +444,10 @@ async function rewriteFixtureToWorkspace(fixturePath, workspaceDir) {
     .map((line) => {
       const event = JSON.parse(line);
       if (event.item?.command !== undefined) {
-        event.item.command = event.item.command.split("C:\\ws").join(workspaceDir);
+        event.item.command = event.item.command.replaceAll(
+          "C:\\ws\\.agents\\skills\\review-pr\\SKILL.md",
+          path.join(workspaceDir, ".agents", "skills", "review-pr", "SKILL.md")
+        );
       }
       return JSON.stringify(event);
     })

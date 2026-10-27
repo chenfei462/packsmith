@@ -1,0 +1,218 @@
+{
+  "senior-code-reviewer": {
+    "name": "시니어 코드 리뷰어",
+    "description": "변경 사항이 배포되기 전에 버그, 회귀, 누락된 테스트, 위험한 변경, 불명확한 동작을 찾아냅니다."
+  },
+  "security-reviewer": {
+    "name": "보안 리뷰어",
+    "description": "시크릿, 안전하지 않은 명령, 인젝션 위험, 의존성 노출, 권한 확대를 검사합니다."
+  },
+  "test-writer": {
+    "name": "테스트 작성기",
+    "description": "최근 코드 변경, 엣지 케이스, 회귀에 대한 집중적인 테스트를 추가합니다. 테스트 스위트를 비대하게 만들지 않습니다."
+  },
+  "refactor-planner": {
+    "name": "리팩토링 플래너",
+    "description": "복잡한 코드 영역을 경계, 테스트, 롤백 포인트가 포함된 안전한 단계별 리팩토링 계획으로 변환합니다."
+  },
+  "bug-hunter": {
+    "name": "버그 헌터",
+    "description": "수정을 제안하기 전에 버그를 재현, 격리, 설명합니다."
+  },
+  "performance-profiler": {
+    "name": "성능 프로파일러",
+    "description": "명확한 성능 병목 현상을 식별하고 측정 가능한 개선 방안을 제안합니다."
+  },
+  "repo-cartographer": {
+    "name": "레포지토리 카토그래퍼",
+    "description": "낯선 레포지토리의 아키텍처, 진입점, 모듈 경계, 데이터 흐름, 고위험 영역을 매핑합니다."
+  },
+  "onboarding-guide": {
+    "name": "온보딩 가이드",
+    "description": "실제 명령어와 기여 랜드마크를 사용하여 처음 기여하는 사람에게 새 레포지토리를 설명합니다."
+  },
+  "dependency-auditor": {
+    "name": "의존성 감사기",
+    "description": "의존성 사용 현황, 위험, 업데이트 압력, 불필요한 패키지를 검토합니다."
+  },
+  "api-surface-mapper": {
+    "name": "API 서피스 매퍼",
+    "description": "공개 API, 내부 API, 계약, 호환성 위험을 문서화합니다."
+  },
+  "database-schema-reader": {
+    "name": "데이터베이스 스키마 리더",
+    "description": "스키마 구조, 마이그레이션, 관계, 인덱스, 위험한 데이터 변경을 설명합니다."
+  },
+  "legacy-code-translator": {
+    "name": "레거시 코드 번역기",
+    "description": "동작을 변경하지 않고 오래되거나 불명확한 코드를 현대적이고 실행 가능한 언어로 설명합니다."
+  },
+  "launch-researcher": {
+    "name": "런치 리서처",
+    "description": "시장 신호를 포지셔닝, 웨지, 타겟 오디언스, 런치 권장 사항으로 변환합니다."
+  },
+  "github-trending-analyst": {
+    "name": "GitHub 트렌드 분석가",
+    "description": "GitHub 트렌드를 연구하고 레포지토리 모멘텀을 제품 기회로 변환합니다."
+  },
+  "competitor-breakdown": {
+    "name": "경쟁사 분석",
+    "description": "프로젝트를 경쟁사와 비교하고 실질적인 차별화 포인트를 식별합니다."
+  },
+  "readme-converter": {
+    "name": "README 변환기",
+    "description": "기술적인 README를 실제 명령어에 기반한 사용자 대상 랜딩 README로 변환합니다."
+  },
+  "roadmap-writer": {
+    "name": "로드맵 작성기",
+    "description": "전략 노트를 완료, 다음 단계, 연기된 작업이 포함된 단계별 로드맵 문서로 변환합니다."
+  },
+  "issue-triage": {
+    "name": "이슈 트리아지",
+    "description": "심각도, 작업량, 제품 가치, 릴리스 관련성으로 이슈를 그룹화합니다."
+  },
+  "docs-maintainer": {
+    "name": "문서 유지보수기",
+    "description": "README, 변경 로그, 예제, 명령어 문서를 구현과 동기화합니다."
+  },
+  "changelog-writer": {
+    "name": "변경 로그 작성기",
+    "description": "커밋, 차이점, 릴리스 노트를 명확한 사용자 대상 변경 로그 항목으로 변환합니다."
+  },
+  "tutorial-writer": {
+    "name": "튜토리얼 작성기",
+    "description": "기존 예제와 검증된 명령어로 초보자 친화적인 튜토리얼을 작성합니다."
+  },
+  "api-docs-writer": {
+    "name": "API 문서 작성기",
+    "description": "소스 코드, 테스트, 명령어 동작, 예제에서 API 레퍼런스 문서를 생성합니다."
+  },
+  "contributing-guide-writer": {
+    "name": "기여 가이드 작성기",
+    "description": "설정, 테스트, 스타일, 풀 리퀘스트, 리뷰 기대치에 대한 기여자 지침을 작성합니다."
+  },
+  "release-checklist": {
+    "name": "릴리스 체크리스트",
+    "description": "npm, GitHub, 문서, 테스트, 스모크 체크를 위한 릴리스 준비 체크리스트를 생성합니다."
+  },
+  "prompt-debugger": {
+    "name": "프롬프트 디버거",
+    "description": "모호한 프롬프트, 충돌하는 지시, 누락된 컨텍스트, 약한 출력 계약을 진단합니다."
+  },
+  "skill-author": {
+    "name": "스킬 작성기",
+    "description": "명확한 트리거, 워크플로우, 예제, 출력 형식을 갖춘 새로운 에이전트 스킬 작성을 지원합니다."
+  },
+  "context-budgeter": {
+    "name": "컨텍스트 예산 관리기",
+    "description": "중요한 동작과 출력 계약을 유지하면서 긴 에이전트 지시를 줄입니다."
+  },
+  "multi-agent-router": {
+    "name": "멀티 에이전트 라우터",
+    "description": "컨텍스트와 위험에 기반하여 어떤 로컬 에이전트, 스킬, 워크플로우가 작업을 처리할지 선택합니다."
+  },
+  "workflow-packager": {
+    "name": "워크플로우 패키저",
+    "description": "반복적인 수동 워크플로우를 재사용 가능한 Packsmith 팩으로 변환합니다."
+  },
+  "agent-memory-curator": {
+    "name": "에이전트 메모리 큐레이터",
+    "description": "노이즈가 많은 히스토리를 보존하지 않고 에이전트 세션 간 재사용을 위한 지속적인 프로젝트 컨텍스트를 요약합니다."
+  },
+  "accessibility-auditor": {
+    "name": "접근성 감사자",
+    "description": "UI 변경의 키보드 흐름, 레이블, 대비, 포커스, 보조 기술 기본 사항을 검토합니다."
+  },
+  "api-contract-reviewer": {
+    "name": "API 계약 검토자",
+    "description": "API 변경의 호환성, 검증, 오류 처리, 마이그레이션 위험을 검토합니다."
+  },
+  "architecture-decision-recorder": {
+    "name": "아키텍처 결정 기록기",
+    "description": "배경, 결정, 대안, 영향을 담은 ADR 초안을 작성합니다."
+  },
+  "bug-reproducer": {
+    "name": "버그 재현기",
+    "description": "모호한 버그 보고를 최소 재현 사례와 회귀 테스트로 바꿉니다."
+  },
+  "changelog-curator": {
+    "name": "변경 로그 관리자",
+    "description": "변경 사항을 유용한 릴리스 범주로 묶어 변경 로그를 관리합니다."
+  },
+  "ci-failure-triage": {
+    "name": "CI 실패 분류",
+    "description": "실패한 CI 로그를 근본 원인 가설과 다음 검증 단계로 정리합니다."
+  },
+  "codebase-modernizer": {
+    "name": "코드베이스 현대화",
+    "description": "재작성으로 번지지 않도록 점진적인 현대화 작업을 계획합니다."
+  },
+  "data-pipeline-checker": {
+    "name": "데이터 파이프라인 검사기",
+    "description": "데이터 파이프라인 변경의 스키마 드리프트, 멱등성, 백필, 관측 가능성을 검토합니다."
+  },
+  "database-index-advisor": {
+    "name": "데이터베이스 인덱스 조언자",
+    "description": "쿼리 패턴을 검토하고 측정 계획이 있는 신중한 인덱스 변경을 제안합니다."
+  },
+  "dependency-risk-auditor": {
+    "name": "의존성 위험 감사자",
+    "description": "새 의존성의 유지보수성, 라이선스, 보안, 번들 위험을 검토합니다."
+  },
+  "dependency-upgrader": {
+    "name": "의존성 업그레이더",
+    "description": "안전한 의존성 업그레이드 묶음, 위험 점검, 검증 명령을 계획합니다."
+  },
+  "frontend-state-debugger": {
+    "name": "프런트엔드 상태 디버거",
+    "description": "이벤트, 파생 상태, 렌더링, 지속성을 추적해 UI 상태 문제를 디버깅합니다."
+  },
+  "incident-postmortem": {
+    "name": "장애 회고 작성기",
+    "description": "비난 없는 장애 타임라인, 영향 요약, 원인, 후속 조치를 작성합니다."
+  },
+  "migration-planner": {
+    "name": "마이그레이션 플래너",
+    "description": "위험한 코드, 데이터, API 마이그레이션을 점검 가능한 되돌림 단계로 나눕니다."
+  },
+  "onboarding-guide-writer": {
+    "name": "온보딩 가이드 작성기",
+    "description": "실제 저장소 명령과 구조를 바탕으로 빠른 시작 기여자 가이드를 만듭니다."
+  },
+  "pr-description-writer": {
+    "name": "PR 설명 작성기",
+    "description": "테스트 증거와 리뷰어 맥락을 담은 간결한 PR 설명을 작성합니다."
+  },
+  "product-requirements-shaper": {
+    "name": "제품 요구사항 정리기",
+    "description": "거친 기능 아이디어를 범위 있는 요구사항, 결정, 인수 점검으로 다듬습니다."
+  },
+  "prompt-quality-auditor": {
+    "name": "프롬프트 품질 감사자",
+    "description": "에이전트 프롬프트와 스킬의 트리거, 범위, 출력 형식, 모순 위험을 검토합니다."
+  },
+  "refactor-guide": {
+    "name": "리팩터링 가이드",
+    "description": "경계, 테스트, 리뷰 위험을 중심으로 작은 동작 보존 리팩터링을 계획합니다."
+  },
+  "release-note-writer": {
+    "name": "릴리스 노트 작성기",
+    "description": "병합된 변경 사항을 사용자와 유지보수자가 읽기 쉬운 릴리스 노트로 바꿉니다."
+  },
+  "security-pass": {
+    "name": "보안 점검기",
+    "description": "비밀 값, 위험한 명령, 안전하지 않은 스크립트, 의존성 문제, 위험한 자동화를 점검합니다."
+  },
+  "terraform-reviewer": {
+    "name": "Terraform 검토자",
+    "description": "Terraform 변경의 드리프트 위험, 권한, 상태, 배포 안전성을 검토합니다."
+  },
+  "test-fixture-designer": {
+    "name": "테스트 픽스처 설계자",
+    "description": "테스트를 더 명확하게 만들고 과적합을 피하는 작고 견고한 픽스처를 설계합니다."
+  },
+  "risk-probe": {
+    "name": "위험 프로브",
+    "description": "--allow-risk 및 --allow-scripts 설치 게이트를 검증하기 위한 고위험 프로브 팩."
+  }
+}

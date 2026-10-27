@@ -285,7 +285,7 @@ export async function resolveWindowsShimEntry(shimPath) {
     const match = pattern.exec(content);
 
     if (match) {
-      const entry = path.resolve(path.dirname(shimPath), match[1]);
+      const entry = path.resolve(path.dirname(shimPath), ...match[1].split(/[\\/]/));
       return { launcher: entry.toLowerCase().endsWith(".exe") ? "exe" : "node", entry };
     }
   }
@@ -307,7 +307,7 @@ export async function resolveWindowsShimEntry(shimPath) {
 export async function resolveLaunchEntry(context) {
   const binaryPath = context.binaryPath;
 
-  if (process.platform === "win32" && binaryPath.toLowerCase().endsWith(".cmd")) {
+  if (binaryPath.toLowerCase().endsWith(".cmd")) {
     const resolved = await resolveWindowsShimEntry(binaryPath);
 
     if (resolved.launcher === "node") {
@@ -463,6 +463,10 @@ export async function runLiveTriggerCase(adapter, { skill, prompt, context, buil
         finish({ kind: "spawn-error", stdout: Buffer.alloc(0), stderr: Buffer.alloc(0), spawnError: error, timedOut: false });
         return;
       }
+
+      child.on("error", (error) => {
+        finish({ kind: "spawn-error", stdout: Buffer.concat(stdoutChunks), stderr: Buffer.concat(stderrChunks), spawnError: error, timedOut: false });
+      });
 
       // Soft deadline: terminate the whole process tree. If the kill FAILS
       // it is retried once and, failing that, honestly reported — the run

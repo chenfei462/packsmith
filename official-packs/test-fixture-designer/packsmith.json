@@ -1,0 +1,48 @@
+{
+  "name": "test-fixture-designer",
+  "description": "Designs small durable fixtures that make tests clearer without overfitting.",
+  "version": "0.1.0",
+  "targets": [
+    "claude-code",
+    "codex",
+    "opencode",
+    "cursor",
+    "trae"
+  ],
+  "targetSupport": {
+    "claude-code": "Installs as a Claude Code skill directory with SKILL.md as the entry point.",
+    "codex": "Installs as a Codex skill pack with a generated AGENTS.md bridge.",
+    "opencode": "Installs as a Packsmith OpenCode skill directory with PACKSMITH.md bridge notes.",
+    "cursor": "Installs as a Cursor rule pack with a generated .mdc rule and copied Packsmith assets.",
+    "trae": "Installs as a local TRAE Skill directory with a generated SKILL.md bridge and copied Packsmith assets."
+  },
+  "permissions": {
+    "shell": "optional",
+    "filesystem": "required",
+    "network": "none",
+    "browser": "none"
+  },
+  "skills": [
+    {
+      "id": "test-fixture-design",
+      "path": "skills/test-fixture-design",
+      "description": "Designs small durable fixtures that make tests clearer without overfitting."
+    }
+  ],
+  "prompts": [
+    {
+      "id": "design-test-fixtures",
+      "path": "prompts/design-test-fixtures.md",
+      "description": "Run the Test Fixture Designer workflow."
+    }
+  ],
+  "category": "code-quality",
+  "tags": [
+    "testing",
+    "fixtures",
+    "quality",
+    "design"
+  ],
+  "license": "MIT",
+  "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/test-fixture-designer"
+}

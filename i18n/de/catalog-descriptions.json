@@ -1,0 +1,218 @@
+{
+  "senior-code-reviewer": {
+    "name": "Senior Code-Reviewer",
+    "description": "Findet Bugs, Regressionen, fehlende Tests, riskante Änderungen und unklares Verhalten bevor eine Änderung ausgeliefert wird."
+  },
+  "security-reviewer": {
+    "name": "Sicherheits-Reviewer",
+    "description": "Prüft Secrets, unsichere Befehle, Injection-Risiken, Dependency-Exposition und Berechtigungserweiterung."
+  },
+  "test-writer": {
+    "name": "Test-Schreiber",
+    "description": "Fügt fokussierte Tests für aktuelle Code-Änderungen, Grenzfälle und Regressionen hinzu, ohne die Test-Suite aufzublähen."
+  },
+  "refactor-planner": {
+    "name": "Refactoring-Planer",
+    "description": "Verwandelt unordentliche Code-Bereiche in sichere, stufenweise Refactoring-Pläne mit Grenzen, Tests und Rollback-Punkten."
+  },
+  "bug-hunter": {
+    "name": "Bug-Jäger",
+    "description": "Reproduziert, isoliert und erklärt Bugs bevor Fixes vorgeschlagen werden."
+  },
+  "performance-profiler": {
+    "name": "Performance-Profiler",
+    "description": "Identifiziert offensichtliche Performance-Engpässe und schlägt messbare Verbesserungen vor."
+  },
+  "repo-cartographer": {
+    "name": "Repository-Kartograph",
+    "description": "Kartiert Architektur, Einstiegspunkte, Modulgrenzen, Datenfluss und Hochrisiko-Bereiche in unbekannten Repositories."
+  },
+  "onboarding-guide": {
+    "name": "Onboarding-Leitfaden",
+    "description": "Erklärt ein neues Repository für Erstbeitragende mit echten Befehlen und Beitrags-Orientierungspunkten."
+  },
+  "dependency-auditor": {
+    "name": "Dependency-Auditor",
+    "description": "Überprüft Dependency-Nutzung, Risiken, Update-Druck und unnötige Pakete."
+  },
+  "api-surface-mapper": {
+    "name": "API-Oberflächen-Mapper",
+    "description": "Dokumentiert öffentliche APIs, interne APIs, Verträge und Kompatibilitätsrisiken."
+  },
+  "database-schema-reader": {
+    "name": "Datenbank-Schema-Leser",
+    "description": "Erklärt Schema-Struktur, Migrationen, Beziehungen, Indizes und riskante Datenänderungen."
+  },
+  "legacy-code-translator": {
+    "name": "Legacy-Code-Übersetzer",
+    "description": "Erklärt alten oder unklaren Code in moderner, umsetzbarer Sprache ohne das Verhalten zu ändern."
+  },
+  "launch-researcher": {
+    "name": "Launch-Forscher",
+    "description": "Wandelt Marktsignale in Positionierung, Einstiegspunkt, Zielgruppe und Launch-Empfehlungen um."
+  },
+  "github-trending-analyst": {
+    "name": "GitHub-Trend-Analyst",
+    "description": "Untersucht GitHub-Trends und wandelt Repository-Momentum in Produktchancen um."
+  },
+  "competitor-breakdown": {
+    "name": "Wettbewerbsanalyse",
+    "description": "Vergleicht ein Projekt mit Wettbewerbern und identifiziert praktische Differenzierung."
+  },
+  "readme-converter": {
+    "name": "README-Konverter",
+    "description": "Wandelt technische READMEs in benutzerorientierte Landing-READMEs um, basierend auf echten Befehlen."
+  },
+  "roadmap-writer": {
+    "name": "Roadmap-Schreiber",
+    "description": "Wandelt Strategie-Notizen in phasenweise Roadmap-Dokumente mit erledigter, nächster und aufgeschobener Arbeit um."
+  },
+  "issue-triage": {
+    "name": "Issue-Triage",
+    "description": "Gruppiert Issues nach Schweregrad, Aufwand, Produktwert und Release-Relevanz."
+  },
+  "docs-maintainer": {
+    "name": "Dokumentations-Maintainer",
+    "description": "Hält README, Changelog, Beispiele und Befehlsdokumentation mit der Implementierung synchron."
+  },
+  "changelog-writer": {
+    "name": "Changelog-Schreiber",
+    "description": "Wandelt Commits, Diffs oder Release-Notes in klare, benutzerorientierte Changelog-Einträge um."
+  },
+  "tutorial-writer": {
+    "name": "Tutorial-Schreiber",
+    "description": "Erstellt anfängerfreundliche Tutorials aus vorhandenen Beispielen und verifizierten Befehlen."
+  },
+  "api-docs-writer": {
+    "name": "API-Dokumentations-Schreiber",
+    "description": "Erstellt API-Referenzdokumentation aus Quellcode, Tests, Befehlsverhalten und Beispielen."
+  },
+  "contributing-guide-writer": {
+    "name": "Contributing-Guide-Schreiber",
+    "description": "Erstellt Beitragsanleitungen für Setup, Tests, Stil, Pull Requests und Review-Erwartungen."
+  },
+  "release-checklist": {
+    "name": "Release-Checkliste",
+    "description": "Erstellt Release-Bereitschafts-Checklisten für npm, GitHub, Docs, Tests und Smoke-Checks."
+  },
+  "prompt-debugger": {
+    "name": "Prompt-Debugger",
+    "description": "Diagnostiziert vage Prompts, widersprüchliche Anweisungen, fehlenden Kontext und schwache Ausgabeverträge."
+  },
+  "skill-author": {
+    "name": "Skill-Autor",
+    "description": "Hilft beim Schreiben neuer Agent-Skills mit klaren Triggern, Workflows, Beispielen und Ausgabeformaten."
+  },
+  "context-budgeter": {
+    "name": "Kontext-Budget-Manager",
+    "description": "Reduziert lange Agent-Anweisungen bei Beibehaltung wichtigen Verhaltens und Ausgabeverträgen."
+  },
+  "multi-agent-router": {
+    "name": "Multi-Agent-Router",
+    "description": "Wählt basierend auf Kontext und Risiko, welcher lokale Agent, Skill oder Workflow eine Aufgabe bearbeiten soll."
+  },
+  "workflow-packager": {
+    "name": "Workflow-Paketierer",
+    "description": "Wandelt wiederholte manuelle Workflows in wiederverwendbare Packsmith-Packs um."
+  },
+  "agent-memory-curator": {
+    "name": "Agent-Memory-Kurator",
+    "description": "Fasst dauerhaften Projektkontext für die Wiederverwendung über Agent-Sitzungen zusammen, ohne verrauschte Historie zu bewahren."
+  },
+  "accessibility-auditor": {
+    "name": "Barrierefreiheits-Auditor",
+    "description": "Prüft UI-Änderungen auf Tastaturfluss, Beschriftungen, Kontrast und Fokus."
+  },
+  "api-contract-reviewer": {
+    "name": "API-Vertragsprüfer",
+    "description": "Prüft API-Änderungen auf Kompatibilität, Validierung, Fehler und Migrationsrisiken."
+  },
+  "architecture-decision-recorder": {
+    "name": "Architekturentscheidungs-Protokollierer",
+    "description": "Entwirft ADRs mit Kontext, Entscheidung, Alternativen und Konsequenzen."
+  },
+  "bug-reproducer": {
+    "name": "Bug-Reproduzierer",
+    "description": "Verwandelt vage Bugberichte in minimale Reproduktionen und Regressionstests."
+  },
+  "changelog-curator": {
+    "name": "Changelog-Kurator",
+    "description": "Gruppiert Änderungen in nützliche Release-Kategorien und pflegt Changelogs."
+  },
+  "ci-failure-triage": {
+    "name": "CI-Fehler-Triage",
+    "description": "Verdichtet fehlgeschlagene CI-Logs zu Ursachenhypothesen und Verifikationsschritten."
+  },
+  "codebase-modernizer": {
+    "name": "Codebasis-Modernisierer",
+    "description": "Plant inkrementelle Modernisierung, ohne sie zur Neuschreibung werden zu lassen."
+  },
+  "data-pipeline-checker": {
+    "name": "Datenpipeline-Prüfer",
+    "description": "Prüft Schema-Drift, Idempotenz, Backfills und Observability in Datenpipelines."
+  },
+  "database-index-advisor": {
+    "name": "Datenbankindex-Berater",
+    "description": "Prüft Abfragemuster und schlägt vorsichtige Indexänderungen mit Messplänen vor."
+  },
+  "dependency-risk-auditor": {
+    "name": "Abhängigkeitsrisiko-Auditor",
+    "description": "Prüft neue Abhängigkeiten auf Wartung, Lizenzen, Sicherheit und Bundle-Risiken."
+  },
+  "dependency-upgrader": {
+    "name": "Abhängigkeits-Upgrader",
+    "description": "Plant sichere Upgrade-Batches, Risikoprüfungen und Verifikationsbefehle."
+  },
+  "frontend-state-debugger": {
+    "name": "Frontend-Zustandsdebugger",
+    "description": "Debuggt UI-Zustand über Ereignisse, abgeleiteten Zustand, Rendering und Persistenz."
+  },
+  "incident-postmortem": {
+    "name": "Incident-Postmortem",
+    "description": "Entwirft schuldzuweisungsfreie Zeitlinien, Auswirkungen, Ursachen und Folgemaßnahmen."
+  },
+  "migration-planner": {
+    "name": "Migrationsplaner",
+    "description": "Teilt riskante Code-, Daten- oder API-Migrationen in prüfbare reversible Etappen."
+  },
+  "onboarding-guide-writer": {
+    "name": "Onboarding-Leitfaden-Autor",
+    "description": "Erstellt Schnellstart-Leitfäden aus echten Repository-Befehlen und Strukturen."
+  },
+  "pr-description-writer": {
+    "name": "PR-Beschreibungsautor",
+    "description": "Schreibt knappe PR-Beschreibungen mit Testnachweisen und Review-Kontext."
+  },
+  "product-requirements-shaper": {
+    "name": "Produktanforderungs-Klärer",
+    "description": "Formt grobe Feature-Ideen zu Anforderungen, Entscheidungen und Abnahmekriterien."
+  },
+  "prompt-quality-auditor": {
+    "name": "Prompt-Qualitätsauditor",
+    "description": "Prüft Prompts und Skills auf Auslöser, Umfang, Ausgabeformat und Widerspruchsrisiken."
+  },
+  "refactor-guide": {
+    "name": "Refactoring-Leitfaden",
+    "description": "Plant kleine verhaltenserhaltende Refactorings mit Grenzen, Tests und Review-Risiken."
+  },
+  "release-note-writer": {
+    "name": "Release-Notes-Autor",
+    "description": "Macht aus gemergten Änderungen lesbare Release Notes für Nutzer und Maintainer."
+  },
+  "security-pass": {
+    "name": "Sicherheitsprüfung",
+    "description": "Prüft Secrets, gefährliche Befehle, unsichere Skripte und riskante Automatisierung."
+  },
+  "terraform-reviewer": {
+    "name": "Terraform-Prüfer",
+    "description": "Prüft Terraform-Änderungen auf Drift-Risiko, Berechtigungen, State und Rollout-Sicherheit."
+  },
+  "test-fixture-designer": {
+    "name": "Test-Fixture-Designer",
+    "description": "Entwirft kleine langlebige Test-Fixtures, die Tests klarer machen."
+  },
+  "risk-probe": {
+    "name": "Risikosonde",
+    "description": "Hochrisiko-Probepaket zur Verifizierung der --allow-risk und --allow-scripts Installations-Gates."
+  }
+}

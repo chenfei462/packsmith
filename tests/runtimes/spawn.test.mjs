@@ -55,7 +55,9 @@ async function writeContextTrace(context, fixtureName, skill = "review-pr") {
       const event = JSON.parse(line);
 
       if (event.item?.command !== undefined) {
-        event.item.command = event.item.command.split("C:\\ws").join(context.workspaceDir);
+        event.item.command = event.item.command.replaceAll(
+          `C:\\ws\\.agents\\skills\\${skill}\\SKILL.md`, target
+        );
       }
 
       return JSON.stringify(event);
@@ -154,7 +156,7 @@ test("a nonzero CLI exit is infrastructure, not not_triggered", async (t) => {
 
 test("a missing binary is infrastructure with a clear diagnostic", async (t) => {
   const context = await makeContext(t, {
-    binaryPath: path.join(os.tmpdir(), "packsmith-missing-binary-does-not-exist.cmd")
+    binaryPath: path.join(os.tmpdir(), "packsmith-missing-binary-does-not-exist.exe")
   });
 
   const result = await codexAdapter.runTriggerCase({ skill: "review-pr", prompt: "p", context });

@@ -1,0 +1,115 @@
+name: Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run release gate
+        run: npm run verify:hackathon:ci
+
+      - name: Validate i18n completeness
+        run: node scripts/i18n-check.mjs --ci
+
+      - name: Prepare release dist
+        run: mkdir -p dist
+
+      - name: Pack release tarball
+        id: pack
+        run: |
+          npm pack --pack-destination dist --json > dist/npm-pack.json
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from "node:fs";
+
+          const [pack] = JSON.parse(readFileSync("dist/npm-pack.json", "utf8"));
+          const output = [
+            `tarball=${pack.filename}`,
+            `tarball_path=dist/${pack.filename}`,
+            `package_name=${pack.name}`,
+            `package_version=${pack.version}`
+          ].join("\n");
+
+          appendFileSync(process.env.GITHUB_OUTPUT, `${output}\n`);
+          NODE
+
+      - name: Generate checksum and release evidence artifacts
+        run: |
+          sha256sum "${{ steps.pack.outputs.tarball_path }}" > dist/release-checksums.txt
+          {
+            echo "# Packsmith Release Evidence Summary"
+            echo ""
+            echo "- Package: ${{ steps.pack.outputs.package_name }}@${{ steps.pack.outputs.package_version }}"
+            echo "- Tag: ${GITHUB_REF_NAME}"
+            echo "- Commit: ${GITHUB_SHA}"
+            echo "- CI run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Tarball: ${{ steps.pack.outputs.tarball_path }}"
+            echo "- Checksums: dist/release-checksums.txt"
+            echo "- Claim boundary: npm publication and GitHub Release creation require repository credentials; this file is generated before those external operations finish."
+          } > dist/release-evidence-summary.md
+          {
+            cat RELEASE_NOTES.md
+            echo ""
+            echo "---"
+            echo ""
+            cat dist/release-evidence-summary.md
+          } > dist/release-body.md
+
+      - name: Generate CDN catalog shards
+        run: node scripts/generate-catalog-shards.mjs
+
+      - name: Upload release evidence artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-payload
+          path: |
+            dist/*.tgz
+            dist/release-checksums.txt
+            dist/release-evidence-summary.md
+            dist/release-body.md
+            dist/catalog-full.json
+            dist/catalog-*.json
+
+      - name: Verify npm publish dry run
+        run: npm publish "${{ steps.pack.outputs.tarball_path }}" --dry-run --access public
+
+      - name: Publish to npm
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish "${{ steps.pack.outputs.tarball_path }}" --access public
+
+      - name: Create GitHub Release with catalog shards
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body_path: dist/release-body.md
+          files: |
+            dist/*.tgz
+            dist/release-checksums.txt
+            dist/release-evidence-summary.md
+            dist/release-body.md
+            dist/catalog-full.json
+            dist/catalog-*.json

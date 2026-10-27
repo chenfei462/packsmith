@@ -1,0 +1,52 @@
+{
+  "name": "api-docs-writer",
+  "description": "Produces API reference docs from source, tests, command behavior, and examples.",
+  "version": "0.1.0",
+  "targets": [
+    "claude-code",
+    "codex",
+    "github-copilot",
+    "opencode",
+    "cursor",
+    "trae"
+  ],
+  "permissions": {
+    "shell": "optional",
+    "filesystem": "required",
+    "network": "optional",
+    "browser": "none"
+  },
+  "category": "documentation",
+  "tags": [
+    "api",
+    "docs",
+    "reference",
+    "examples"
+  ],
+  "context": {
+    "estimatedChars": 4000,
+    "riskLevel": "low"
+  },
+  "skills": [
+    {
+      "id": "api-docs-writing",
+      "path": "skills/api-docs-writing",
+      "description": "Produces API reference docs from source, tests, command behavior, and examples."
+    }
+  ],
+  "prompts": [
+    {
+      "id": "write-api-docs",
+      "path": "prompts/write-api-docs.md",
+      "description": "Prompt for running the API Docs Writer workflow."
+    }
+  ],
+  "targetSupport": {
+    "claude-code": "Installs as a Claude Code skill directory with SKILL.md as the entry point.",
+    "codex": "Installs as a Codex skill pack with a generated AGENTS.md bridge.",
+    "github-copilot": "Installs as a GitHub Copilot project skill under .github/skills with a generated SKILL.md bridge.",
+    "opencode": "Installs as a Packsmith OpenCode skill directory with PACKSMITH.md bridge notes.",
+    "cursor": "Installs as a Cursor rule pack with a generated .mdc rule and copied Packsmith assets.",
+    "trae": "Installs as a local TRAE Skill directory with a generated SKILL.md bridge and copied Packsmith assets."
+  }
+}

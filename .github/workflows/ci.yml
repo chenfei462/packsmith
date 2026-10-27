@@ -23,6 +23,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Node ${{ matrix.node-version }}
         uses: actions/setup-node@v4
@@ -51,6 +53,10 @@ jobs:
       - name: Run npm audit
         run: npm audit --production --audit-level=moderate
 
+      - name: Install site dependencies
+        run: npm ci --prefix site
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '22'
+
       - name: Run site checks
         run: npm run check --prefix site
         if: matrix.os == 'ubuntu-latest' && matrix.node-version == '22'
@@ -62,6 +68,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -74,4 +82,7 @@ jobs:
 
       - name: Verify generated files are up-to-date
         run: node scripts/verify-generated.mjs
+
+      - name: Report behavioral evaluation scope
+        run: echo "SKIPPED - live runtime evaluation requires the separate opt-in trigger-regression-gate workflow; this job verifies static reliability only." >> "$GITHUB_STEP_SUMMARY"
 

@@ -625,6 +625,29 @@ export async function installSkill({ workspaceDir, runtimeId, skillDir }) {
     );
   }
 
+  // Source tree: real directory, correct name, no escapes.
+  let sourceEntry;
+
+  try {
+    sourceEntry = await fsPromises.lstat(skillDir);
+  } catch (error) {
+    throw new InfrastructureError(`cannot inspect the skill source ${skillDir}: ${error.message}`, { cause: error });
+  }
+
+  if (sourceEntry.isSymbolicLink() || !sourceEntry.isDirectory()) {
+    throw new InfrastructureError(`skill source ${skillDir} must be a real directory (no symlinks/junctions)`);
+  }
+
+  const realSourceRoot = await fsPromises.realpath(skillDir).catch((error) => {
+    throw new InfrastructureError(`cannot resolve the skill source ${skillDir}: ${error.message}`, { cause: error });
+  });
+
+  if (path.basename(realSourceRoot) !== skillName) {
+    throw new InfrastructureError(`skill source realpath ${realSourceRoot} does not match the skill name ${JSON.stringify(skillName)}`);
+  }
+
+  await assertNoEscapes(skillDir, realSourceRoot, "skill source");
+
   // Validate/create every destination ancestor inside the workspace.
   const relativeSegments = path.relative(workspaceDir, skillsRoot).split(path.sep);
   let accumulated = workspaceDir;
@@ -664,29 +687,6 @@ export async function installSkill({ workspaceDir, runtimeId, skillDir }) {
       );
     }
   }
-
-  // Source tree: real directory, correct name, no escapes.
-  let sourceEntry;
-
-  try {
-    sourceEntry = await fsPromises.lstat(skillDir);
-  } catch (error) {
-    throw new InfrastructureError(`cannot inspect the skill source ${skillDir}: ${error.message}`, { cause: error });
-  }
-
-  if (sourceEntry.isSymbolicLink() || !sourceEntry.isDirectory()) {
-    throw new InfrastructureError(`skill source ${skillDir} must be a real directory (no symlinks/junctions)`);
-  }
-
-  const realSourceRoot = await fsPromises.realpath(skillDir).catch((error) => {
-    throw new InfrastructureError(`cannot resolve the skill source ${skillDir}: ${error.message}`, { cause: error });
-  });
-
-  if (path.basename(realSourceRoot) !== skillName) {
-    throw new InfrastructureError(`skill source realpath ${realSourceRoot} does not match the skill name ${JSON.stringify(skillName)}`);
-  }
-
-  await assertNoEscapes(skillDir, realSourceRoot, "skill source");
 
   const destination = path.join(skillsRoot, skillName);
   const expectedRealDestination = path.join(realWorkspace, path.relative(workspaceDir, destination));

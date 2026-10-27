@@ -74,14 +74,14 @@ test("requireTriggerContext demands every explicit isolation field", () => {
   );
 
   const context = requireTriggerContext({
-    workspaceDir: "C:\\ws",
-    traceDir: "C:\\runs",
-    homeDir: "C:\\home",
-    runtimeStateDir: "C:\\state",
-    tempDir: "C:\\tmp",
+    workspaceDir: path.join(os.tmpdir(), "ws"),
+    traceDir: path.join(os.tmpdir(), "runs"),
+    homeDir: path.join(os.tmpdir(), "home"),
+    runtimeStateDir: path.join(os.tmpdir(), "state"),
+    tempDir: path.join(os.tmpdir(), "tmp"),
     timeoutMs: 1000
   });
-  assert.equal(context.workspaceDir, "C:\\ws");
+  assert.equal(context.workspaceDir, path.join(os.tmpdir(), "ws"));
   assert.equal(context.timeoutMs, 1000);
 });
 

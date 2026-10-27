@@ -105,6 +105,20 @@ test("path matching is separator- and case-insensitive on Windows-style paths", 
   assert.equal(parsed.status, "triggered");
 });
 
+test("a POSIX executable containing a literal backslash is not a read tool", () => {
+  const target = "/tmp/ws/.agents/skills/review-pr/SKILL.md";
+  const stream = [
+    { type: "item.completed", item: {
+      id: "decoy", type: "command_execution",
+      command: `"./helper\\cat" '${target}'`,
+      aggregated_output: "ignored", exit_code: 0, status: "completed"
+    } },
+    { type: "turn.completed", usage: {} }
+  ].map((event) => JSON.stringify(event)).join("\n");
+  const parsed = parseCodexTrace(stream, { installedSkillPath: target, workspaceDir: "/tmp/ws" });
+  assert.notEqual(parsed.status, "triggered");
+});
+
 test("an empty stream is ambiguous, not not_triggered", () => {
   const parsed = parseCodexTrace("", { installedSkillPath: INSTALLED_SKILL_PATH });
   assert.equal(parsed.status, "ambiguous");

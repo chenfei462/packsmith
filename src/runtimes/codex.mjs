@@ -90,8 +90,14 @@ const PS_SHELL_TOKENS = new Set(["powershell", "powershell.exe", "pwsh", "pwsh.e
 
 function canonicalizePathValue(value, workspaceDir) {
   const stripped = value.replace(/^"(.*)"$/, "$1").replace(/^'(.*)'$/, "$1");
-  const resolved = path.resolve(workspaceDir, stripped);
-  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+  // Retained traces can be reviewed on a different OS from their producer.
+  // Choose path semantics from the recorded workspace/operand, preserving
+  // case-sensitive POSIX paths instead of using the reviewer's platform.
+  const windowsPath = /^(?:[a-z]:[\\/]|\\\\)/i;
+  if (windowsPath.test(workspaceDir) || windowsPath.test(stripped)) {
+    return path.win32.resolve(workspaceDir, stripped).toLowerCase();
+  }
+  return path.posix.resolve(workspaceDir, stripped);
 }
 
 /** Quote-aware tokenizer. Operators (`;`, `|`, `&&`, `||`, `&`, newlines)
@@ -167,9 +173,10 @@ function tokenize(script) {
   return { tokens, unterminated, compoundOperators, sawNewline };
 }
 
-function toolBaseName(token) {
+function toolBaseName(token, workspaceDir) {
   const withoutQuotes = token.replace(/^["']|["']$/g, "");
-  return path.basename(withoutQuotes).toLowerCase();
+  const dialect = /^(?:[a-z]:[\\/]|\\\\)/i.test(workspaceDir) ? path.win32 : path.posix;
+  return dialect.basename(withoutQuotes).toLowerCase();
 }
 
 /**
@@ -187,7 +194,7 @@ function classifyStatementTokens(statementTokens, canonicalTarget, workspaceDir)
     return "no-mention";
   }
 
-  const tool = toolBaseName(statementTokens[0]);
+  const tool = toolBaseName(statementTokens[0], workspaceDir);
   const rest = statementTokens.slice(1);
 
   if (PS_SHELL_TOKENS.has(tool)) {
@@ -377,7 +384,7 @@ function classifyCodexCommand(command, canonicalTarget, workspaceDir) {
     return "no-mention";
   }
 
-  const tool = toolBaseName(tokens[0]);
+  const tool = toolBaseName(tokens[0], workspaceDir);
 
   if (PS_SHELL_TOKENS.has(tool)) {
     // Only a TRUSTED wrapper prefix is understood: the shell may carry
@@ -448,7 +455,8 @@ function classifyCodexCommand(command, canonicalTarget, workspaceDir) {
 }
 
 export function parseCodexTrace(streamText, { installedSkillPath, workspaceDir }) {
-  const workspace = workspaceDir ?? path.dirname(installedSkillPath);
+  const dialect = /^(?:[a-z]:[\\/]|\\\\)/i.test(installedSkillPath) ? path.win32 : path.posix;
+  const workspace = workspaceDir ?? dialect.dirname(installedSkillPath);
   const canonicalTarget = canonicalizePathValue(installedSkillPath, workspace);
   const evidence = [];
   let sawMalformed = false;
