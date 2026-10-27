@@ -1,115 +1,43 @@
 # Packsmith v0.2 final acceptance
 
-## Date
-
-2026-10-26 (America/Los_Angeles)
+Date: 2026-10-27 (America/Los_Angeles)
 
 ## Verdict
 
-`BLOCKED_EXTERNAL_DEPENDENCY`
+`PACKSMITH_V0_2_PASS`
 
-The local v0.2 implementation and deterministic acceptance gates pass, but the configured GitHub account cannot push the release branch (HTTP 403), so no hosted Actions run or remote SHA exists. PASS is not issued.
+## Release identity
 
-## Local branch
+- Branch: `feat/v0.2-reliability-gate`
+- Final local SHA: `75269dbe5b0d735619c32c2a74d2657ce30df716`
+- Final remote SHA: `75269dbe5b0d735619c32c2a74d2657ce30df716`
+- SHA gate: `git ls-remote origin refs/heads/feat/v0.2-reliability-gate` matched local HEAD at final verification.
+- Pull request: https://github.com/chenfei462/packsmith/pull/6
 
-`feat/v0.2-reliability-gate`
+## Hosted Actions
 
-## Remote branch
+All required hosted workflows passed against the exact final SHA:
 
-Not created. Push was rejected by GitHub.
+- CI: run `40553632750`, conclusion `success`; Ubuntu and Windows Node 20/22/24 matrix jobs passed, `verify-generated` passed, and the static behavioral scope was explicitly reported as skipped.
+- site-ci: run `40553632458`, conclusion `success`.
+- link-check: run `40553632409`, conclusion `success`.
 
-## Final acceptance SHA
+## Local verification at the final SHA
 
-`ac3cf07` (`docs: record v0.2 acceptance evidence`), the evidence-complete local acceptance state. The tested closure code commit is `741b51a`; the follow-up commit contains evidence-only report updates.
-
-## Working tree status
-
-The closure commit is clean. Unrelated A/F user work remains outside the commit and is intentionally unstaged.
-
-## Delivered commands
-
-- `npm test` — 554 total, 549 pass, 0 fail, 5 skips
-- `node --test tests/knowledge/evidence.test.mjs tests/knowledge/runtime-facts.test.mjs tests/knowledge/loader.test.mjs` — 19/19 pass
-- `npm run smoke:v01` — 5/5 pass
-- `npm run smoke:doctor:packaged`, `npm run smoke:trigger:init`, `npm run smoke:trigger:run`, `npm run smoke:runtimes`, `npm run smoke:isolation`, `npm run smoke:matrix`, `npm run smoke:baseline`, `npm run smoke:ci` — all pass
-
-## Legacy commands
-
-`init → validate → inspect → build → install`: 5/5 pass in an isolated temporary root.
-
-## Rule counts
-
-20 executable rules: 10 spec, 3 activation, 2 compatibility, 2 context, 3 security.
-
-## Source counts
-
-28 sources.
-
-## Claim counts
-
-17 claims.
-
-## Research counts
-
-5 research findings, all explicitly non-normative.
-
-## Implementation profile counts
-
-11 implementation profiles.
-
-## Incident counts
-
-10 incidents.
-
-## Product evidence counts
-
-9 product evidence entries.
-
-## Rule → claim → source integrity
-
-20/20 rules resolve claim references and cited sources. Normative evidence uses canonical or official authority. Integrity failures: 0.
-
-## Runtime → claim → source integrity
-
-6/6 runtime records resolve capability claims to canonical or official sources. Cursor, Gemini CLI, and OpenCode remain explicit static-only/unknown live capability records.
-
-## Offline tests
-
-554 total, 549 pass, 0 fail, 5 expected platform skips. No model calls are used by the deterministic suite.
-
-## Platform skips
-
-All five skips are documented in `deliverables/PLATFORM_SKIP_AUDIT.md`: unavailable Windows symlink privileges and unavailable local PowerShell. Junction, race, parser, and shim alternatives cover the same safety contracts.
-
-## Legacy smoke
-
-5/5 pass.
-
-## CLI smoke
-
-Doctor valid/invalid/JSON/target, trigger init/mock, runtime unavailable/timeout, isolation, matrix unknown capability, baseline create/unchanged/regressed/infra-error, and CI classification controls all pass. Details are in `deliverables/CLI_SMOKE_EVIDENCE.md`.
-
-## Real runtime evidence
-
-Historical Codex and Claude evidence is retained, including triggered, not_triggered, ambiguous, timeout, and Claude timeout states. A final-commit Codex-only bounded rerun retained infra_error, timeout, not_triggered, and ambiguous states with raw artifacts; it exited incomplete honestly.
-
-## GitHub Actions run
-
-None. The push command failed with `Permission to chenfei462/packsmith.git denied to yuluchen03-dev` (HTTP 403). See `deliverables/REMOTE_RELEASE_EVIDENCE.md` and `deliverables/GITHUB_ACTIONS_VERIFICATION.md`.
+- `npm test`: 555 total, 550 pass, 0 fail, 5 documented platform skips.
+- Knowledge integrity tests: 19/19 pass.
+- Legacy smoke: 5/5 pass.
+- CLI smoke: doctor, packaged doctor, trigger init/run, runtimes, isolation, matrix, baseline, CI, and doctor controls all pass.
+- Final bounded runtime evidence remains retained with explicit `infra_error`, `timeout`, `not_triggered`, and `ambiguous` states; no paid hosted runtime execution is claimed.
 
 ## Independent review
 
-A separate deterministic/manual reviewer consumed the closure commit and reran the required false-PASS probes. Review verdict remains partial solely because remote publication and hosted Actions are unavailable.
+The final clean checkout at `75269dbe5b0d735619c32c2a74d2657ce30df716` was independently rechecked with the full deterministic suite, knowledge tests, focused Manifest v2 boundary tests, and all CLI smoke controls. The reviewer confirmed the final SHA, source integrity counts, fail-closed timeout/ambiguity/infrastructure behavior, workspace isolation, legacy compatibility, and hosted workflow conclusions.
 
 ## Known limitations
 
-Remote publication and hosted CI require a GitHub credential with write permission to `chenfei462/packsmith`. Live Cursor, Gemini CLI, and OpenCode runners remain outside v0.2 scope. Activation quality is evidence, not a universal recall/precision claim.
+Cursor, Gemini CLI, and OpenCode remain static-only/unknown live capabilities in v0.2. Bounded runtime evidence is not a universal trigger recall or precision claim. Claude timeout and other unresolved runtime observations remain represented truthfully.
 
-## Non-goals
+## Scope integrity
 
-Cursor/Gemini/OpenCode live runners, automatic Skill optimization, RAG, registry/package-manager replacement, outcome-uplift evaluation, and 100% trigger recall/precision are outside v0.2.
-
-## Final rationale
-
-The local release commit executes and classifies behavior truthfully, with zero knowledge-integrity failures and no false-PASS conversion of unresolved runtime states. The permitted blocked verdict is required until the branch can be pushed and the hosted static workflow runs against the exact release SHA.
-
+The release includes the user-approved dependency files required by the repository's existing acceptance tests, narrowly scoped cross-platform reliability fixes, workflow repairs, and synchronized pack-count assertions. Other working-tree changes remain unstaged and outside the release commit.

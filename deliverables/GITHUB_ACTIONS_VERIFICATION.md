@@ -1,16 +1,15 @@
 # GitHub Actions verification
 
-Date: 2026-10-26 (America/Los_Angeles)
+Date: 2026-10-27 (America/Los_Angeles)
 
-Status: `BLOCKED_EXTERNAL_DEPENDENCY`
+Final reviewed SHA: `75269dbe5b0d735619c32c2a74d2657ce30df716`
 
-The release commit `741b51a` was tested locally, but the required remote branch could not be created. `git push -u origin feat/v0.2-reliability-gate` returned HTTP 403: `Permission to chenfei462/packsmith.git denied to yuluchen03-dev`.
+- Branch: `feat/v0.2-reliability-gate`
+- Remote SHA: matched final local SHA.
+- CI run `40553632750`: `success`.
+- site-ci run `40553632458`: `success`.
+- link-check run `40553632409`: `success`.
 
-- Workflow intended: `.github/workflows/ci.yml`
-- Hosted run ID/URL: none
-- Commit SHA: no remote SHA exists
-- Job IDs, runner OS, hosted Node version, step results, and artifacts: unavailable
-- Local equivalent: `npm test` = 554 total, 549 pass, 0 fail, 5 skipped; legacy and CLI smokes passed
-- Workflow changes staged in the closure commit run `npm test`, legacy smoke, doctor JSON, registry/package checks, and npm audit
+CI checked the exact release SHA, installed dependencies, ran the offline suite, legacy smoke, doctor JSON gate, registry quality gate, package dry run, audit, generated-file verification, and the site check. The behavioral runtime scope was explicitly reported as skipped because the hosted workflow has no paid model credentials.
 
-No hosted PASS is fabricated. A GitHub integration suggestion was made, but no connected GitHub account was available in this run.
+No hosted PASS is inferred from a badge alone; job conclusions and step conclusions were inspected. The final hosted runs passed.

@@ -35,3 +35,13 @@ The legitimate newer commit `4d95fb8` changes only acceptance report wording aft
 - Hosted run `40552246502` confirmed the parent realpath can remain syntactically inside the pack during that race; the repair also checks the parent entry's reparse/symlink identity before classifying `ENOENT`.
 - Hosted run `40552804402` showed Windows Node 20 can still hide the junction redirect from `lstat`/`realpath`; the repair now probes `readlink` as a final reparse-point check before reporting an ordinary missing file.
 - Hosted run `40552804402` also exposed a fixture cleanup defect: the junction test restored its directory with `unlink`, which can leave a Windows junction behind under Node 20. The test now removes the junction recursively before rebuilding the clean fixture. The refusal assertion remains unchanged.
+
+## Final certified release
+
+- Final local SHA: `75269dbe5b0d735619c32c2a74d2657ce30df716`.
+- Final remote SHA: `75269dbe5b0d735619c32c2a74d2657ce30df716`.
+- Final verification timestamp: `2026-10-27T10:45:59.5313381-07:00` (America/Los_Angeles).
+- CI run `40553632750`: success.
+- site-ci run `40553632458`: success.
+- link-check run `40553632409`: success.
+- Final verdict: `PACKSMITH_V0_2_PASS`.
