@@ -75,7 +75,7 @@ test.describe('production route shells', () => {
       .getByTestId('registry-result')
       .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-pack-id')))
 
-    expect(packIds).toHaveLength(53)
+    expect(packIds).toHaveLength(54)
     expect(packIds.every((packId): packId is string => Boolean(packId))).toBe(true)
 
     for (const packId of packIds) {

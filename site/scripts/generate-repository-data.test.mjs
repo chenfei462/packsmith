@@ -180,7 +180,7 @@ test("generates truthful, localized repository data with portable previews", asy
       fingerprintMetadata.inputs?.filter((inputPath) => inputPath.startsWith("site/scripts/")),
       ["site/scripts/generate-repository-data.mjs", "site/scripts/passport-client.mjs"]
     );
-    assert.equal(data.packs.length, 53);
+    assert.equal(data.packs.length, 54);
     assert.deepEqual(data.supportedTargetIds, runtimeIds);
     assert.equal(data.targets.length, 6);
     for (const target of data.targets) {
