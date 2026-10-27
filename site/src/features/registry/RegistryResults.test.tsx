@@ -35,10 +35,10 @@ describe('Registry result synchronization', () => {
       sort: 'name',
     }).map((pack) => pack.id)
 
-    expect(expectedIds).toHaveLength(30)
+    expect(expectedIds).toHaveLength(31)
     await waitFor(() => {
       const rows = screen.getAllByTestId('registry-result')
-      expect(rows).toHaveLength(30)
+      expect(rows).toHaveLength(31)
       expect(rows.map((row) => row.dataset.packId)).toEqual(expectedIds)
       expect(router.state.location.search).toBe('?target=github-copilot')
       expect(sceneStore.getState().active).toMatchObject({
