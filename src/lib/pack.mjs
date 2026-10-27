@@ -397,6 +397,14 @@ async function readVerifiedSkillFrontmatter(realPackDir, skillFilePath, issuePre
           // Keep the ordinary missing-file classification.
         }
       }
+      if (!redirectedParent) {
+        try {
+          await fs.readlink(path.dirname(skillFilePath));
+          redirectedParent = true;
+        } catch {
+          // Windows junctions can expose their redirect only through readlink.
+        }
+      }
       issues.push(
         redirectedParent
           ? `${issuePrefix} SKILL.md was swapped while being verified (redirected directory refused).`
