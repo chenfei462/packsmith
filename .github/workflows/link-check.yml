@@ -30,7 +30,6 @@ jobs:
             --verbose
             --no-progress
             --accept 200,204,301,302,403,429
-            --exclude-mail
             --exclude "^https://github.com/chenfei462/packsmith/(tree|blob)/"
             --exclude "localhost"
             --exclude "127.0.0.1"
@@ -50,7 +49,7 @@ jobs:
         id: report
         run: |
           if [ -f link-report.md ]; then
-            BROKEN=$(grep -c "^\[ERR\]" link-report.md || echo "0")
+            BROKEN=$(grep -c "^\[ERR\]" link-report.md || true)
             echo "broken_count=$BROKEN" >> $GITHUB_OUTPUT
             echo "Found $BROKEN broken link(s)"
           else

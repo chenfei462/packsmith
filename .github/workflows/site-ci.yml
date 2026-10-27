@@ -44,6 +44,9 @@ jobs:
           cache: npm
           cache-dependency-path: site/package-lock.json
 
+      - name: Install root dependencies
+        run: npm ci
+
       - name: Install site dependencies
         run: npm ci --prefix site
 
