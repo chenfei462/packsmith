@@ -329,7 +329,7 @@ test("a junction swapped in after SKILL.md verification is refused without adopt
   } finally {
     fs.realpath = originalRealpath;
     try {
-      await fs.unlink(realSkillDir);
+      await fs.rm(realSkillDir, { recursive: true, force: true });
       await fs.mkdir(realSkillDir, { recursive: true });
       await fs.writeFile(path.join(realSkillDir, "SKILL.md"), originalSkillContent, "utf8");
     } catch {
