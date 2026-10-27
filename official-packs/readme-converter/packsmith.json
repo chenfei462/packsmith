@@ -1,0 +1,52 @@
+{
+  "name": "readme-converter",
+  "description": "Turns technical READMEs into user-facing landing READMEs grounded in real commands.",
+  "version": "0.1.0",
+  "targets": [
+    "claude-code",
+    "codex",
+    "github-copilot",
+    "opencode",
+    "cursor",
+    "trae"
+  ],
+  "permissions": {
+    "shell": "optional",
+    "filesystem": "required",
+    "network": "optional",
+    "browser": "none"
+  },
+  "category": "product-launch",
+  "tags": [
+    "readme",
+    "docs",
+    "positioning",
+    "launch"
+  ],
+  "context": {
+    "estimatedChars": 3900,
+    "riskLevel": "low"
+  },
+  "skills": [
+    {
+      "id": "readme-conversion",
+      "path": "skills/readme-conversion",
+      "description": "Turns technical READMEs into user-facing landing READMEs grounded in real commands."
+    }
+  ],
+  "prompts": [
+    {
+      "id": "convert-readme",
+      "path": "prompts/convert-readme.md",
+      "description": "Prompt for running the README Converter workflow."
+    }
+  ],
+  "targetSupport": {
+    "claude-code": "Installs as a Claude Code skill directory with SKILL.md as the entry point.",
+    "codex": "Installs as a Codex skill pack with a generated AGENTS.md bridge.",
+    "github-copilot": "Installs as a GitHub Copilot project skill under .github/skills with a generated SKILL.md bridge.",
+    "opencode": "Installs as a Packsmith OpenCode skill directory with PACKSMITH.md bridge notes.",
+    "cursor": "Installs as a Cursor rule pack with a generated .mdc rule and copied Packsmith assets.",
+    "trae": "Installs as a local TRAE Skill directory with a generated SKILL.md bridge and copied Packsmith assets."
+  }
+}

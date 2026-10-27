@@ -1,0 +1,69 @@
+[
+  {
+    "id": "PS-CTX-001",
+    "title": "SKILL.md excessively large",
+    "category": "context",
+    "severity": "warning",
+    "appliesTo": {
+      "runtimes": [
+        "all"
+      ]
+    },
+    "check": {
+      "type": "skill-file-size",
+      "limits": {
+        "recommendedLines": 500
+      }
+    },
+    "message": "SKILL.md exceeds the recommended size budget; keep the main SKILL.md under 500 lines and move detailed reference material into references/ so it loads only on demand.",
+    "fix": {
+      "available": false,
+      "safe": false
+    },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "SHOULD",
+        "verifiedOn": "2026-10-03"
+      }
+    ],
+    "evidenceIds": [
+      "CLAIM-SPEC-PROGRESSIVE"
+    ]
+  },
+  {
+    "id": "PS-CTX-002",
+    "title": "estimated instruction tokens excessively high",
+    "category": "context",
+    "severity": "warning",
+    "appliesTo": {
+      "runtimes": [
+        "all"
+      ]
+    },
+    "check": {
+      "type": "estimated-tokens",
+      "limits": {
+        "recommendedTokens": 5000
+      },
+      "estimation": "deterministic chars/4 estimate over the SKILL.md body, matching the parser's estimateTokens"
+    },
+    "message": "The SKILL.md body is estimated to exceed the ~5000-token instruction budget recommended for skill activation; report the measured value and trim or split the body into referenced files.",
+    "fix": {
+      "available": false,
+      "safe": false
+    },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "SHOULD",
+        "verifiedOn": "2026-10-03"
+      }
+    ],
+    "evidenceIds": [
+      "CLAIM-SPEC-PROGRESSIVE"
+    ]
+  }
+]

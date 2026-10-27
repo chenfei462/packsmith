@@ -1,0 +1,78 @@
+[
+  {
+    "claimId": "CLAIM-RESEARCH-FRAGILE-UTILITY",
+    "claim": "Skill utility can degrade when retrieval and selection become realistic, so Skill presence is not equivalent to outcome improvement.",
+    "category": "benchmark-finding",
+    "sourceId": "skill-usage-wild",
+    "sourceType": "research",
+    "authority": "academic",
+    "verifiedOn": "2026-10-26",
+    "appliesTo": {
+      "runtime": [
+        "all"
+      ]
+    },
+    "normative": false,
+    "confidence": "medium",
+    "consumers": [
+      "RESEARCH-SKILL-USAGE-WILD"
+    ]
+  },
+  {
+    "claimId": "CLAIM-RESEARCH-PAIRED-EVAL",
+    "claim": "Paired with-Skill and no-Skill evaluation is needed to measure uplift and negative effects.",
+    "category": "evaluation-method",
+    "sourceId": "skillsbench",
+    "sourceType": "research",
+    "authority": "academic",
+    "verifiedOn": "2026-10-26",
+    "appliesTo": {
+      "runtime": [
+        "all"
+      ]
+    },
+    "normative": false,
+    "confidence": "medium",
+    "consumers": [
+      "RESEARCH-SKILLSBENCH"
+    ]
+  },
+  {
+    "claimId": "CLAIM-RESEARCH-CONTEXT-BOTTLENECK",
+    "claim": "Skill activation introduces a runtime/model decision point that can be a bottleneck in some evaluated settings.",
+    "category": "evaluation-method",
+    "sourceId": "vercel-agents-md-experiment",
+    "sourceType": "research",
+    "authority": "community",
+    "verifiedOn": "2026-10-26",
+    "appliesTo": {
+      "runtime": [
+        "all"
+      ]
+    },
+    "normative": false,
+    "confidence": "medium",
+    "consumers": [
+      "RESEARCH-VERCEL-AGENTS"
+    ]
+  },
+  {
+    "claimId": "CLAIM-RESEARCH-NO-UNIVERSAL-GAIN",
+    "claim": "Published benchmarks report mixed task-level effects; no universal Skill-improves-performance rule is justified.",
+    "category": "benchmark-finding",
+    "sourceId": "agent-skills-survey",
+    "sourceType": "research",
+    "authority": "academic",
+    "verifiedOn": "2026-10-26",
+    "appliesTo": {
+      "runtime": [
+        "all"
+      ]
+    },
+    "normative": false,
+    "confidence": "medium",
+    "consumers": [
+      "RESEARCH-AGENT-SKILLS-SURVEY"
+    ]
+  }
+]

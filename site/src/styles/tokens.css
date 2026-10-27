@@ -1,0 +1,22 @@
+:root {
+  --ink: #181520;
+  --forge-0: #080a0e;
+  --forge-1: #11151b;
+  --graphite: #1b2229;
+  --blueprint: #c9d2e7;
+  --paper: #edf1f7;
+  --cyan: #2be4d0;
+  --orange: #ff6b2c;
+  --success: #4ce0a3;
+  --warning: #f0b94f;
+  --danger: #ff5b62;
+  --focus: #fff06a;
+  --muted: #8995a5;
+  --line: #34404c;
+  --display: 'Archivo Black', 'Noto Sans SC', sans-serif;
+  --body: 'IBM Plex Sans', 'Noto Sans SC', sans-serif;
+  --mono: 'IBM Plex Mono', monospace;
+  --page-gutter: clamp(1rem, 3vw, 3rem);
+  --nav-height: 6rem;
+  --content-width: 96rem;
+}

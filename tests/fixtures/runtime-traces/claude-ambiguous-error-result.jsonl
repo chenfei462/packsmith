@@ -1,0 +1,4 @@
+{"type":"system","subtype":"init","session_id":"s5","parent_tool_use_id":null,"cwd":"C:ws","tools":["Skill"]}
+{"type":"assistant","session_id":"s5","parent_tool_use_id":null,"message":{"role":"assistant","content":[{"type":"tool_use","id":"t5","name":"Skill","input":{"skill":"review-pr"}}]}}
+{"type":"user","session_id":"s5","parent_tool_use_id":null,"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t5","is_error":true,"content":"Skill failed to load"}]}}
+{"type":"result","subtype":"success","session_id":"s5","is_error":false,"result":"Done."}

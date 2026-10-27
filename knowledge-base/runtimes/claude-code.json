@@ -1,0 +1,44 @@
+{
+  "id": "claude-code",
+  "name": "Claude Code",
+  "kind": "runtime",
+  "summary": "Anthropic's coding agent runtime; native Agent Skills consumer and one of the two v0.2 live trigger runtimes.",
+  "v02Scope": {
+    "staticCompatibility": true,
+    "liveTriggerRunner": true
+  },
+  "skillDiscovery": {
+    "entryFile": "SKILL.md",
+    "skillFormat": "folder containing a SKILL.md file with YAML frontmatter plus a Markdown instruction body",
+    "personalInstallDir": "~/.claude/skills",
+    "notes": "The personal install directory matches the Packsmith v0.1 target adapter (src/lib/targets.mjs: .claude/skills)."
+  },
+  "frontmatter": {
+    "name": {
+      "required": false,
+      "fallsBackTo": "directory name"
+    },
+    "description": {
+      "required": false,
+      "recommended": true
+    },
+    "notes": "Per the official frontmatter reference, name may be omitted (the directory name is used) and description is recommended, not required. The agent-skills specification's stricter MUST requirements are enforced separately as spec diagnostics (PS-SPEC-004/PS-SPEC-008) and must not be conflated with this runtime's tolerant loading behavior."
+  },
+  "evidence": [
+    {
+      "source": "claude-code-docs",
+      "sourceType": "docs",
+      "normative": "MAY",
+      "verifiedOn": "2026-10-04"
+    },
+    {
+      "source": "claude-code-docs",
+      "sourceType": "docs",
+      "normative": "RECOMMENDED",
+      "verifiedOn": "2026-10-04"
+    }
+  ],
+  "evidenceIds": [
+    "CLAIM-RUNTIME-CLAUDE-HEADLESS"
+  ]
+}

@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"th_126"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"type \"C:\\ws\\.agents\\skills\\review-pr\\SKILL.md\"","aggregated_output":"","exit_code":1,"status":"completed"}}
+{"type":"turn.completed","usage":{"input_tokens":7,"output_tokens":3}}

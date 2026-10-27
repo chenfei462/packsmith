@@ -1,0 +1,218 @@
+{
+  "senior-code-reviewer": {
+    "name": "シニアコードレビュアー",
+    "description": "変更がリリースされる前に、バグ、リグレッション、テスト不足、リスクの高い変更、不明確な動作を検出します。"
+  },
+  "security-reviewer": {
+    "name": "セキュリティレビュアー",
+    "description": "シークレット、安全でないコマンド、インジェクションリスク、依存関係の露出、権限の拡大をチェックします。"
+  },
+  "test-writer": {
+    "name": "テストライター",
+    "description": "最近のコード変更、エッジケース、リグレッションに対する的確なテストを追加します。テストスイートを肥大化させません。"
+  },
+  "refactor-planner": {
+    "name": "リファクタリングプランナー",
+    "description": "混乱したコード領域を、境界・テスト・ロールバックポイントを含む安全な段階的リファクタリング計画に変換します。"
+  },
+  "bug-hunter": {
+    "name": "バグハンター",
+    "description": "修正を提案する前に、バグを再現・分離・説明します。"
+  },
+  "performance-profiler": {
+    "name": "パフォーマンスプロファイラー",
+    "description": "明らかなパフォーマンスボトルネックを特定し、測定可能な改善を提案します。"
+  },
+  "repo-cartographer": {
+    "name": "リポジトリカートグラファー",
+    "description": "不慣れなリポジトリのアーキテクチャ、エントリポイント、モジュール境界、データフロー、高リスク領域をマッピングします。"
+  },
+  "onboarding-guide": {
+    "name": "オンボーディングガイド",
+    "description": "実際のコマンドとコントリビューションのランドマークを使って、初めてのコントリビューターに新しいリポジトリを説明します。"
+  },
+  "dependency-auditor": {
+    "name": "依存関係監査",
+    "description": "依存関係の使用状況、リスク、更新圧力、不要なパッケージをレビューします。"
+  },
+  "api-surface-mapper": {
+    "name": "APIサーフェスマッパー",
+    "description": "パブリックAPI、内部API、コントラクト、互換性リスクを文書化します。"
+  },
+  "database-schema-reader": {
+    "name": "データベーススキーマリーダー",
+    "description": "スキーマ構造、マイグレーション、リレーション、インデックス、リスクの高いデータ変更を説明します。"
+  },
+  "legacy-code-translator": {
+    "name": "レガシーコードトランスレーター",
+    "description": "動作を変えずに、古いコードや不明確なコードを現代的で実用的な言葉で説明します。"
+  },
+  "launch-researcher": {
+    "name": "ローンチリサーチャー",
+    "description": "市場シグナルをポジショニング、ウェッジ、ターゲットオーディエンス、ローンチ推奨事項に変換します。"
+  },
+  "github-trending-analyst": {
+    "name": "GitHubトレンドアナリスト",
+    "description": "GitHubのトレンドを研究し、リポジトリの勢いをプロダクト機会に変換します。"
+  },
+  "competitor-breakdown": {
+    "name": "競合分析",
+    "description": "プロジェクトを競合と比較し、実践的な差別化ポイントを特定します。"
+  },
+  "readme-converter": {
+    "name": "READMEコンバーター",
+    "description": "技術的なREADMEを、実際のコマンドに基づいたユーザー向けランディングREADMEに変換します。"
+  },
+  "roadmap-writer": {
+    "name": "ロードマップライター",
+    "description": "戦略メモを、完了済み・次のステップ・延期の作業を含むフェーズ別ロードマップ文書に変換します。"
+  },
+  "issue-triage": {
+    "name": "Issueトリアージ",
+    "description": "重要度、工数、プロダクト価値、リリース関連性でissueをグループ化します。"
+  },
+  "docs-maintainer": {
+    "name": "ドキュメントメンテナー",
+    "description": "README、変更履歴、サンプル、コマンドドキュメントを実装と同期させます。"
+  },
+  "changelog-writer": {
+    "name": "変更履歴ライター",
+    "description": "コミット、差分、リリースノートを明確なユーザー向け変更履歴エントリに変換します。"
+  },
+  "tutorial-writer": {
+    "name": "チュートリアルライター",
+    "description": "既存のサンプルと検証済みコマンドから初心者向けチュートリアルを作成します。"
+  },
+  "api-docs-writer": {
+    "name": "APIドキュメントライター",
+    "description": "ソースコード、テスト、コマンド動作、サンプルからAPIリファレンスドキュメントを生成します。"
+  },
+  "contributing-guide-writer": {
+    "name": "コントリビューションガイドライター",
+    "description": "セットアップ、テスト、スタイル、プルリクエスト、レビュー期待値のコントリビューター向け手順を作成します。"
+  },
+  "release-checklist": {
+    "name": "リリースチェックリスト",
+    "description": "npm、GitHub、ドキュメント、テスト、スモークチェックのリリース準備チェックリストを生成します。"
+  },
+  "prompt-debugger": {
+    "name": "プロンプトデバッガー",
+    "description": "曖昧なプロンプト、矛盾する指示、不足しているコンテキスト、弱い出力コントラクトを診断します。"
+  },
+  "skill-author": {
+    "name": "スキルオーサー",
+    "description": "明確なトリガー、ワークフロー、サンプル、出力フォーマットを持つ新しいエージェントスキルの作成を支援します。"
+  },
+  "context-budgeter": {
+    "name": "コンテキストバジェッター",
+    "description": "重要な動作と出力コントラクトを維持しながら、長いエージェント指示を削減します。"
+  },
+  "multi-agent-router": {
+    "name": "マルチエージェントルーター",
+    "description": "コンテキストとリスクに基づいて、どのローカルエージェント・スキル・ワークフローがタスクを処理すべきか選択します。"
+  },
+  "workflow-packager": {
+    "name": "ワークフローパッケージャー",
+    "description": "繰り返しの手動ワークフローを再利用可能なPacksmithパックに変換します。"
+  },
+  "agent-memory-curator": {
+    "name": "エージェントメモリキュレーター",
+    "description": "ノイズの多い履歴を保持せず、エージェントセッション間で再利用するための永続的なプロジェクトコンテキストを要約します。"
+  },
+  "accessibility-auditor": {
+    "name": "アクセシビリティ監査",
+    "description": "UI変更のキーボード操作、ラベル、コントラスト、フォーカス、支援技術の基本をレビューします。"
+  },
+  "api-contract-reviewer": {
+    "name": "API契約レビュー",
+    "description": "API変更の互換性、検証、エラー処理、移行リスクをレビューします。"
+  },
+  "architecture-decision-recorder": {
+    "name": "アーキテクチャ決定記録",
+    "description": "背景、決定、代替案、影響を残すADRの下書きを作成します。"
+  },
+  "bug-reproducer": {
+    "name": "Bug再現支援",
+    "description": "あいまいなバグ報告を最小再現ケースと回帰テストに変換します。"
+  },
+  "changelog-curator": {
+    "name": "変更履歴整理",
+    "description": "変更を有用なリリース分類にまとめ、変更履歴を保守します。"
+  },
+  "ci-failure-triage": {
+    "name": "CI失敗トリアージ",
+    "description": "失敗したCIログを根本原因の仮説と次の検証手順に変換します。"
+  },
+  "codebase-modernizer": {
+    "name": "コードベース近代化",
+    "description": "書き換えにならないよう、段階的な近代化作業を計画します。"
+  },
+  "data-pipeline-checker": {
+    "name": "データパイプライン検査",
+    "description": "データパイプライン変更のスキーマドリフト、冪等性、バックフィル、可観測性をレビューします。"
+  },
+  "database-index-advisor": {
+    "name": "データベース索引助言",
+    "description": "クエリパターンを確認し、測定計画付きで慎重なインデックス変更を提案します。"
+  },
+  "dependency-risk-auditor": {
+    "name": "依存リスク監査",
+    "description": "依存関係追加の保守性、ライセンス、セキュリティ、バンドルリスクをレビューします。"
+  },
+  "dependency-upgrader": {
+    "name": "依存更新支援",
+    "description": "安全な依存関係アップグレードの単位、リスク確認、検証コマンドを計画します。"
+  },
+  "frontend-state-debugger": {
+    "name": "フロントエンド状態デバッグ",
+    "description": "イベント、派生状態、レンダリング、永続化を追跡してUI状態の問題をデバッグします。"
+  },
+  "incident-postmortem": {
+    "name": "インシデント事後分析",
+    "description": "責任追及ではないインシデントの時系列、影響、原因、フォローアップを下書きします。"
+  },
+  "migration-planner": {
+    "name": "移行計画",
+    "description": "リスクのあるコード、データ、API移行を、確認付きの戻せる段階に分割します。"
+  },
+  "onboarding-guide-writer": {
+    "name": "オンボーディングガイド作成",
+    "description": "実際のリポジトリ構成とコマンドから、すぐ使える貢献者ガイドを作成します。"
+  },
+  "pr-description-writer": {
+    "name": "PR説明作成",
+    "description": "テスト証跡とレビュアー向け文脈を含む簡潔なPR説明を書きます。"
+  },
+  "product-requirements-shaper": {
+    "name": "製品要件整理",
+    "description": "粗い機能案を、範囲のある要件、決定事項、受け入れ確認に整理します。"
+  },
+  "prompt-quality-auditor": {
+    "name": "プロンプト品質監査",
+    "description": "エージェントのプロンプトやスキルのトリガー、範囲、出力形式、矛盾リスクをレビューします。"
+  },
+  "refactor-guide": {
+    "name": "リファクタリングガイド",
+    "description": "境界、テスト、レビューリスクを意識した小さな振る舞い保持リファクタリングを計画します。"
+  },
+  "release-note-writer": {
+    "name": "リリースノート作成",
+    "description": "マージ済みの変更を、ユーザーとメンテナー向けの読みやすいリリースノートにします。"
+  },
+  "security-pass": {
+    "name": "セキュリティ確認",
+    "description": "シークレット、危険なコマンド、安全でないスクリプト、依存関係問題、危険な自動化を確認します。"
+  },
+  "terraform-reviewer": {
+    "name": "Terraformレビュー",
+    "description": "Terraform変更のドリフトリスク、権限、状態、ロールアウト安全性をレビューします。"
+  },
+  "test-fixture-designer": {
+    "name": "テストフィクスチャ設計",
+    "description": "テストを明確にし、過剰適合しない小さく丈夫なフィクスチャを設計します。"
+  },
+  "risk-probe": {
+    "name": "リスクプローブ",
+    "description": "--allow-riskおよび--allow-scriptsのインストールゲートを検証するための高リスクプローブパック。"
+  }
+}

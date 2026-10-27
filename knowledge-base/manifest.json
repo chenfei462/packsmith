@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "name": "packsmith-knowledge-base",
+  "description": "Version-controlled runtime and specification knowledge behind the Packsmith reliability gate. Plain JSON files only: no database, no SQLite, no vector store, no embeddings, no RAG.",
+  "version": "0.1.0",
+  "updatedAt": "2026-10-04",
+  "runtimes": [
+    "agent-skills",
+    "claude-code",
+    "codex",
+    "cursor",
+    "gemini-cli",
+    "opencode"
+  ],
+  "ruleFiles": [
+    "spec",
+    "activation",
+    "compatibility",
+    "context",
+    "security"
+  ],
+  "counts": {
+    "sources": 7,
+    "runtimes": 6,
+    "rules": 20,
+    "rulesByCategory": {
+      "spec": 10,
+      "activation": 3,
+      "compatibility": 2,
+      "context": 2,
+      "security": 3
+    }
+  }
+}

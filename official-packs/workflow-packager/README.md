@@ -1,0 +1,54 @@
+# Workflow Packager
+
+Converts repeated manual workflows into reusable Packsmith packs.
+
+## When To Use
+
+Use this skill when a repeated agent workflow should become a reusable pack with skills and prompts.
+
+## Install
+
+From this repository before npm publication:
+
+```bash
+node src/cli.mjs preview workflow-packager
+node src/cli.mjs install workflow-packager --target codex --dry-run
+```
+
+After npm publication or global install:
+
+```bash
+packsmith preview workflow-packager
+packsmith install workflow-packager --target codex --yes
+```
+
+## Trigger
+
+Ask your agent:
+
+```text
+Use the workflow-packager pack for this task.
+```
+
+## Expected Output
+
+- pack structure
+- manifest fields
+- skill outlines
+- prompt outlines
+- validation commands
+
+## Permissions
+
+- shell: optional
+- filesystem: required
+- network: optional
+- browser: none
+
+## Target Notes
+
+- Claude Code: installs as a skill directory.
+- Codex: installs with an AGENTS.md bridge.
+- GitHub Copilot: installs under .github/skills for project scope.
+- Cursor and OpenCode: install with Packsmith bridge files.
+- TRAE: installs as a local TRAE Skill directory under .trae/skills, .traecli/skills, or ~/.trae-cn/skills.

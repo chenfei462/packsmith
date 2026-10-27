@@ -1,0 +1,5 @@
+[
+  {"evidenceId":"PRODUCT-ROADMAP-OUTCOME","sourceId":"skillsbench","claim":"Paired with-Skill versus no-Skill outcome evaluation is a later validation layer.","adopted":"Preserve future hooks for outcome uplift and negative uplift detection.","boundary":"Do not implement outcome judging in v0.2.","verifiedOn":"2026-10-26"},
+  {"evidenceId":"PRODUCT-ROADMAP-RUNTIME-DRIFT","sourceId":"vercel-agents-md-experiment","claim":"Runtime and context placement can alter activation behavior.","adopted":"Keep runtime version and divergence metadata extensible.","boundary":"Do not add Cursor/Gemini/OpenCode live runners during this closure.","verifiedOn":"2026-10-26"},
+  {"evidenceId":"PRODUCT-ROADMAP-PROVENANCE","sourceId":"nvidia-skills","claim":"Provenance and security metadata are useful trust primitives for later releases.","adopted":"Keep source revisions, verification dates, and security evidence traceable.","boundary":"Signing and provenance marketplaces are future scope.","verifiedOn":"2026-10-26"}
+]

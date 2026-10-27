@@ -1,0 +1,54 @@
+# Roadmap Writer
+
+Converts strategy notes into phased roadmap documents with shipped, next, and deferred work.
+
+## When To Use
+
+Use this skill when strategy notes, backlog ideas, or launch requirements need a clear phased roadmap.
+
+## Install
+
+From this repository before npm publication:
+
+```bash
+node src/cli.mjs preview roadmap-writer
+node src/cli.mjs install roadmap-writer --target codex --dry-run
+```
+
+After npm publication or global install:
+
+```bash
+packsmith preview roadmap-writer
+packsmith install roadmap-writer --target codex --yes
+```
+
+## Trigger
+
+Ask your agent:
+
+```text
+Use the roadmap-writer pack for this task.
+```
+
+## Expected Output
+
+- phase list
+- shipped items
+- next priorities
+- deferred work
+- release criteria
+
+## Permissions
+
+- shell: optional
+- filesystem: required
+- network: optional
+- browser: none
+
+## Target Notes
+
+- Claude Code: installs as a skill directory.
+- Codex: installs with an AGENTS.md bridge.
+- GitHub Copilot: installs under .github/skills for project scope.
+- Cursor and OpenCode: install with Packsmith bridge files.
+- TRAE: installs as a local TRAE Skill directory under .trae/skills, .traecli/skills, or ~/.trae-cn/skills.

@@ -1,0 +1,2 @@
+{"type":"system","subtype":"init","session_id":"s8","parent_tool_use_id":null,"cwd":"C:ws","tools":["Skill"]}
+{"type":"assistant","session_id":"s8","parent_tool_use_id":null,"error":"rate_limit","message":{"role":"assistant","content":[]}}

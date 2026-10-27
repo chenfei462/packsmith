@@ -1,0 +1,52 @@
+{
+  "name": "database-schema-reader",
+  "description": "Explains schema structure, migrations, relationships, indexes, and risky data changes.",
+  "version": "0.1.0",
+  "targets": [
+    "claude-code",
+    "codex",
+    "github-copilot",
+    "opencode",
+    "cursor",
+    "trae"
+  ],
+  "permissions": {
+    "shell": "optional",
+    "filesystem": "required",
+    "network": "optional",
+    "browser": "none"
+  },
+  "category": "repository-understanding",
+  "tags": [
+    "database",
+    "schema",
+    "migrations",
+    "data"
+  ],
+  "context": {
+    "estimatedChars": 4300,
+    "riskLevel": "medium"
+  },
+  "skills": [
+    {
+      "id": "database-schema-reading",
+      "path": "skills/database-schema-reading",
+      "description": "Explains schema structure, migrations, relationships, indexes, and risky data changes."
+    }
+  ],
+  "prompts": [
+    {
+      "id": "read-database-schema",
+      "path": "prompts/read-database-schema.md",
+      "description": "Prompt for running the Database Schema Reader workflow."
+    }
+  ],
+  "targetSupport": {
+    "claude-code": "Installs as a Claude Code skill directory with SKILL.md as the entry point.",
+    "codex": "Installs as a Codex skill pack with a generated AGENTS.md bridge.",
+    "github-copilot": "Installs as a GitHub Copilot project skill under .github/skills with a generated SKILL.md bridge.",
+    "opencode": "Installs as a Packsmith OpenCode skill directory with PACKSMITH.md bridge notes.",
+    "cursor": "Installs as a Cursor rule pack with a generated .mdc rule and copied Packsmith assets.",
+    "trae": "Installs as a local TRAE Skill directory with a generated SKILL.md bridge and copied Packsmith assets."
+  }
+}

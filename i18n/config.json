@@ -1,0 +1,9 @@
+{
+  "languages": ["zh", "ja", "ko", "es", "fr", "de"],
+  "primaryLanguage": "en",
+  "completionThreshold": 0.5,
+  "requiredFields": ["name", "description"],
+  "optionalFields": ["usageExample"],
+  "priorityLanguages": ["zh", "ja", "ko"],
+  "catalogSource": "../registry/catalog.json"
+}

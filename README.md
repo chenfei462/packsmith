@@ -153,3 +153,11 @@ MIT
 - https://github.com/anthropics/skills/issues/919
 - https://github.com/anthropics/skills/issues/1101
 - https://github.com/anthropics/skills/issues/278
+
+## Release verification
+
+Packsmith provides a Trae workflow packaging layer. See [Packsmith for Trae](./docs/trae-integration.md).
+
+After npm publication, verify the versioned CLI with `npx --yes @packsmith/cli@1.1.0 --help`.
+
+[Signing design](./docs/signing-design.md) describes future work; signed bundles are not implemented yet.

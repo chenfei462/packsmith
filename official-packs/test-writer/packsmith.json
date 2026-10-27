@@ -1,0 +1,52 @@
+{
+  "name": "test-writer",
+  "description": "Adds focused tests for recent code changes, edge cases, and regressions without bloating the suite.",
+  "version": "0.1.0",
+  "targets": [
+    "claude-code",
+    "codex",
+    "github-copilot",
+    "opencode",
+    "cursor",
+    "trae"
+  ],
+  "permissions": {
+    "shell": "optional",
+    "filesystem": "required",
+    "network": "optional",
+    "browser": "none"
+  },
+  "category": "code-quality",
+  "tags": [
+    "testing",
+    "regression",
+    "quality",
+    "automation"
+  ],
+  "context": {
+    "estimatedChars": 3900,
+    "riskLevel": "low"
+  },
+  "skills": [
+    {
+      "id": "focused-test-writing",
+      "path": "skills/focused-test-writing",
+      "description": "Adds focused tests for recent code changes, edge cases, and regressions without bloating the suite."
+    }
+  ],
+  "prompts": [
+    {
+      "id": "write-focused-tests",
+      "path": "prompts/write-focused-tests.md",
+      "description": "Prompt for running the Test Writer workflow."
+    }
+  ],
+  "targetSupport": {
+    "claude-code": "Installs as a Claude Code skill directory with SKILL.md as the entry point.",
+    "codex": "Installs as a Codex skill pack with a generated AGENTS.md bridge.",
+    "github-copilot": "Installs as a GitHub Copilot project skill under .github/skills with a generated SKILL.md bridge.",
+    "opencode": "Installs as a Packsmith OpenCode skill directory with PACKSMITH.md bridge notes.",
+    "cursor": "Installs as a Cursor rule pack with a generated .mdc rule and copied Packsmith assets.",
+    "trae": "Installs as a local TRAE Skill directory with a generated SKILL.md bridge and copied Packsmith assets."
+  }
+}

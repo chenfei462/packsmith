@@ -1,0 +1,52 @@
+{
+  "name": "onboarding-guide",
+  "description": "Explains a new repository for a first-time contributor with real commands and contribution landmarks.",
+  "version": "0.1.0",
+  "targets": [
+    "claude-code",
+    "codex",
+    "github-copilot",
+    "opencode",
+    "cursor",
+    "trae"
+  ],
+  "permissions": {
+    "shell": "optional",
+    "filesystem": "required",
+    "network": "optional",
+    "browser": "none"
+  },
+  "category": "repository-understanding",
+  "tags": [
+    "onboarding",
+    "contributors",
+    "docs",
+    "repository"
+  ],
+  "context": {
+    "estimatedChars": 3800,
+    "riskLevel": "low"
+  },
+  "skills": [
+    {
+      "id": "onboarding-guide",
+      "path": "skills/onboarding-guide",
+      "description": "Explains a new repository for a first-time contributor with real commands and contribution landmarks."
+    }
+  ],
+  "prompts": [
+    {
+      "id": "write-onboarding-guide",
+      "path": "prompts/write-onboarding-guide.md",
+      "description": "Prompt for running the Onboarding Guide workflow."
+    }
+  ],
+  "targetSupport": {
+    "claude-code": "Installs as a Claude Code skill directory with SKILL.md as the entry point.",
+    "codex": "Installs as a Codex skill pack with a generated AGENTS.md bridge.",
+    "github-copilot": "Installs as a GitHub Copilot project skill under .github/skills with a generated SKILL.md bridge.",
+    "opencode": "Installs as a Packsmith OpenCode skill directory with PACKSMITH.md bridge notes.",
+    "cursor": "Installs as a Cursor rule pack with a generated .mdc rule and copied Packsmith assets.",
+    "trae": "Installs as a local TRAE Skill directory with a generated SKILL.md bridge and copied Packsmith assets."
+  }
+}

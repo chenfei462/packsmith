@@ -1,0 +1,2 @@
+{"type":"system","subtype":"init","session_id":"s9","parent_tool_use_id":null,"cwd":"C:ws","tools":["Skill"]}
+{"type":"assistant","session_id":"s9","parent_tool_use_id":null,"aborted":true,"message":{"role":"assistant","content":[{"type":"tool_use","id":"t9","name":"Skill","input":{"skill":"review-pr"}}]}}

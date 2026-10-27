@@ -1,0 +1,218 @@
+{
+  "senior-code-reviewer": {
+    "name": "高级代码审查",
+    "description": "在变更发布前发现 bug、回归问题、缺失测试、高风险变更和不清晰的行为。"
+  },
+  "security-reviewer": {
+    "name": "安全审查",
+    "description": "检查密钥泄露、不安全命令、注入风险、依赖暴露和权限扩展。"
+  },
+  "test-writer": {
+    "name": "测试编写器",
+    "description": "为最近的代码变更、边界情况和回归问题添加针对性测试，不膨胀测试套件。"
+  },
+  "refactor-planner": {
+    "name": "重构规划器",
+    "description": "将混乱代码区域转化为安全的分阶段重构计划，包含边界、测试和回滚点。"
+  },
+  "bug-hunter": {
+    "name": "Bug 猎手",
+    "description": "在提出修复方案前，先复现、隔离并解释 bug。"
+  },
+  "performance-profiler": {
+    "name": "性能分析器",
+    "description": "识别明显的性能瓶颈并建议可量化的改进方案。"
+  },
+  "repo-cartographer": {
+    "name": "仓库地图绘制器",
+    "description": "在陌生仓库中映射架构、入口点、模块边界、数据流和高风险区域。"
+  },
+  "onboarding-guide": {
+    "name": "新人引导指南",
+    "description": "用真实命令和贡献路标为首次贡献者解释新仓库。"
+  },
+  "dependency-auditor": {
+    "name": "依赖审计器",
+    "description": "审查依赖使用情况、风险、更新压力和不必要的包。"
+  },
+  "api-surface-mapper": {
+    "name": "API 接口映射器",
+    "description": "记录公共 API、内部 API、契约和兼容性风险。"
+  },
+  "database-schema-reader": {
+    "name": "数据库 Schema 阅读器",
+    "description": "解释 schema 结构、迁移、关系、索引和高风险数据变更。"
+  },
+  "legacy-code-translator": {
+    "name": "遗留代码翻译器",
+    "description": "用现代可操作的语言解释旧代码或不清晰的代码，不改变行为。"
+  },
+  "launch-researcher": {
+    "name": "发布研究员",
+    "description": "将市场信号转化为定位、切入点、受众和发布建议。"
+  },
+  "github-trending-analyst": {
+    "name": "GitHub 趋势分析师",
+    "description": "研究 GitHub 趋势，将仓库势能转化为产品机会。"
+  },
+  "competitor-breakdown": {
+    "name": "竞品分析",
+    "description": "将项目与竞争对手进行比较，识别实际差异化优势。"
+  },
+  "readme-converter": {
+    "name": "README 转换器",
+    "description": "将技术性 README 转化为基于真实命令的面向用户的着陆页 README。"
+  },
+  "roadmap-writer": {
+    "name": "路线图编写器",
+    "description": "将策略笔记转化为分阶段路线图文档，包含已完成、下一步和延后的工作。"
+  },
+  "issue-triage": {
+    "name": "Issue 分诊",
+    "description": "按严重程度、工作量、产品价值和发布相关性对 issue 进行分组。"
+  },
+  "docs-maintainer": {
+    "name": "文档维护器",
+    "description": "保持 README、变更日志、示例和命令文档与实现同步。"
+  },
+  "changelog-writer": {
+    "name": "变更日志编写器",
+    "description": "将提交、差异或发布说明转化为清晰的面向用户的变更日志条目。"
+  },
+  "tutorial-writer": {
+    "name": "教程编写器",
+    "description": "从现有示例和已验证的命令创建对初学者友好的教程。"
+  },
+  "api-docs-writer": {
+    "name": "API 文档编写器",
+    "description": "从源码、测试、命令行为和示例生成 API 参考文档。"
+  },
+  "contributing-guide-writer": {
+    "name": "贡献指南编写器",
+    "description": "创建包含环境搭建、测试、代码风格、PR 和审查规范的贡献者指南。"
+  },
+  "release-checklist": {
+    "name": "发布检查清单",
+    "description": "生成 npm、GitHub、文档、测试和冒烟检查的发布就绪清单。"
+  },
+  "prompt-debugger": {
+    "name": "Prompt 调试器",
+    "description": "诊断模糊的 prompt、冲突的指令、缺失的上下文和薄弱的输出契约。"
+  },
+  "skill-author": {
+    "name": "技能编写器",
+    "description": "帮助用户编写具有清晰触发条件、工作流、示例和输出格式的新 agent 技能。"
+  },
+  "context-budgeter": {
+    "name": "上下文预算管理器",
+    "description": "在保留重要行为和输出契约的同时精简冗长的 agent 指令。"
+  },
+  "multi-agent-router": {
+    "name": "多 Agent 路由器",
+    "description": "根据上下文和风险选择由哪个本地 agent、技能或工作流处理任务。"
+  },
+  "workflow-packager": {
+    "name": "工作流打包器",
+    "description": "将重复的手动工作流转化为可复用的 Packsmith 技能包。"
+  },
+  "agent-memory-curator": {
+    "name": "Agent 记忆管理器",
+    "description": "为跨 agent 会话复用总结持久化的项目上下文，不保留噪声历史。"
+  },
+  "accessibility-auditor": {
+    "name": "无障碍审计器",
+    "description": "审查 UI 变更的键盘流程、标签、对比度、焦点和辅助技术基础。"
+  },
+  "api-contract-reviewer": {
+    "name": "API 契约审查器",
+    "description": "审查 API 变更的兼容性、校验、错误处理和迁移风险。"
+  },
+  "architecture-decision-recorder": {
+    "name": "架构决策记录器",
+    "description": "起草 ADR，记录背景、决策、备选方案和影响。"
+  },
+  "bug-reproducer": {
+    "name": "Bug 复现器",
+    "description": "将模糊的 bug 报告转化为最小复现案例和回归测试。"
+  },
+  "changelog-curator": {
+    "name": "变更日志整理器",
+    "description": "按有用的发布类别整理变更并维护变更日志。"
+  },
+  "ci-failure-triage": {
+    "name": "CI 失败分诊",
+    "description": "把失败的 CI 日志转化为根因假设和下一步验证步骤。"
+  },
+  "codebase-modernizer": {
+    "name": "代码库现代化规划器",
+    "description": "规划渐进式现代化工作，避免演变成重写。"
+  },
+  "data-pipeline-checker": {
+    "name": "数据流水线检查器",
+    "description": "审查数据流水线变更中的 schema 漂移、幂等性、回填和可观测性。"
+  },
+  "database-index-advisor": {
+    "name": "数据库索引顾问",
+    "description": "审查查询模式，并提出带测量计划的谨慎索引变更建议。"
+  },
+  "dependency-risk-auditor": {
+    "name": "依赖风险审计器",
+    "description": "审查新增依赖的维护、许可、安全和包体风险。"
+  },
+  "dependency-upgrader": {
+    "name": "依赖升级规划器",
+    "description": "规划安全的依赖升级批次、风险检查和验证命令。"
+  },
+  "frontend-state-debugger": {
+    "name": "前端状态调试器",
+    "description": "通过追踪事件、派生状态、渲染和持久化来调试 UI 状态问题。"
+  },
+  "incident-postmortem": {
+    "name": "事故复盘撰写器",
+    "description": "起草无责事故时间线、影响摘要、原因和后续行动。"
+  },
+  "migration-planner": {
+    "name": "迁移规划器",
+    "description": "将高风险代码、数据或 API 迁移拆分为可回滚阶段并配套检查。"
+  },
+  "onboarding-guide-writer": {
+    "name": "入门指南撰写器",
+    "description": "基于真实仓库命令和结构创建快速上手的贡献者指南。"
+  },
+  "pr-description-writer": {
+    "name": "PR 描述撰写器",
+    "description": "撰写简洁的 PR 描述，包含测试证据和审查上下文。"
+  },
+  "product-requirements-shaper": {
+    "name": "产品需求整理器",
+    "description": "把粗略功能想法整理为有范围的需求、决策和验收检查。"
+  },
+  "prompt-quality-auditor": {
+    "name": "提示词质量审计器",
+    "description": "审查代理提示词和技能的触发条件、范围、输出格式和矛盾风险。"
+  },
+  "refactor-guide": {
+    "name": "重构指南",
+    "description": "围绕边界、测试和审查风险规划小步保行为重构。"
+  },
+  "release-note-writer": {
+    "name": "发布说明撰写器",
+    "description": "将已合并变更转化为面向用户和维护者的可读发布说明。"
+  },
+  "security-pass": {
+    "name": "安全检查器",
+    "description": "检查密钥、危险命令、不安全脚本、依赖问题和高风险自动化行为。"
+  },
+  "terraform-reviewer": {
+    "name": "Terraform 审查器",
+    "description": "审查 Terraform 变更的漂移风险、权限、状态和发布安全性。"
+  },
+  "test-fixture-designer": {
+    "name": "测试夹具设计器",
+    "description": "设计小而耐用的测试夹具，让测试更清晰且不过度拟合。"
+  },
+  "risk-probe": {
+    "name": "风险探针",
+    "description": "用于验证 --allow-risk 和 --allow-scripts 安装门禁的高风险探针包。"
+  }
+}

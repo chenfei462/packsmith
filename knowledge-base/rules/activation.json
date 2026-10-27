@@ -1,0 +1,106 @@
+[
+  {
+    "id": "PS-ACT-001",
+    "title": "description lacks useful semantic information",
+    "category": "activation",
+    "severity": "warning",
+    "appliesTo": {
+      "runtimes": [
+        "all"
+      ]
+    },
+    "check": {
+      "type": "description-semantic-content",
+      "heuristics": [
+        "too short to describe a capability",
+        "no concrete capability or task keywords",
+        "generic filler wording"
+      ]
+    },
+    "message": "The description is too thin or too generic for an agent to decide when this skill applies; it should state concrete capabilities and include the keywords users would actually invoke.",
+    "fix": {
+      "available": false,
+      "safe": false
+    },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "SHOULD",
+        "verifiedOn": "2026-10-03"
+      }
+    ],
+    "evidenceIds": [
+      "CLAIM-SPEC-DESCRIPTION"
+    ]
+  },
+  {
+    "id": "PS-ACT-002",
+    "title": "description lacks activation/use-case boundary",
+    "category": "activation",
+    "severity": "warning",
+    "appliesTo": {
+      "runtimes": [
+        "all"
+      ]
+    },
+    "check": {
+      "type": "description-activation-boundary",
+      "heuristics": [
+        "states what the skill does but not when to use it",
+        "no trigger phrasing or use-case keywords",
+        "no scope or exclusion hints"
+      ]
+    },
+    "message": "The description explains what the skill does but not when it should activate; the specification expects a description to cover both what the skill does and when to use it.",
+    "fix": {
+      "available": false,
+      "safe": false
+    },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "SHOULD",
+        "verifiedOn": "2026-10-03"
+      }
+    ],
+    "evidenceIds": [
+      "CLAIM-SPEC-DESCRIPTION"
+    ]
+  },
+  {
+    "id": "PS-ACT-003",
+    "title": "sibling Skill descriptions overlap excessively",
+    "category": "activation",
+    "severity": "warning",
+    "appliesTo": {
+      "runtimes": [
+        "all"
+      ]
+    },
+    "check": {
+      "type": "sibling-description-overlap",
+      "heuristics": [
+        "high lexical overlap between sibling descriptions in the same pack",
+        "same trigger keywords with no differentiation"
+      ]
+    },
+    "message": "Two or more sibling skills in the same pack have heavily overlapping descriptions, which makes trigger selection ambiguous; differentiate when each skill should activate.",
+    "fix": {
+      "available": false,
+      "safe": false
+    },
+    "evidence": [
+      {
+        "source": "agent-skills-spec",
+        "sourceType": "spec",
+        "normative": "SHOULD",
+        "verifiedOn": "2026-10-03"
+      }
+    ],
+    "evidenceIds": [
+      "CLAIM-SPEC-DESCRIPTION"
+    ]
+  }
+]

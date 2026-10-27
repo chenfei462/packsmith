@@ -1,0 +1,48 @@
+{
+  "name": "incident-postmortem",
+  "description": "Drafts blameless incident timelines, impact summaries, causes, and follow-up actions.",
+  "version": "0.1.0",
+  "targets": [
+    "claude-code",
+    "codex",
+    "opencode",
+    "cursor",
+    "trae"
+  ],
+  "targetSupport": {
+    "claude-code": "Installs as a Claude Code skill directory with SKILL.md as the entry point.",
+    "codex": "Installs as a Codex skill pack with a generated AGENTS.md bridge.",
+    "opencode": "Installs as a Packsmith OpenCode skill directory with PACKSMITH.md bridge notes.",
+    "cursor": "Installs as a Cursor rule pack with a generated .mdc rule and copied Packsmith assets.",
+    "trae": "Installs as a local TRAE Skill directory with a generated SKILL.md bridge and copied Packsmith assets."
+  },
+  "permissions": {
+    "shell": "none",
+    "filesystem": "required",
+    "network": "none",
+    "browser": "none"
+  },
+  "skills": [
+    {
+      "id": "incident-postmortem-writing",
+      "path": "skills/incident-postmortem-writing",
+      "description": "Drafts blameless incident timelines, impact summaries, causes, and follow-up actions."
+    }
+  ],
+  "prompts": [
+    {
+      "id": "write-incident-postmortem",
+      "path": "prompts/write-incident-postmortem.md",
+      "description": "Run the Incident Postmortem workflow."
+    }
+  ],
+  "category": "documentation",
+  "tags": [
+    "incident",
+    "postmortem",
+    "reliability",
+    "operations"
+  ],
+  "license": "MIT",
+  "repository": "https://github.com/chenfei462/packsmith/tree/main/official-packs/incident-postmortem"
+}
